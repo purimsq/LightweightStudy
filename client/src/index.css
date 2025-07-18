@@ -13,7 +13,7 @@
   --card-foreground: hsl(20, 14.3%, 4.1%);
   --border: hsl(20, 5.9%, 90%);
   --input: hsl(20, 5.9%, 90%);
-  --primary: hsl(29, 26%, 54%);
+  --primary: hsl(37, 25%, 68%);
   --primary-foreground: hsl(0, 0%, 100%);
   --secondary: hsl(37, 13%, 89%);
   --secondary-foreground: hsl(25, 5.3%, 44.7%);
@@ -26,7 +26,8 @@
   
   /* Custom colors for the study app */
   --cream: hsl(37, 26%, 95%);
-  --warm-gray: hsl(37, 25%, 68%);
+  --warm-gray: hsl(25, 16%, 42%);
+  --light-beige: hsl(37, 25%, 68%);
   --neutral-50: hsl(60, 9%, 98%);
   --neutral-100: hsl(24, 6%, 96%);
   --neutral-200: hsl(20, 6%, 90%);
@@ -44,7 +45,7 @@
   --card-foreground: hsl(0, 0%, 98%);
   --border: hsl(240, 3.7%, 15.9%);
   --input: hsl(240, 3.7%, 15.9%);
-  --primary: hsl(29, 26%, 54%);
+  --primary: hsl(37, 25%, 68%);
   --primary-foreground: hsl(0, 0%, 100%);
   --secondary: hsl(240, 3.7%, 15.9%);
   --secondary-foreground: hsl(0, 0%, 98%);

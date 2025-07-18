@@ -62,6 +62,7 @@ export default {
           ring: "var(--sidebar-ring)",
         },
         "warm-gray": "var(--warm-gray)",
+        "light-beige": "var(--light-beige)",
       },
       keyframes: {
         "accordion-down": {
