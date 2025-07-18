@@ -1,0 +1,83 @@
+Create a complete offline desktop study app for my girlfriend called "Lightweight." It must be private, lightweight, and work fully offline. I want to clone it from GitHub and later build an installer using Tauri.
+
+✅ 1. OVERVIEW
+- Build a fullstack app using:
+  - Frontend: React (white and beige themed, beautiful, clear UI)
+  - Backend: Python Flask (for handling PDFs, planning, logic, and AI)
+  - Local AI: Ollama running the phi model (used via localhost HTTP)
+  - Installer Framework: Tauri (generate tauri.conf.json, set up scripts, but DO NOT build the installer — I will do that locally)
+
+✅ 2. FRONTEND FEATURES
+- Tabs or sections:
+  - Dashboard
+  - Units (each PDF/note assigned to a "unit" like Anatomy, Immunology)
+  - Assignments & CATs
+  - Daily Study Plan
+  - AI Chat
+- A floating + button to add documents (PDF/DOCX from user storage)
+- Allow user to:
+  - View PDF contents
+  - Take notes (markdown style starting with ~, supports line breaks on Enter)
+  - Request AI summary (but only applied if they approve it)
+  - Delete topics or summaries (with confirmation prompt)
+- AI pace selector: 1–80 scale (horizontal slider) that sets learning speed
+- Clean and emotionally warm UI: easy for non-tech user to navigate.
+- Everything is where she expects it to be.
+
+✅ 3. BACKEND FUNCTIONALITY
+- Local document storage (no cloud)
+- Store PDFs under units with associated summaries and notes
+- Extract text from PDFs and store it for embedding and AI search
+- Create and update a study plan daily, based on:
+  - Deadline of CATs/exams
+  - Size of notes
+  - User's pace selection
+- At end of day, show user topics not completed and ask for permission to reshuffle them into the most convenient time
+- Automatically suggest breaks if the user studies too long (especially weekends, using Kenyan real-time clock)
+- Provide AI chat assistant for help, quizzes, or motivation
+
+✅ 4. ASSIGNMENTS & CATS
+- Allow user to:
+  - Type an assignment question or upload it as a doc
+  - Input deadline
+- AI should locate the most relevant sections of notes to match the questions using local embedding search
+- Same applies to CATs: user enters topics or uploads doc, AI finds matching notes
+
+✅ 5. AI SETUP — LOCAL AI ONLY
+- Install and configure Ollama locally (add install instructions inside a setup.sh)
+- Pull the model phi using:
+  ollama pull phi
+- Flask backend should communicate with Ollama's REST API at http://localhost:11434
+- Send a persistent system message to every new AI session to define its behavior:
+
+System prompt for AI:
+"You are StudyCompanion, a private offline assistant for a single user. 
+You must:
+1. Never overwrite user summaries or notes without their approval.
+2. Help generate study plans based on deadlines, topic size, and pace level.
+3. Remind the user to rest when study time is excessive (especially weekends).
+4. Generate summaries and quizzes upon request only.(But sometimes suggest and wait for approval or decline)
+5. Match assignment/CAT questions to notes using local embedding.
+6. Always be kind, encouraging, and use concise explanations.
+7. Never connect to the internet, always work locally unless asked by user.
+"
+
+✅ 6. FILE STRUCTURE
+Organize the project like this:
+
+/frontend         ← React app /backend          ← Flask API (PDF, summary, planner, chat logic) /ai_service       ← Ollama interaction, embeddings, AI logic /src-tauri        ← Tauri setup (generate config and build scripts) /setup.sh         ← Script to install Ollama and pull phi model
+
+✅ 7. TAURI SETUP (PREP ONLY)
+- Set up tauri.conf.json with correct devPath, distDir, and app metadata (name: "StudyCompanion", size: 1280x800, resizable)
+- Add instructions for Tauri to run Flask server and Ollama in background when the app launches
+- Add post-install script (setup.sh) to install Ollama and pull phi on first run
+- DO NOT run npm run tauri build — I will build it on my machine
+
+✅ 8. FINAL GOAL
+The app must:
+- Work 100% offline
+- Run Flask + Ollama locally
+- Provide a full desktop experience using Tauri
+- Allow me to clone the entire repo from GitHub, build it locally, and install it on my girlfriend’s laptop as a normal .exe or .dmg
+
+This app is for one person only, and it should feel deeply personalized, supportive, and safe. Please organize your code well, follow modern conventions, and include README notes where necessary. Give it your best.
