@@ -459,11 +459,42 @@ This document has been uploaded and is ready for viewing. The content will be di
   app.get("/api/documents/:id/quiz", async (req, res) => {
     try {
       const documentId = parseInt(req.params.id);
-      // For now, return null as we'll generate quizzes on-demand
-      // In a real implementation, you might store generated quizzes
-      res.json(null);
+      const quiz = await storage.getQuiz(documentId);
+      
+      if (!quiz) {
+        return res.status(200).json(null);
+      }
+      
+      res.json(quiz);
     } catch (error) {
       res.status(500).json({ message: "Failed to get quiz", error: error instanceof Error ? error.message : "Unknown error" });
+    }
+  });
+
+  app.post("/api/documents/:id/quiz", async (req, res) => {
+    try {
+      const documentId = parseInt(req.params.id);
+      const { questions } = req.body;
+      
+      if (!questions || !Array.isArray(questions) || questions.length === 0) {
+        return res.status(400).json({ message: "Questions array is required" });
+      }
+
+      // Save the custom quiz
+      const quiz = {
+        documentId,
+        questions: questions.map((q, index) => ({
+          ...q,
+          id: index + 1
+        })),
+        createdAt: new Date().toISOString()
+      };
+
+      await storage.saveQuiz(documentId, quiz);
+      res.json(quiz);
+    } catch (error) {
+      console.error("Error saving custom quiz:", error);
+      res.status(500).json({ message: "Failed to save quiz", error: error instanceof Error ? error.message : "Unknown error" });
     }
   });
 

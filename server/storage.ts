@@ -56,6 +56,10 @@ export interface IStorage {
   getAiChatBySession(sessionId: string): Promise<AiChat | undefined>;
   createAiChat(chat: InsertAiChat): Promise<AiChat>;
   updateAiChat(id: number, chat: Partial<InsertAiChat>): Promise<AiChat>;
+
+  // Quiz
+  getQuiz(documentId: number): Promise<any>;
+  saveQuiz(documentId: number, quiz: any): Promise<any>;
 }
 
 export class MemStorage implements IStorage {
@@ -66,6 +70,7 @@ export class MemStorage implements IStorage {
   private assignments: Map<number, Assignment> = new Map();
   private studyPlans: Map<number, StudyPlan> = new Map();
   private aiChats: Map<number, AiChat> = new Map();
+  private quizzes: Map<number, any> = new Map(); // documentId -> quiz
   private currentId: number = 1;
 
   constructor() {
@@ -359,6 +364,16 @@ export class MemStorage implements IStorage {
     const updated: AiChat = { ...existing, ...updateAiChat, updatedAt: new Date() };
     this.aiChats.set(id, updated);
     return updated;
+  }
+
+  // Quiz
+  async getQuiz(documentId: number): Promise<any> {
+    return this.quizzes.get(documentId);
+  }
+
+  async saveQuiz(documentId: number, quiz: any): Promise<any> {
+    this.quizzes.set(documentId, quiz);
+    return quiz;
   }
 }
 
