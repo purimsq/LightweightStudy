@@ -92,10 +92,7 @@ export default function DocumentViewer() {
               </p>
             </div>
           </div>
-          <Button variant="outline" onClick={handleDownload} size="sm">
-            <Download className="w-4 h-4 mr-2" />
-            Download
-          </Button>
+          
         </div>
       </div>
 
