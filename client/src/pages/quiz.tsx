@@ -207,27 +207,53 @@ export default function QuizPage({ documentId }: QuizPageProps) {
                       { type: 'essay', label: 'Essay Questions', icon: Edit3, color: 'purple' },
                       { type: 'short-answer', label: 'Short Answer', icon: PenTool, color: 'blue' },
                       { type: 'fill-blank', label: 'Fill in the Blanks', icon: Target, color: 'orange' }
-                    ].map(({ type, label, icon: Icon, color }) => (
-                      <div key={type} className={`border rounded-lg p-4 cursor-pointer transition-all ${
-                        selectedQuestionTypes.includes(type) 
-                          ? `border-${color}-300 bg-${color}-50` 
-                          : 'border-neutral-200 bg-neutral-50 hover:border-neutral-300'
-                      }`} onClick={() => handleQuestionTypeToggle(type)}>
-                        <div className="flex items-center space-x-3">
-                          <input
-                            type="checkbox"
-                            checked={selectedQuestionTypes.includes(type)}
-                            onChange={() => handleQuestionTypeToggle(type)}
-                            className={`w-4 h-4 text-${color}-600 border-neutral-300 rounded focus:ring-${color}-500`}
-                          />
-                          <Icon className={`w-5 h-5 text-${color}-600`} />
-                          <span className="font-medium text-neutral-800">{label}</span>
+                    ].map(({ type, label, icon: Icon, color }) => {
+                      const isSelected = selectedQuestionTypes.includes(type);
+                      return (
+                        <div key={type} className={`border rounded-lg p-4 cursor-pointer transition-all ${
+                          isSelected 
+                            ? 'border-emerald-300 bg-emerald-50' 
+                            : 'border-neutral-200 bg-neutral-50 hover:border-neutral-300'
+                        }`} onClick={() => handleQuestionTypeToggle(type)}>
+                          <div className="flex items-center space-x-3">
+                            <input
+                              type="checkbox"
+                              checked={isSelected}
+                              onChange={(e) => {
+                                e.stopPropagation();
+                                handleQuestionTypeToggle(type);
+                              }}
+                              className="w-4 h-4 text-emerald-600 border-neutral-300 rounded focus:ring-emerald-500"
+                            />
+                            <Icon className={`w-5 h-5 ${isSelected ? 'text-emerald-600' : `text-${color}-600`}`} />
+                            <span className="font-medium text-neutral-800">{label}</span>
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
-                  <div className="text-sm text-neutral-600">
-                    Selected: {selectedQuestionTypes.length > 0 ? selectedQuestionTypes.map(type => type.replace('-', ' ')).join(', ') : 'None'}
+                  <div className="flex items-center justify-between">
+                    <div className="text-sm text-neutral-600">
+                      Selected: {selectedQuestionTypes.length > 0 ? selectedQuestionTypes.map(type => type.replace('-', ' ')).join(', ') : 'None'}
+                    </div>
+                    <div className="flex space-x-2">
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => setSelectedQuestionTypes([])}
+                        disabled={selectedQuestionTypes.length === 0}
+                      >
+                        Clear All
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => setSelectedQuestionTypes(['mcq', 'essay', 'short-answer', 'fill-blank'])}
+                        disabled={selectedQuestionTypes.length === 4}
+                      >
+                        Select All
+                      </Button>
+                    </div>
                   </div>
                 </div>
 
