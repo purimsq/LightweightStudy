@@ -184,9 +184,19 @@ export default function PDFViewer({ fileUrl, documentId, unitId }: PDFViewerProp
   const outline = generateOutline();
 
   return (
-    <div className="bg-gradient-to-br from-slate-50 to-stone-100 min-h-screen flex">
-      {/* Sidebar */}
-      <div className={`bg-white border-r border-stone-200 transition-all duration-300 ${sidebarOpen ? 'w-80' : 'w-0'} overflow-hidden flex-shrink-0`}>
+    <div className="bg-gradient-to-br from-slate-50 to-stone-100 min-h-screen relative">
+      {/* Floating Outline Button */}
+      <div className="fixed bottom-6 right-6 z-20">
+        <Button
+          onClick={() => setSidebarOpen(!sidebarOpen)}
+          className="bg-white hover:bg-stone-50 border border-stone-200 text-stone-700 hover:text-stone-900 shadow-lg rounded-full w-12 h-12 p-0"
+        >
+          <Menu className="w-5 h-5" />
+        </Button>
+      </div>
+
+      {/* Sidebar Overlay */}
+      <div className={`fixed top-0 left-0 h-full bg-white border-r border-stone-200 shadow-xl transition-all duration-300 z-30 ${sidebarOpen ? 'w-80 translate-x-0' : 'w-80 -translate-x-full'}`}>
         <div className="p-4 border-b border-stone-200">
           <div className="flex items-center space-x-2">
             <BookOpen className="w-5 h-5 text-stone-600" />
@@ -210,8 +220,16 @@ export default function PDFViewer({ fileUrl, documentId, unitId }: PDFViewerProp
         </div>
       </div>
 
+      {/* Sidebar Background Overlay */}
+      {sidebarOpen && (
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-20 z-20"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
       {/* Main Content */}
-      <div className="flex-1 flex flex-col">
+      <div className="flex flex-col min-h-screen">
         {/* PDF Controls */}
         <div className="bg-white/90 backdrop-blur-sm border-b border-stone-200 shadow-sm sticky top-0 z-10">
           <div className="p-4 flex items-center justify-between">
@@ -225,15 +243,7 @@ export default function PDFViewer({ fileUrl, documentId, unitId }: PDFViewerProp
                 <ArrowLeft className="w-4 h-4 mr-2" />
                 Back to Unit
               </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setSidebarOpen(!sidebarOpen)}
-                className="bg-white hover:bg-stone-50 border-stone-200 text-stone-700 hover:text-stone-900"
-              >
-                <Menu className="w-4 h-4 mr-2" />
-                Outline
-              </Button>
+
               <div className="flex items-center space-x-3 bg-stone-100 rounded-lg px-3 py-2">
                 <Button
                   variant="ghost"
@@ -284,7 +294,7 @@ export default function PDFViewer({ fileUrl, documentId, unitId }: PDFViewerProp
         </div>
 
         {/* PDF Canvas */}
-        <div className="p-6 flex justify-center flex-1">
+        <div className="p-6 flex justify-center flex-1 pb-20">
           <div className="bg-white shadow-2xl rounded-lg border border-stone-200 overflow-hidden">
             <canvas
               ref={canvasRef}
