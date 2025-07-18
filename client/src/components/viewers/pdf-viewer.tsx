@@ -217,13 +217,15 @@ export default function PDFViewer({ fileUrl, documentId, unitId }: PDFViewerProp
 
   return (
     <div className="bg-gradient-to-br from-slate-50 to-stone-100 min-h-screen relative">
-      {/* Floating Outline Button */}
-      <div className="fixed bottom-6 right-6 z-20">
+      {/* Floating Outline Button - Top Right Corner */}
+      <div className="fixed top-4 right-4 z-20">
         <Button
           onClick={() => setSidebarOpen(!sidebarOpen)}
-          className="bg-white hover:bg-stone-50 border border-stone-200 text-stone-700 hover:text-stone-900 shadow-lg rounded-full w-12 h-12 p-0"
+          className="bg-white/90 hover:bg-white border border-stone-200 text-stone-700 hover:text-stone-900 shadow-lg backdrop-blur-sm"
+          size="sm"
         >
-          <Menu className="w-5 h-5" />
+          <Menu className="w-4 h-4 mr-2" />
+          Outline
         </Button>
       </div>
 
@@ -334,7 +336,7 @@ export default function PDFViewer({ fileUrl, documentId, unitId }: PDFViewerProp
         </div>
 
         {/* PDF Canvas */}
-        <div className="p-6 flex justify-center flex-1 pb-20">
+        <div className="p-6 flex justify-center flex-1">
           <div className="bg-white shadow-2xl rounded-lg border border-stone-200 overflow-hidden">
             <canvas
               ref={canvasRef}
