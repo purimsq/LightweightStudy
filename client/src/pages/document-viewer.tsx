@@ -68,8 +68,8 @@ export default function DocumentViewer() {
   };
 
   const goBack = () => {
-    if (unit) {
-      setLocation(`/units/${unit.id}/documents`);
+    if (document?.unitId) {
+      setLocation(`/units/${document.unitId}/documents`);
     } else {
       setLocation("/units");
     }
