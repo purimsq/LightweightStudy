@@ -56,7 +56,7 @@ export default function Sidebar() {
 
       {/* Navigation Menu */}
       <nav className="flex-1 p-4">
-        <ul className="space-y-4">
+        <ul className="space-y-6">
           {navigation.map((item) => {
             const isActive = location === item.href || (item.href === "/dashboard" && location === "/");
             const Icon = item.icon;
