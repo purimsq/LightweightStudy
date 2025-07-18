@@ -5,7 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
-import { Send, Bot, User, AlertCircle, CheckCircle, Lightbulb } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Send, Bot, User, AlertCircle, CheckCircle, Lightbulb, Shield, Zap } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
@@ -44,19 +45,23 @@ function MessageBubble({ message }: { message: Message }) {
 
 function QuickPrompts({ onPromptClick }: { onPromptClick: (prompt: string) => void }) {
   const prompts = [
-    "Help me create a study plan for this week",
-    "Generate quiz questions on cardiovascular system",
-    "Summarize my notes on immune responses",
-    "What's the best way to memorize anatomy terms?",
-    "Create a study schedule for my upcoming CAT",
-    "Explain the concept of homeostasis simply",
+    "Show me all my documents and notes",
+    "Create a study plan for my immunology unit",
+    "Generate a comprehensive quiz on cardiovascular system", 
+    "Summarize the document I just uploaded",
+    "Help me organize my assignments and deadlines",
+    "Create notes for my anatomy documents",
+    "What should I study next based on my progress?",
+    "Set up break reminders for my study session",
+    "Generate practice questions for my upcoming CAT",
+    "Help me track my study time and goals"
   ];
 
   return (
     <div className="space-y-3">
       <h3 className="text-sm font-medium text-neutral-600 flex items-center">
         <Lightbulb className="w-4 h-4 mr-2" />
-        Quick Prompts
+        Ask StudyCompanion (Full App Access)
       </h3>
       <div className="grid grid-cols-1 gap-2">
         {prompts.map((prompt, index) => (
@@ -151,9 +156,16 @@ export default function AiChat() {
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h1 className="text-3xl font-bold text-neutral-800">AI Study Companion</h1>
+            <h1 className="text-3xl font-bold text-neutral-800 flex items-center">
+              <Bot className="w-8 h-8 mr-3 text-emerald-600" />
+              AI Study Companion
+              <Badge variant="secondary" className="ml-3 bg-emerald-100 text-emerald-800">
+                <Zap className="w-3 h-3 mr-1" />
+                Full Access
+              </Badge>
+            </h1>
             <p className="text-neutral-600 mt-1">
-              Your personal offline study assistant
+              Your personal offline study assistant with complete access to your entire app
             </p>
           </div>
           <div className="flex items-center space-x-2">
@@ -175,6 +187,17 @@ export default function AiChat() {
             )}
           </div>
         </div>
+
+        {/* Full Access Notice */}
+        {isConnected && (
+          <Alert className="border-emerald-200 bg-emerald-50 mb-6">
+            <Shield className="w-4 h-4 text-emerald-600" />
+            <AlertDescription className="text-emerald-800">
+              <strong>Full App Access:</strong> I can access and control everything in your StudyCompanion app - 
+              documents, notes, quizzes, summaries, study plans, and more. I will always ask for your approval before making any changes.
+            </AlertDescription>
+          </Alert>
+        )}
 
         {/* Connection Warning */}
         {!isConnected && (

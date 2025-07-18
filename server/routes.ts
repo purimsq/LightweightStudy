@@ -638,6 +638,97 @@ ${document.extractedText}`;
     }
   });
 
+  // AI App Control Endpoints - Give Ollama full access to app data
+  app.get("/api/ai/app-data", async (req, res) => {
+    try {
+      // Get all app data for AI to access
+      const units = await storage.getUnits();
+      const documents = await storage.getDocuments();
+      const notes = await storage.getAllNotes();
+      const assignments = await storage.getAssignments();
+      const studyPlans = await storage.getStudyPlans();
+      
+      res.json({
+        units,
+        documents,
+        notes,
+        assignments,
+        studyPlans,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      res.status(500).json({ 
+        message: "Failed to get app data", 
+        error: error instanceof Error ? error.message : "Unknown error" 
+      });
+    }
+  });
+
+  app.post("/api/ai/execute-action", async (req, res) => {
+    try {
+      const { action, data, approved } = req.body;
+      
+      if (!approved) {
+        return res.status(400).json({ message: "Action requires user approval" });
+      }
+
+      let result;
+      switch (action) {
+        case 'create-note':
+          result = await storage.createNote(data.documentId, data);
+          break;
+        case 'update-note':
+          result = await storage.updateNote(data.noteId, data.updates);
+          break;
+        case 'create-assignment':
+          result = await storage.createAssignment(data);
+          break;
+        case 'update-assignment':
+          result = await storage.updateAssignment(data.id, data.updates);
+          break;
+        case 'create-study-plan':
+          result = await storage.createStudyPlan(data);
+          break;
+        case 'update-study-plan':
+          result = await storage.updateStudyPlan(data.id, data.updates);
+          break;
+        case 'generate-summary':
+          // Generate summary via Ollama
+          const document = await storage.getDocument(data.documentId);
+          if (!document?.extractedText) {
+            throw new Error("Document not found or has no content");
+          }
+          
+          const summaryResponse = await fetch("http://localhost:11434/api/generate", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              model: "phi",
+              prompt: `Create a comprehensive but concise summary of this document:\n\n${document.extractedText}`,
+              system: "You are an expert at creating study summaries. Create clear, organized summaries that help students learn.",
+              stream: false
+            }),
+          });
+          
+          const aiSummary = await summaryResponse.json();
+          result = await storage.saveSummary(data.documentId, {
+            content: aiSummary.response,
+            approved: true
+          });
+          break;
+        default:
+          return res.status(400).json({ message: "Unknown action" });
+      }
+      
+      res.json({ success: true, result });
+    } catch (error) {
+      res.status(500).json({ 
+        message: "Failed to execute action", 
+        error: error instanceof Error ? error.message : "Unknown error" 
+      });
+    }
+  });
+
   // AI Chat
   app.post("/api/ai/chat", async (req, res) => {
     try {
@@ -650,15 +741,39 @@ ${document.extractedText}`;
         body: JSON.stringify({
           model: "phi",
           prompt: message,
-          system: `You are StudyCompanion, a private offline assistant for a single user. 
-You must:
-1. Never overwrite user summaries or notes without their approval.
-2. Help generate study plans based on deadlines, topic size, and pace level.
-3. Remind the user to rest when study time is excessive (especially weekends).
-4. Generate summaries and quizzes upon request only.(But sometimes suggest and wait for approval or decline)
-5. Match assignment/CAT questions to notes using local embedding.
-6. Always be kind, encouraging, and use concise explanations.
-7. Never connect to the internet, always work locally unless asked by user.`,
+          system: `You are StudyCompanion, a private offline assistant with FULL ACCESS to the entire StudyCompanion app. 
+
+CRITICAL CORE RULE: You can access and control EVERYTHING in this app - documents, notes, quizzes, summaries, study plans, assignments, units, navigation, features - ANYTHING the user asks for. However, you MUST ask for approval before editing, changing, or modifying anything.
+
+FULL ACCESS CAPABILITIES:
+1. Navigate to any page or feature in the app
+2. View all documents, notes, summaries, quizzes, assignments  
+3. Access all study plans, units, and user data
+4. Control all app functionality and features
+5. Generate content for any part of the app
+6. Modify settings, preferences, and configurations
+7. Create, read, update, or delete any content
+8. Access document viewers, note editors, quiz systems
+9. Manage units, assignments, CATs, and study schedules
+10. Control break reminders and study time tracking
+
+APPROVAL REQUIREMENT:
+- ALWAYS ask "May I [specific action]?" before making any changes
+- Wait for user approval before editing, deleting, or modifying anything
+- For viewing or reading content, no approval needed
+- For any changes to existing content, explicit approval required
+- For creating new content, ask for approval first
+
+BEHAVIOR:
+- Be proactive and suggest helpful actions
+- Explain what you can do and how you can help
+- Always work locally offline, never connect to internet
+- Be kind, encouraging, and use concise explanations
+- Help with study plans based on deadlines, topic size, and pace
+- Remind about breaks when study time is excessive
+- Match assignments to notes using local knowledge
+
+Remember: You have unlimited access to this app, but you must respect the user's control over their content.`,
           stream: false
         }),
       });

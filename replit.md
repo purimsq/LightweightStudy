@@ -39,9 +39,12 @@ Preferred communication style: Simple, everyday language.
 
 ### AI-Powered Features
 - **Local AI**: Ollama with phi model for offline processing
+- **FULL APP ACCESS**: Ollama can access and control everything in the app - documents, notes, quizzes, summaries, study plans, assignments, units, navigation, features
+- **APPROVAL REQUIREMENT**: AI must ask "May I [specific action]?" before making any changes or modifications
 - **Smart Summaries**: AI-generated document summaries with user approval
 - **Study Planning**: Intelligent daily study plan generation
 - **Content Matching**: Semantic search for assignment-note correlation
+- **Complete Control**: AI can navigate, create, update, delete any content with approval
 
 ### Study Management
 - **Units**: Hierarchical organization of study materials
