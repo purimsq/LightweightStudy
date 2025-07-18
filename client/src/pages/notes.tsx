@@ -107,8 +107,8 @@ export default function NotesPage({ documentId }: NotesPageProps) {
 
   const handleUpdateNote = () => {
     if (!editingNote) return;
-    const cleanedContent = cleanContent(editingNote.content);
-    if (!editingNote.title.trim() || !cleanedContent) {
+    const cleanedContent = cleanContent(editingNote.content || '');
+    if (!editingNote.title?.trim() || !cleanedContent) {
       toast({ title: "Please fill in both title and content", variant: "destructive" });
       return;
     }
@@ -234,7 +234,7 @@ export default function NotesPage({ documentId }: NotesPageProps) {
                   
                   <Input
                     placeholder="Note title..."
-                    value={editingNote ? editingNote.title : newNote.title}
+                    value={editingNote ? editingNote.title || '' : newNote.title}
                     onChange={(e) => 
                       editingNote 
                         ? setEditingNote({ ...editingNote, title: e.target.value })
@@ -259,7 +259,7 @@ export default function NotesPage({ documentId }: NotesPageProps) {
                     
                     <Textarea
                       placeholder="Start writing your notes here... Press Enter to create a new sentence with ~"
-                      value={editingNote ? editingNote.content : newNote.content}
+                      value={editingNote ? editingNote.content || '' : newNote.content}
                       onChange={(e) => handleContentChange(e.target.value, !!editingNote)}
                       onKeyDown={(e) => handleNoteKeyDown(e, !!editingNote)}
                       rows={14}
