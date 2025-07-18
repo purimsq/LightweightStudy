@@ -43,8 +43,11 @@ export default function DocumentUploadModal({ isOpen, onClose }: DocumentUploadM
       }
     },
     onSuccess: () => {
+      // Invalidate all document-related queries
       queryClient.invalidateQueries({ queryKey: ["/api/documents"] });
       queryClient.invalidateQueries({ queryKey: ["/api/units"] });
+      // Force refresh dashboard data
+      queryClient.invalidateQueries({ queryKey: ["/api/users/current"] });
       toast({ title: "Documents uploaded successfully!" });
       handleClose();
     },

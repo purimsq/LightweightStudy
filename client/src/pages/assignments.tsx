@@ -30,7 +30,9 @@ function CreateAssignmentDialog() {
       return response.json();
     },
     onSuccess: () => {
+      // Invalidate all assignment-related queries including dashboard
       queryClient.invalidateQueries({ queryKey: ["/api/assignments"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/users/current"] });
       setIsOpen(false);
       setFormData({
         title: "",
@@ -154,7 +156,9 @@ function AssignmentCard({ assignment }: { assignment: Assignment }) {
       return response.json();
     },
     onSuccess: () => {
+      // Invalidate assignments and refresh dashboard progress
       queryClient.invalidateQueries({ queryKey: ["/api/assignments"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/users/current"] });
       toast({ title: "Status updated successfully!" });
     },
     onError: (error) => {

@@ -1,5 +1,7 @@
+import { useQuery } from "@tanstack/react-query";
 import { Progress } from "@/components/ui/progress";
 import { useLocation } from "wouter";
+import { FileText } from "lucide-react";
 import type { Unit } from "@shared/schema";
 
 const iconMap = {
@@ -32,6 +34,10 @@ interface UnitCardsProps {
 export default function UnitCards({ units }: UnitCardsProps) {
   const [, navigate] = useLocation();
 
+  const { data: documents = [] } = useQuery({
+    queryKey: ["/api/documents"],
+  });
+
   const handleUnitClick = (unitId: number) => {
     navigate(`/units?selected=${unitId}`);
   };
@@ -45,6 +51,7 @@ export default function UnitCards({ units }: UnitCardsProps) {
 
         const colorClass = colorMap[unit.color as keyof typeof colorMap] || colorMap.blue;
         const icon = iconMap[unit.icon as keyof typeof iconMap] || "📁";
+        const unitDocuments = documents.filter(doc => doc.unitId === unit.id);
 
         return (
           <div
@@ -69,6 +76,10 @@ export default function UnitCards({ units }: UnitCardsProps) {
                 <span>{unit.completedTopics} of {unit.totalTopics} topics</span>
               </div>
               <Progress value={progressPercentage} className="h-2" />
+            </div>
+            <div className="flex items-center text-sm text-neutral-600">
+              <FileText className="w-4 h-4 mr-1" />
+              {unitDocuments.length} documents
             </div>
           </div>
         );

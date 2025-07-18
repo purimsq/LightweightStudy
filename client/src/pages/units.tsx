@@ -51,7 +51,9 @@ function CreateUnitDialog() {
       return response.json();
     },
     onSuccess: () => {
+      // Invalidate all unit-related queries including dashboard
       queryClient.invalidateQueries({ queryKey: ["/api/units"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/documents"] });
       setIsOpen(false);
       setFormData({ name: "", description: "", color: "blue", icon: "folder" });
       toast({ title: "Unit created successfully!" });
@@ -166,14 +168,13 @@ function CreateUnitDialog() {
 
 function UnitCard({ unit }: { unit: Unit }) {
   const [, setLocation] = useLocation();
-  const { data: documents = [] } = useQuery({
-    queryKey: ["/api/documents", { unitId: unit.id }],
-    queryFn: async () => {
-      const response = await fetch(`/api/documents?unitId=${unit.id}`);
-      if (!response.ok) throw new Error("Failed to fetch documents");
-      return response.json();
-    },
+  
+  // Use a more specific query key and fetch all documents to filter locally
+  const { data: allDocuments = [] } = useQuery({
+    queryKey: ["/api/documents"],
   });
+  
+  const documents = allDocuments.filter((doc: any) => doc.unitId === unit.id);
 
   const progressPercentage = unit.totalTopics > 0 
     ? Math.round((unit.completedTopics / unit.totalTopics) * 100) 
