@@ -36,43 +36,45 @@ export default function ProgressCards() {
   return (
     <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
       {/* Today's Progress */}
-      <Card>
-        <CardContent className="p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="font-semibold text-neutral-800">Topics Progress</h3>
+      <div className="floating-card p-6 rounded-2xl">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="font-semibold text-neutral-800">Topics Progress</h3>
+          <div className="glass-card p-2 rounded-lg">
             <BarChart3 className="w-5 h-5 text-primary" />
           </div>
-          <div className="mb-3">
-            <div className="flex items-center justify-between text-sm text-neutral-600 mb-1">
-              <span>Completed Topics</span>
-              <span>{completedTopics} of {totalTopics}</span>
-            </div>
-            <Progress value={progressPercentage} className="h-2" />
+        </div>
+        <div className="mb-3">
+          <div className="flex items-center justify-between text-sm text-neutral-600 mb-2">
+            <span>Completed Topics</span>
+            <span>{completedTopics} of {totalTopics}</span>
           </div>
-          <p className="text-sm text-neutral-600">
-            {progressPercentage > 50 ? "Great progress!" : "Keep studying!"}
-          </p>
-        </CardContent>
-      </Card>
+          <div className="unit-progress-bar">
+            <div className="unit-progress-fill" style={{ width: `${progressPercentage}%` }}></div>
+          </div>
+        </div>
+        <p className="text-sm text-neutral-600">
+          {progressPercentage > 50 ? "Great progress!" : "Keep studying!"}
+        </p>
+      </div>
 
       {/* Study Streak */}
-      <Card>
-        <CardContent className="p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="font-semibold text-neutral-800">Study Streak</h3>
+      <div className="floating-card p-6 rounded-2xl">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="font-semibold text-neutral-800">Study Streak</h3>
+          <div className="glass-card p-2 rounded-lg">
             <Flame className="w-5 h-5 text-accent" />
           </div>
-          <div className="text-center">
-            <div className="text-3xl font-bold text-accent mb-2">
-              {user?.studyStreak || 0}
-            </div>
-            <p className="text-sm text-neutral-600">days in a row</p>
-            <p className="text-xs text-neutral-600 mt-1">
-              {user?.studyStreak > 0 ? "Amazing consistency!" : "Start your streak today!"}
-            </p>
+        </div>
+        <div className="text-center">
+          <div className="text-3xl font-bold text-accent mb-2">
+            {user?.studyStreak || 0}
           </div>
-        </CardContent>
-      </Card>
+          <p className="text-sm text-neutral-600">days in a row</p>
+          <p className="text-xs text-neutral-600 mt-1">
+            {user?.studyStreak > 0 ? "Amazing consistency!" : "Start your streak today!"}
+          </p>
+        </div>
+      </div>
 
       {/* Documents */}
       <Card>

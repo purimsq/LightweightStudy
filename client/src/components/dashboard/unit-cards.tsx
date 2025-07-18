@@ -56,12 +56,12 @@ export default function UnitCards({ units }: UnitCardsProps) {
         return (
           <div
             key={unit.id}
-            className="unit-card"
+            className="floating-card p-6 rounded-2xl smooth-scale"
             onClick={() => handleUnitClick(unit.id)}
           >
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center space-x-3">
-                <div className={`w-10 h-10 rounded-lg flex items-center justify-center text-xl ${colorClass}`}>
+                <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-xl ${colorClass} shadow-sm`}>
                   {icon}
                 </div>
                 <div>
@@ -71,15 +71,22 @@ export default function UnitCards({ units }: UnitCardsProps) {
               </div>
             </div>
             <div className="mb-3">
-              <div className="flex items-center justify-between text-sm text-neutral-600 mb-1">
+              <div className="flex items-center justify-between text-sm text-neutral-600 mb-2">
                 <span>Progress</span>
                 <span>{unit.completedTopics} of {unit.totalTopics} topics</span>
               </div>
-              <Progress value={progressPercentage} className="h-2" />
+              <div className="unit-progress-bar">
+                <div className="unit-progress-fill" style={{ width: `${progressPercentage}%` }}></div>
+              </div>
             </div>
-            <div className="flex items-center text-sm text-neutral-600">
-              <FileText className="w-4 h-4 mr-1" />
-              {unitDocuments.length} documents
+            <div className="flex items-center justify-between">
+              <div className="flex items-center text-sm text-neutral-600">
+                <FileText className="w-4 h-4 mr-1" />
+                {unitDocuments.length} documents
+              </div>
+              <div className="text-sm font-medium text-primary">
+                {progressPercentage}%
+              </div>
             </div>
           </div>
         );

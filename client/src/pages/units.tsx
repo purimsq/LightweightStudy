@@ -184,43 +184,45 @@ function UnitCard({ unit }: { unit: Unit }) {
   const icon = iconMap[unit.icon as keyof typeof iconMap] || "📁";
 
   return (
-    <Card className="unit-card">
-      <CardHeader className="pb-4">
-        <div className="flex items-center space-x-3">
-          <div className={`w-12 h-12 rounded-lg flex items-center justify-center text-xl ${colorClass}`}>
-            {icon}
-          </div>
-          <div className="flex-1">
-            <CardTitle className="text-lg text-neutral-800">{unit.name}</CardTitle>
-            <p className="text-sm text-neutral-600 mt-1">{unit.description}</p>
-          </div>
+    <div className="floating-card p-6 rounded-2xl smooth-scale">
+      <div className="flex items-center space-x-4 mb-6">
+        <div className={`w-16 h-16 rounded-xl flex items-center justify-center text-2xl ${colorClass} shadow-sm`}>
+          {icon}
         </div>
-      </CardHeader>
-      <CardContent className="space-y-4">
+        <div className="flex-1">
+          <h3 className="text-xl font-bold text-neutral-800 mb-1">{unit.name}</h3>
+          <p className="text-sm text-neutral-600">{unit.description}</p>
+        </div>
+      </div>
+      
+      <div className="space-y-4">
         <div>
           <div className="flex items-center justify-between text-sm text-neutral-600 mb-2">
             <span>Progress</span>
             <span>{unit.completedTopics} of {unit.totalTopics} topics</span>
           </div>
-          <Progress value={progressPercentage} className="h-2" />
+          <div className="unit-progress-bar">
+            <div className="unit-progress-fill" style={{ width: `${progressPercentage}%` }}></div>
+          </div>
         </div>
         
-        <div className="flex items-center justify-between text-sm">
-          <div className="flex items-center text-neutral-600">
-            <FileText className="w-4 h-4 mr-1" />
+        <div className="flex items-center justify-between pt-2">
+          <div className="flex items-center text-sm text-neutral-600">
+            <FileText className="w-4 h-4 mr-2" />
             {documents.length} documents
           </div>
           <Button 
             variant="outline" 
             size="sm"
             onClick={() => setLocation(`/units/${unit.id}/documents`)}
+            className="soft-button border-0 text-white hover:scale-105 transition-transform"
           >
             <FolderOpen className="w-4 h-4 mr-1" />
             Open
           </Button>
         </div>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }
 
@@ -247,31 +249,33 @@ export default function Units() {
   }
 
   return (
-    <div className="p-6">
+    <div className="p-6 min-h-screen">
       <div className="max-w-7xl mx-auto">
-        <div className="flex items-center justify-between mb-8">
-          <div>
-            <h1 className="text-3xl font-bold text-neutral-800">Study Units</h1>
-            <p className="text-neutral-600 mt-1">
-              Organize your study materials by subject
-            </p>
+        <div className="gradient-card rounded-2xl p-8 mb-8">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-bold text-shimmer mb-2">Study Units</h1>
+              <p className="text-lg text-neutral-600">
+                Organize your study materials by subject
+              </p>
+            </div>
+            <CreateUnitDialog />
           </div>
-          <CreateUnitDialog />
         </div>
 
         {units.length === 0 ? (
-          <Card>
-            <CardContent className="py-12">
-              <div className="text-center">
-                <BookOpen className="mx-auto h-12 w-12 text-neutral-400 mb-4" />
-                <h3 className="text-lg font-medium text-neutral-600 mb-2">No units yet</h3>
-                <p className="text-neutral-500 mb-6">
-                  Create your first study unit to get started
-                </p>
-                <CreateUnitDialog />
+          <div className="floating-card rounded-2xl p-12">
+            <div className="text-center">
+              <div className="glass-card w-20 h-20 rounded-full mx-auto mb-6 flex items-center justify-center">
+                <BookOpen className="h-10 w-10 text-neutral-400" />
               </div>
-            </CardContent>
-          </Card>
+              <h3 className="text-xl font-bold text-neutral-800 mb-2">No units yet</h3>
+              <p className="text-neutral-600 mb-8">
+                Create your first study unit to get started
+              </p>
+              <CreateUnitDialog />
+            </div>
+          </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {units.map((unit: Unit) => (
