@@ -6,14 +6,20 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
-import { ArrowLeft, Brain, CheckCircle, XCircle, RefreshCw, Trophy, Target } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
+import { ArrowLeft, Brain, CheckCircle, XCircle, RefreshCw, Trophy, Target, PenTool, Edit3 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 interface Question {
   id: number;
   question: string;
-  options: string[];
-  correctAnswer: number;
+  type: 'mcq' | 'essay' | 'fill-blank' | 'short-answer';
+  options?: string[]; // For MCQ
+  correctAnswer?: number; // For MCQ
+  sampleAnswer?: string; // For essay and short-answer
+  blanks?: string[]; // For fill-in-the-blank
   explanation: string;
 }
 
@@ -31,9 +37,11 @@ interface QuizPageProps {
 export default function QuizPage({ documentId }: QuizPageProps) {
   const [location, setLocation] = useLocation();
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
-  const [userAnswers, setUserAnswers] = useState<{ [key: number]: number }>({});
+  const [userAnswers, setUserAnswers] = useState<{ [key: number]: any }>({});
   const [showResults, setShowResults] = useState(false);
   const [quizCompleted, setQuizCompleted] = useState(false);
+  const [selectedQuizType, setSelectedQuizType] = useState<string>('mcq');
+  const [numberOfQuestions, setNumberOfQuestions] = useState<number>(5);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -53,6 +61,10 @@ export default function QuizPage({ documentId }: QuizPageProps) {
       const response = await fetch(`/api/documents/${documentId}/generate-quiz`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ 
+          quizType: selectedQuizType, 
+          numberOfQuestions: numberOfQuestions 
+        }),
       });
       if (!response.ok) throw new Error("Failed to generate quiz");
       return response.json();
@@ -82,8 +94,8 @@ export default function QuizPage({ documentId }: QuizPageProps) {
     generateQuizMutation.mutate();
   };
 
-  const handleAnswerSelect = (questionId: number, answerIndex: number) => {
-    setUserAnswers(prev => ({ ...prev, [questionId]: answerIndex }));
+  const handleAnswerSelect = (questionId: number, answer: any) => {
+    setUserAnswers(prev => ({ ...prev, [questionId]: answer }));
   };
 
   const handleNextQuestion = () => {
@@ -166,7 +178,78 @@ export default function QuizPage({ documentId }: QuizPageProps) {
                 Create an AI-powered quiz based on your document content using local Ollama phi model
               </CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="space-y-6">
+              {/* Quiz Configuration */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="quiz-type">Question Type</Label>
+                  <Select value={selectedQuizType} onValueChange={setSelectedQuizType}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select question type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="mcq">
+                        <div className="flex items-center">
+                          <Brain className="w-4 h-4 mr-2" />
+                          Multiple Choice Questions
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="essay">
+                        <div className="flex items-center">
+                          <Edit3 className="w-4 h-4 mr-2" />
+                          Essay Questions
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="short-answer">
+                        <div className="flex items-center">
+                          <PenTool className="w-4 h-4 mr-2" />
+                          Short Answer
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="fill-blank">
+                        <div className="flex items-center">
+                          <Target className="w-4 h-4 mr-2" />
+                          Fill in the Blanks
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="mixed">
+                        <div className="flex items-center">
+                          <Trophy className="w-4 h-4 mr-2" />
+                          Mixed (All Types)
+                        </div>
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="num-questions">Number of Questions</Label>
+                  <Select value={numberOfQuestions.toString()} onValueChange={(value) => setNumberOfQuestions(parseInt(value))}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select number" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="3">3 Questions</SelectItem>
+                      <SelectItem value="5">5 Questions</SelectItem>
+                      <SelectItem value="7">7 Questions</SelectItem>
+                      <SelectItem value="10">10 Questions</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              {/* Question Type Descriptions */}
+              <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-4">
+                <h4 className="font-medium text-emerald-800 mb-2">Question Type Descriptions:</h4>
+                <div className="text-sm text-emerald-700 space-y-1">
+                  <p><strong>Multiple Choice:</strong> Pick the best answer from 4 options</p>
+                  <p><strong>Essay:</strong> Write detailed explanations and analysis</p>
+                  <p><strong>Short Answer:</strong> Brief responses to specific questions</p>
+                  <p><strong>Fill in Blanks:</strong> Complete sentences with missing words</p>
+                  <p><strong>Mixed:</strong> Combination of all question types for comprehensive testing</p>
+                </div>
+              </div>
+
               <div className="flex items-center space-x-4">
                 <Button 
                   onClick={handleGenerateQuiz}
@@ -178,7 +261,7 @@ export default function QuizPage({ documentId }: QuizPageProps) {
                   ) : (
                     <Brain className="w-4 h-4 mr-2" />
                   )}
-                  Generate Quiz
+                  Generate {selectedQuizType === 'mixed' ? 'Mixed' : selectedQuizType.toUpperCase()} Quiz
                 </Button>
               </div>
               
@@ -187,8 +270,8 @@ export default function QuizPage({ documentId }: QuizPageProps) {
                   <div className="flex items-center space-x-3">
                     <RefreshCw className="w-5 h-5 text-emerald-600 animate-spin" />
                     <div>
-                      <p className="text-sm font-medium text-emerald-800">Generating quiz questions...</p>
-                      <p className="text-xs text-emerald-600">AI is analyzing your document to create relevant questions</p>
+                      <p className="text-sm font-medium text-emerald-800">Generating {selectedQuizType} quiz questions...</p>
+                      <p className="text-xs text-emerald-600">AI is analyzing your document to create {numberOfQuestions} relevant questions</p>
                     </div>
                   </div>
                 </div>
@@ -225,25 +308,97 @@ export default function QuizPage({ documentId }: QuizPageProps) {
             {/* Current Question */}
             <Card>
               <CardHeader>
-                <CardTitle className="text-lg text-neutral-800">
+                <CardTitle className="text-lg text-neutral-800 flex items-center">
+                  {currentQuestion?.type === 'mcq' && <Brain className="w-5 h-5 mr-2 text-emerald-600" />}
+                  {currentQuestion?.type === 'essay' && <Edit3 className="w-5 h-5 mr-2 text-purple-600" />}
+                  {currentQuestion?.type === 'short-answer' && <PenTool className="w-5 h-5 mr-2 text-blue-600" />}
+                  {currentQuestion?.type === 'fill-blank' && <Target className="w-5 h-5 mr-2 text-orange-600" />}
                   {currentQuestion?.question}
                 </CardTitle>
+                <CardDescription>
+                  {currentQuestion?.type === 'mcq' && 'Select the best answer'}
+                  {currentQuestion?.type === 'essay' && 'Write a detailed response'}
+                  {currentQuestion?.type === 'short-answer' && 'Provide a brief answer'}
+                  {currentQuestion?.type === 'fill-blank' && 'Fill in the missing words'}
+                </CardDescription>
               </CardHeader>
               <CardContent>
-                <RadioGroup 
-                  value={userAnswers[currentQuestion?.id]?.toString() || ""} 
-                  onValueChange={(value) => handleAnswerSelect(currentQuestion.id, parseInt(value))}
-                  className="space-y-3"
-                >
-                  {currentQuestion?.options.map((option, index) => (
-                    <div key={index} className="flex items-center space-x-2 p-3 rounded-lg border border-neutral-200 hover:bg-neutral-50 transition-colors">
-                      <RadioGroupItem value={index.toString()} id={`option-${index}`} />
-                      <Label htmlFor={`option-${index}`} className="flex-1 cursor-pointer">
-                        {option}
-                      </Label>
+                {/* Multiple Choice Questions */}
+                {currentQuestion?.type === 'mcq' && (
+                  <RadioGroup 
+                    value={userAnswers[currentQuestion?.id]?.toString() || ""} 
+                    onValueChange={(value) => handleAnswerSelect(currentQuestion.id, parseInt(value))}
+                    className="space-y-3"
+                  >
+                    {currentQuestion?.options?.map((option, index) => (
+                      <div key={index} className="flex items-center space-x-2 p-3 rounded-lg border border-neutral-200 hover:bg-neutral-50 transition-colors">
+                        <RadioGroupItem value={index.toString()} id={`option-${index}`} />
+                        <Label htmlFor={`option-${index}`} className="flex-1 cursor-pointer">
+                          {option}
+                        </Label>
+                      </div>
+                    ))}
+                  </RadioGroup>
+                )}
+
+                {/* Essay Questions */}
+                {currentQuestion?.type === 'essay' && (
+                  <div className="space-y-3">
+                    <Textarea
+                      placeholder="Write your detailed response here..."
+                      value={userAnswers[currentQuestion?.id] || ""}
+                      onChange={(e) => handleAnswerSelect(currentQuestion.id, e.target.value)}
+                      rows={8}
+                      className="border-neutral-300 focus:border-purple-500"
+                    />
+                    <div className="text-sm text-neutral-500">
+                      Tip: Include specific examples and explain your reasoning thoroughly.
                     </div>
-                  ))}
-                </RadioGroup>
+                  </div>
+                )}
+
+                {/* Short Answer Questions */}
+                {currentQuestion?.type === 'short-answer' && (
+                  <div className="space-y-3">
+                    <Textarea
+                      placeholder="Write your brief answer here..."
+                      value={userAnswers[currentQuestion?.id] || ""}
+                      onChange={(e) => handleAnswerSelect(currentQuestion.id, e.target.value)}
+                      rows={3}
+                      className="border-neutral-300 focus:border-blue-500"
+                    />
+                    <div className="text-sm text-neutral-500">
+                      Keep your answer concise but complete.
+                    </div>
+                  </div>
+                )}
+
+                {/* Fill in the Blanks */}
+                {currentQuestion?.type === 'fill-blank' && (
+                  <div className="space-y-3">
+                    {currentQuestion?.blanks?.map((blank, index) => (
+                      <div key={index} className="flex items-center space-x-3">
+                        <Label className="text-sm font-medium min-w-[80px]">
+                          Blank {index + 1}:
+                        </Label>
+                        <Input
+                          placeholder={`Enter word for blank ${index + 1}`}
+                          value={userAnswers[currentQuestion?.id]?.[index] || ""}
+                          onChange={(e) => {
+                            const currentAnswers = userAnswers[currentQuestion?.id] || [];
+                            const newAnswers = [...currentAnswers];
+                            newAnswers[index] = e.target.value;
+                            handleAnswerSelect(currentQuestion.id, newAnswers);
+                          }}
+                          className="border-neutral-300 focus:border-orange-500"
+                        />
+                      </div>
+                    ))}
+                    <div className="text-sm text-neutral-500">
+                      Fill in each blank with the most appropriate word or phrase.
+                    </div>
+                  </div>
+                )}
 
                 <div className="flex items-center justify-between mt-6">
                   <Button 
