@@ -206,7 +206,15 @@ export default function DOCXViewer({ fileUrl, filename, documentId, unitId }: DO
                 <ArrowLeft className="w-4 h-4 mr-2" />
                 Back to Unit
               </Button>
-
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setSidebarOpen(!sidebarOpen)}
+                className="bg-white hover:bg-stone-50 border-stone-200 text-stone-700 hover:text-stone-900"
+              >
+                <Menu className="w-4 h-4 mr-2" />
+                Outline
+              </Button>
               <div className="flex items-center space-x-3 bg-blue-50 rounded-lg px-3 py-2">
                 <FileText className="w-5 h-5 text-blue-600" />
                 <span className="font-medium text-blue-900 max-w-md truncate">{filename}</span>

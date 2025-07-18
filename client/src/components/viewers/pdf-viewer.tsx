@@ -243,7 +243,15 @@ export default function PDFViewer({ fileUrl, documentId, unitId }: PDFViewerProp
                 <ArrowLeft className="w-4 h-4 mr-2" />
                 Back to Unit
               </Button>
-
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setSidebarOpen(!sidebarOpen)}
+                className="bg-white hover:bg-stone-50 border-stone-200 text-stone-700 hover:text-stone-900"
+              >
+                <Menu className="w-4 h-4 mr-2" />
+                Outline
+              </Button>
               <div className="flex items-center space-x-3 bg-stone-100 rounded-lg px-3 py-2">
                 <Button
                   variant="ghost"
