@@ -1,12 +1,13 @@
-import { useState, useRef, useEffect } from "react";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useState, useEffect, useRef } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Send, Bot, User, AlertCircle, CheckCircle, Lightbulb, Shield, Zap, Coffee } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Send, Bot, User, AlertCircle, CheckCircle, Lightbulb, Shield, Zap, Coffee, ChevronDown } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
@@ -17,26 +18,34 @@ interface Message {
   timestamp: string;
 }
 
+interface AIHealthStatus {
+  status: "connected" | "disconnected" | "error";
+  hasPhiModel: boolean;
+  model?: string;
+  version?: string;
+}
+
 function MessageBubble({ message }: { message: Message }) {
   const isUser = message.role === "user";
+  const time = format(new Date(message.timestamp), "HH:mm");
   
   return (
-    <div className={`flex items-start space-x-3 ${isUser ? "flex-row-reverse space-x-reverse" : ""}`}>
-      <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
-        isUser ? "bg-primary text-white" : "bg-accent/20 text-accent"
+    <div className={`flex ${isUser ? "justify-end" : "justify-start"} mb-4`}>
+      <div className={`max-w-3xl px-4 py-3 rounded-lg ${
+        isUser 
+          ? "bg-blue-500 text-white" 
+          : "bg-neutral-100 text-neutral-800"
       }`}>
-        {isUser ? <User className="w-4 h-4" /> : <Bot className="w-4 h-4" />}
-      </div>
-      <div className={`flex-1 max-w-md ${isUser ? "text-right" : ""}`}>
-        <div className={`inline-block p-3 rounded-lg ${
-          isUser 
-            ? "bg-primary text-white rounded-br-sm" 
-            : "bg-white border border-neutral-200 rounded-bl-sm shadow-sm"
-        }`}>
-          <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+        <div className="flex items-center mb-1">
+          {isUser ? (
+            <User className="w-4 h-4 mr-2" />
+          ) : (
+            <Bot className="w-4 h-4 mr-2" />
+          )}
+          <span className="text-xs opacity-75">{time}</span>
         </div>
-        <p className="text-xs text-neutral-500 mt-1">
-          {format(new Date(message.timestamp), "h:mm a")}
+        <p className="text-sm leading-relaxed whitespace-pre-wrap">
+          {message.content}
         </p>
       </div>
     </div>
@@ -58,47 +67,51 @@ function QuickPrompts({ onPromptClick }: { onPromptClick: (prompt: string) => vo
   ];
 
   return (
-    <div className="space-y-3">
-      <h3 className="text-sm font-medium text-neutral-600 flex items-center">
-        <Lightbulb className="w-4 h-4 mr-2" />
-        Ask StudyCompanion (Full App Access)
-      </h3>
-      <div className="grid grid-cols-1 gap-2">
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="outline" className="flex items-center">
+          <Lightbulb className="w-4 h-4 mr-2" />
+          Quick Actions
+          <ChevronDown className="w-4 h-4 ml-2" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-80">
         {prompts.map((prompt, index) => (
-          <Button
+          <DropdownMenuItem
             key={index}
-            variant="outline"
-            size="sm"
-            className="text-left justify-start h-auto p-3 text-xs whitespace-normal"
             onClick={() => onPromptClick(prompt)}
+            className="p-3 text-sm whitespace-normal h-auto"
           >
             {prompt}
-          </Button>
+          </DropdownMenuItem>
         ))}
-      </div>
-    </div>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }
 
-export default function AiChat() {
+export default function AIChat() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputValue, setInputValue] = useState("");
-  const [sessionId] = useState(() => `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const queryClient = useQueryClient();
   const { toast } = useToast();
 
-  const { data: aiHealth } = useQuery({
+  // Check AI service health
+  const { data: aiHealth } = useQuery<AIHealthStatus>({
     queryKey: ["/api/ai/health"],
-    refetchInterval: 30000, // Check every 30 seconds
+    refetchInterval: 30000,
   });
 
+  // Chat mutation
   const chatMutation = useMutation({
     mutationFn: async (message: string) => {
-      const response = await apiRequest("POST", "/api/ai/chat", {
-        message,
-        sessionId,
+      const response = await apiRequest("/api/ai/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message }),
       });
-      return response.json();
+      return response;
     },
     onSuccess: (data) => {
       const aiMessage: Message = {
@@ -216,129 +229,83 @@ export default function AiChat() {
           </Card>
         )}
 
-        <div className="flex-1 grid grid-cols-1 lg:grid-cols-3 gap-4 min-h-0">
-          {/* Chat Area */}
-          <div className="lg:col-span-2 flex flex-col">
-            <Card className="flex-1 flex flex-col max-h-[500px]">
-              <CardHeader className="border-b py-2">
-                <CardTitle className="flex items-center text-base">
-                  <Bot className="w-4 h-4 mr-2 text-emerald-600" />
-                  StudyCompanion Chat
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="flex-1 flex flex-col p-0">
-                {/* Messages */}
-                <ScrollArea className="flex-1 p-3 max-h-[300px]">
-                  <div className="space-y-3">
-                    {messages.length === 0 ? (
-                      <div className="text-center py-6">
-                        <Bot className="mx-auto h-8 w-8 text-neutral-400 mb-2" />
-                        <h3 className="text-base font-medium text-neutral-600 mb-1">
-                          Ready to help with your studies!
-                        </h3>
-                        <p className="text-neutral-500 text-xs max-w-sm mx-auto">
-                          I have full access to your app and can help with documents, notes, quizzes, and more.
-                        </p>
+        {/* Full Width Chat Area */}
+        <Card className="flex-1 flex flex-col">
+          <CardHeader className="border-b py-3">
+            <div className="flex items-center justify-between">
+              <CardTitle className="flex items-center text-lg">
+                <Bot className="w-5 h-5 mr-2 text-emerald-600" />
+                StudyCompanion Chat
+              </CardTitle>
+              <QuickPrompts onPromptClick={handleSendMessage} />
+            </div>
+          </CardHeader>
+          <CardContent className="flex-1 flex flex-col p-0">
+            {/* Messages */}
+            <ScrollArea className="flex-1 p-4">
+              <div className="space-y-4">
+                {messages.length === 0 ? (
+                  <div className="text-center py-12">
+                    <Bot className="mx-auto h-12 w-12 text-neutral-400 mb-4" />
+                    <h3 className="text-lg font-medium text-neutral-600 mb-2">
+                      Ready to help with your studies!
+                    </h3>
+                    <p className="text-neutral-500 max-w-md mx-auto">
+                      I have full access to your app and can help with documents, notes, quizzes, 
+                      summaries, study plans, and more. I'll ask for approval before making changes.
+                    </p>
+                    <div className="mt-6 flex items-center justify-center space-x-4 text-sm text-emerald-600">
+                      <div className="flex items-center">
+                        <Coffee className="w-4 h-4 mr-1" />
+                        Auto break reminders
                       </div>
-                    ) : (
-                      messages.map((message, index) => (
-                        <MessageBubble key={index} message={message} />
-                      ))
-                    )}
-                    {chatMutation.isPending && (
-                      <div className="flex items-center space-x-2 text-neutral-500">
-                        <Bot className="w-4 h-4" />
-                        <div className="flex space-x-1">
-                          <div className="w-2 h-2 bg-current rounded-full animate-bounce"></div>
-                          <div className="w-2 h-2 bg-current rounded-full animate-bounce" style={{ animationDelay: "0.1s" }}></div>
-                          <div className="w-2 h-2 bg-current rounded-full animate-bounce" style={{ animationDelay: "0.2s" }}></div>
-                        </div>
+                      <div className="flex items-center">
+                        <Shield className="w-4 h-4 mr-1" />
+                        Full app access
                       </div>
-                    )}
-                    <div ref={messagesEndRef} />
+                    </div>
                   </div>
-                </ScrollArea>
+                ) : (
+                  messages.map((message, index) => (
+                    <MessageBubble key={index} message={message} />
+                  ))
+                )}
+                {chatMutation.isPending && (
+                  <div className="flex items-center space-x-2 text-neutral-500">
+                    <Bot className="w-4 h-4" />
+                    <div className="flex space-x-1">
+                      <div className="w-2 h-2 bg-current rounded-full animate-bounce"></div>
+                      <div className="w-2 h-2 bg-current rounded-full animate-bounce" style={{ animationDelay: "0.1s" }}></div>
+                      <div className="w-2 h-2 bg-current rounded-full animate-bounce" style={{ animationDelay: "0.2s" }}></div>
+                    </div>
+                  </div>
+                )}
+                <div ref={messagesEndRef} />
+              </div>
+            </ScrollArea>
 
-                {/* Input */}
-                <div className="border-t p-4">
-                  <div className="flex space-x-2">
-                    <Input
-                      value={inputValue}
-                      onChange={(e) => setInputValue(e.target.value)}
-                      onKeyPress={handleKeyPress}
-                      placeholder={isConnected ? "Ask me anything about your studies..." : "AI assistant is offline"}
-                      disabled={chatMutation.isPending || !isConnected}
-                      className="flex-1"
-                    />
-                    <Button
-                      onClick={() => handleSendMessage()}
-                      disabled={!inputValue.trim() || chatMutation.isPending || !isConnected}
-                      className="bg-primary hover:bg-primary/90"
-                    >
-                      <Send className="w-4 h-4" />
-                    </Button>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Sidebar */}
-          <div className="space-y-4">
-            {/* Quick Prompts */}
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-base">Quick Actions</CardTitle>
-              </CardHeader>
-              <CardContent className="pt-0">
-                <QuickPrompts onPromptClick={handleSendMessage} />
-              </CardContent>
-            </Card>
-
-            {/* Break Reminder Status */}
-            <Card className="bg-emerald-50 border-emerald-200">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-base flex items-center text-emerald-800">
-                  <Coffee className="w-4 h-4 mr-2" />
-                  Break Reminders
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="pt-0">
-                <div className="text-xs text-emerald-700 space-y-1">
-                  <div className="flex items-center">
-                    <CheckCircle className="w-3 h-3 mr-1" />
-                    Active & Automatic
-                  </div>
-                  <div>Every 45 min (weekdays)</div>
-                  <div>Every 90 min (weekends)</div>
-                  <div className="text-emerald-600 font-medium mt-2">
-                    ✨ Ollama will remind you!
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* AI Capabilities */}
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-base">Full App Access</CardTitle>
-              </CardHeader>
-              <CardContent className="pt-0">
-                <div className="space-y-2 text-xs text-neutral-600">
-                  <div>• All documents & notes</div>
-                  <div>• Quiz & summary generation</div>
-                  <div>• Study plan creation</div>
-                  <div>• Assignment management</div>
-                  <div>• Break reminders & wellness</div>
-                  <div>• Complete app control</div>
-                  <div className="text-emerald-600 font-medium mt-2">
-                    Will ask approval for changes
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
+            {/* Input */}
+            <div className="border-t p-4">
+              <div className="flex space-x-2">
+                <Input
+                  value={inputValue}
+                  onChange={(e) => setInputValue(e.target.value)}
+                  onKeyPress={handleKeyPress}
+                  placeholder={isConnected ? "Ask me anything about your studies..." : "AI assistant is offline"}
+                  disabled={chatMutation.isPending || !isConnected}
+                  className="flex-1"
+                />
+                <Button
+                  onClick={() => handleSendMessage()}
+                  disabled={!inputValue.trim() || chatMutation.isPending || !isConnected}
+                  className="bg-primary hover:bg-primary/90"
+                >
+                  <Send className="w-4 h-4" />
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );
