@@ -74,238 +74,85 @@ export default function DocumentViewer() {
   };
 
   return (
-    <div className="p-6">
-      <div className="max-w-4xl mx-auto">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-6">
+    <div className="min-h-screen bg-white">
+      {/* Fixed Header */}
+      <div className="fixed top-0 left-0 right-0 bg-white border-b border-neutral-200 z-10">
+        <div className="flex items-center justify-between p-4">
           <div className="flex items-center space-x-4">
-            <Button variant="outline" onClick={goBack}>
+            <Button variant="outline" onClick={goBack} size="sm">
               <ArrowLeft className="w-4 h-4 mr-2" />
               Back
             </Button>
             <div>
-              <h1 className="text-2xl font-bold text-neutral-800">{document.filename}</h1>
-              <p className="text-neutral-600 text-sm">
-                {unit?.name} • {document.fileType} • Uploaded {new Date(document.uploadedAt).toLocaleDateString()}
+              <h1 className="text-lg font-bold text-neutral-800">{document.filename}</h1>
+              <p className="text-neutral-600 text-xs">
+                {unit?.name} • {document.fileType} • {new Date(document.uploadedAt).toLocaleDateString()}
               </p>
             </div>
           </div>
-          <div className="flex items-center space-x-2">
-            <div className="flex bg-neutral-100 rounded-lg p-1">
-              <Button
-                variant={viewMode === "text" ? "default" : "ghost"}
-                size="sm"
-                onClick={() => setViewMode("text")}
-                className="px-3 py-1 text-xs"
-              >
-                <FileText className="w-3 h-3 mr-1" />
-                Text
-              </Button>
-              <Button
-                variant={viewMode === "original" ? "default" : "ghost"}
-                size="sm"
-                onClick={() => setViewMode("original")}
-                className="px-3 py-1 text-xs"
-              >
-                <Eye className="w-3 h-3 mr-1" />
-                Original
+          <Button variant="outline" onClick={handleDownload} size="sm">
+            <Download className="w-4 h-4 mr-2" />
+            Download
+          </Button>
+        </div>
+      </div>
+
+      {/* Document Content */}
+      <div className="pt-20 px-8 pb-8">
+        <div className="max-w-4xl mx-auto">
+          {document.extractedText ? (
+            <div className="bg-white">
+              {/* Document Title */}
+              <div className="text-center mb-8 pb-6 border-b border-neutral-200">
+                <h1 className="text-3xl font-bold text-neutral-800 mb-2">
+                  {document.filename.replace(/\.[^/.]+$/, "")}
+                </h1>
+                <div className="text-sm text-neutral-600">
+                  {unit?.name} • {document.fileType} • {new Date(document.uploadedAt).toLocaleDateString()}
+                </div>
+              </div>
+              
+              {/* Full Document Content */}
+              <div className="prose prose-lg max-w-none">
+                <div className="text-base text-neutral-900 leading-relaxed whitespace-pre-wrap font-normal">
+                  {document.extractedText}
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="text-center py-24">
+              <FileText className="w-24 h-24 text-neutral-400 mx-auto mb-6" />
+              <h2 className="text-2xl font-bold text-neutral-800 mb-2">No text content available</h2>
+              <p className="text-neutral-600 mb-4">
+                This document hasn't been processed for text extraction yet.
+              </p>
+              <Button onClick={handleDownload}>
+                <Download className="w-4 h-4 mr-2" />
+                Download Original File
               </Button>
             </div>
-            <Button variant="outline" onClick={handleDownload}>
-              <Download className="w-4 h-4 mr-2" />
-              Download
+          )}
+        </div>
+      </div>
+
+      {/* Floating Study Actions */}
+      <div className="fixed bottom-6 right-6">
+        <div className="bg-white rounded-lg shadow-lg border border-neutral-200 p-4">
+          <h3 className="font-semibold text-neutral-800 mb-3 text-sm">Study Actions</h3>
+          <div className="space-y-2">
+            <Button size="sm" variant="outline" className="w-full justify-start text-xs">
+              <BookOpen className="w-3 h-3 mr-2" />
+              Take Notes
+            </Button>
+            <Button size="sm" variant="outline" className="w-full justify-start text-xs">
+              <FileText className="w-3 h-3 mr-2" />
+              Summary
+            </Button>
+            <Button size="sm" variant="outline" className="w-full justify-start text-xs">
+              <Eye className="w-3 h-3 mr-2" />
+              Quiz
             </Button>
           </div>
-        </div>
-
-        {/* Content */}
-        <div className="space-y-6">
-          {document.summary && (
-            <Card className="border-2 border-blue-200 bg-blue-50/30">
-              <CardContent className="p-6">
-                <div className="flex items-center mb-3">
-                  <BookOpen className="w-5 h-5 text-blue-600 mr-2" />
-                  <h3 className="font-semibold text-neutral-800">AI Summary</h3>
-                </div>
-                <div className="bg-white p-4 rounded-lg border border-blue-200">
-                  <p className="text-neutral-800 leading-relaxed">{document.summary}</p>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          <Card className="border-2 border-neutral-200">
-            <CardContent className="p-6">
-              {viewMode === "text" ? (
-                <div>
-                  <h3 className="font-semibold text-neutral-800 mb-4 flex items-center">
-                    <FileText className="w-5 h-5 mr-2" />
-                    Document Content
-                  </h3>
-                  {document.extractedText ? (
-                    <div className="flex bg-neutral-100 rounded-lg overflow-hidden border-2 border-neutral-200 min-h-[800px]">
-                      {/* Navigation Sidebar */}
-                      <div className="w-64 bg-neutral-900 text-white p-4 border-r flex-shrink-0">
-                        <div className="mb-4">
-                          <h4 className="text-sm font-medium text-neutral-300 mb-2">Navigation</h4>
-                          <div className="text-xs text-neutral-400 mb-3 flex items-center">
-                            <span className="mr-2">🔍</span>
-                            Search document
-                          </div>
-                        </div>
-                        
-                        <div className="space-y-1 text-xs">
-                          <div className="text-neutral-300 font-medium mb-2">Document</div>
-                          <div className="bg-blue-600 text-white px-2 py-1 rounded text-xs">
-                            {document.filename}
-                          </div>
-                          <div className="text-neutral-400 px-2 py-1 hover:bg-neutral-800 rounded cursor-pointer">
-                            Jump to top
-                          </div>
-                          <div className="text-neutral-400 px-2 py-1 hover:bg-neutral-800 rounded cursor-pointer">
-                            Full content
-                          </div>
-                          <div className="text-neutral-400 px-2 py-1 hover:bg-neutral-800 rounded cursor-pointer">
-                            Study actions
-                          </div>
-                        </div>
-                        
-                        <div className="mt-6 pt-4 border-t border-neutral-700">
-                          <div className="text-neutral-300 font-medium mb-2 text-xs">File Info</div>
-                          <div className="text-xs text-neutral-400 space-y-1">
-                            <div>Type: {document.fileType}</div>
-                            <div>Size: {document.fileSize ? `${Math.round(document.fileSize / 1024)} KB` : 'Unknown'}</div>
-                            <div>Unit: {unit?.name}</div>
-                          </div>
-                        </div>
-                      </div>
-                      
-                      {/* Document Content */}
-                      <div className="flex-1 bg-white overflow-auto">
-                        <div className="p-8 max-w-5xl mx-auto">
-                          {/* Document Header */}
-                          <div className="text-center mb-8 border-b border-neutral-200 pb-6">
-                            <h1 className="text-3xl font-bold text-neutral-800 mb-2">
-                              {document.filename}
-                            </h1>
-                            <div className="text-sm text-neutral-600 space-x-4">
-                              <span>Unit: {unit?.name}</span>
-                              <span>•</span>
-                              <span>Type: {document.fileType}</span>
-                              <span>•</span>
-                              <span>Uploaded: {new Date(document.uploadedAt).toLocaleDateString()}</span>
-                            </div>
-                          </div>
-                          
-                          {/* Full Document Content */}
-                          <div className="prose prose-lg max-w-none">
-                            <div className="bg-white p-8 rounded-lg border border-neutral-200 shadow-sm">
-                              <div className="text-base text-neutral-900 leading-relaxed whitespace-pre-wrap font-normal">
-                                {document.extractedText}
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="text-center py-12">
-                      <FileText className="w-16 h-16 text-neutral-400 mx-auto mb-4" />
-                      <p className="text-neutral-600">No text content extracted yet</p>
-                      <p className="text-sm text-neutral-500 mt-1">
-                        Text extraction may take a moment to process
-                      </p>
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <div>
-                  <h3 className="font-semibold text-neutral-800 mb-4 flex items-center">
-                    <Eye className="w-5 h-5 mr-2" />
-                    Original Document
-                  </h3>
-                  <div className="bg-neutral-50 p-6 rounded-lg border">
-                    {document.fileType.includes("pdf") ? (
-                      <div className="text-center py-12">
-                        <div className="bg-red-100 text-red-600 p-4 rounded-lg max-w-md mx-auto">
-                          <FileText className="w-12 h-12 mx-auto mb-3" />
-                          <h4 className="font-medium mb-2">PDF Viewer</h4>
-                          <p className="text-sm">
-                            PDF viewing requires a PDF viewer. Click download to open in your default PDF reader.
-                          </p>
-                          <Button 
-                            onClick={handleDownload}
-                            className="mt-3 bg-red-600 hover:bg-red-700"
-                            size="sm"
-                          >
-                            Open in PDF Reader
-                          </Button>
-                        </div>
-                      </div>
-                    ) : document.fileType.includes("doc") ? (
-                      <div className="text-center py-12">
-                        <div className="bg-blue-100 text-blue-600 p-4 rounded-lg max-w-md mx-auto">
-                          <FileText className="w-12 h-12 mx-auto mb-3" />
-                          <h4 className="font-medium mb-2">Word Document</h4>
-                          <p className="text-sm">
-                            Word document viewing requires Microsoft Word or compatible application.
-                          </p>
-                          <Button 
-                            onClick={handleDownload}
-                            className="mt-3 bg-blue-600 hover:bg-blue-700"
-                            size="sm"
-                          >
-                            Open in Word
-                          </Button>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="text-center py-12">
-                        <FileText className="w-16 h-16 text-neutral-400 mx-auto mb-4" />
-                        <p className="text-neutral-600">Preview not available for this file type</p>
-                        <Button onClick={handleDownload} className="mt-3" size="sm">
-                          Download to view
-                        </Button>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Study Actions */}
-          <Card className="border-2 border-green-200 bg-green-50/30">
-            <CardContent className="p-6">
-              <h3 className="font-semibold text-neutral-800 mb-4 flex items-center">
-                <BookOpen className="w-5 h-5 text-green-600 mr-2" />
-                Study Actions
-              </h3>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <Button 
-                  variant="outline" 
-                  className="justify-start border-green-300 hover:bg-green-50 hover:border-green-400"
-                >
-                  <BookOpen className="w-4 h-4 mr-2 text-green-600" />
-                  Take Notes
-                </Button>
-                <Button 
-                  variant="outline" 
-                  className="justify-start border-blue-300 hover:bg-blue-50 hover:border-blue-400"
-                >
-                  <FileText className="w-4 h-4 mr-2 text-blue-600" />
-                  Create Summary
-                </Button>
-                <Button 
-                  variant="outline" 
-                  className="justify-start border-purple-300 hover:bg-purple-50 hover:border-purple-400"
-                >
-                  <Eye className="w-4 h-4 mr-2 text-purple-600" />
-                  Generate Quiz
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
         </div>
       </div>
     </div>
