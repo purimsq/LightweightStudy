@@ -16,30 +16,22 @@ export default function Dashboard() {
   });
 
   return (
-    <div className="p-6 min-h-screen">
+    <div className="p-6">
       <div className="max-w-7xl mx-auto">
         {/* Welcome Section */}
         <div className="mb-8">
-          <div className="gradient-card rounded-2xl p-8 mb-8">
-            <div className="flex items-center justify-between mb-4">
-              <div>
-                <h2 className="text-3xl font-bold text-shimmer mb-2">
-                  Hey, {user?.name || "Mitchell"}! 👋
-                </h2>
-                <p className="text-lg text-neutral-600">Ready for another productive study session?</p>
-              </div>
+          <div className="flex items-center justify-between mb-2">
+            <h2 className="text-2xl font-bold text-neutral-800">
+              Hey, {user?.name || "Mitchell"}! 👋
+            </h2>
+            <div className="text-sm text-neutral-600">
               <div className="text-right">
-                <div className="glass-card px-4 py-3 rounded-lg">
-                  <div className="text-sm font-medium text-neutral-700">Today</div>
-                  <div className="text-xs text-neutral-500">{format(new Date(), "EEEE, MMMM d, yyyy")}</div>
-                </div>
+                <div className="font-medium">Today</div>
+                <div>{format(new Date(), "EEEE, MMMM d, yyyy")}</div>
               </div>
-            </div>
-            <div className="flex items-center space-x-2 mt-4">
-              <div className="w-2 h-2 bg-green-500 rounded-full pulse-dot"></div>
-              <span className="text-sm text-neutral-600">All systems ready</span>
             </div>
           </div>
+          <p className="text-neutral-600">Ready for another productive study session?</p>
         </div>
 
         {/* Progress Cards */}
@@ -62,17 +54,17 @@ export default function Dashboard() {
         {/* Recent Activity */}
         <div className="mb-8">
           <h3 className="text-xl font-semibold text-neutral-800 mb-6">Recent Activity</h3>
-          <div className="floating-card rounded-2xl p-8">
-            <div className="text-center">
-              <div className="glass-card w-16 h-16 rounded-full mx-auto mb-4 flex items-center justify-center">
-                <History className="h-8 w-8 text-neutral-400" />
+          <Card>
+            <CardContent className="py-12">
+              <div className="text-center">
+                <History className="mx-auto h-12 w-12 text-neutral-400 mb-4" />
+                <p className="text-neutral-600">No recent activity yet</p>
+                <p className="text-sm text-neutral-500 mt-1">
+                  Start studying to see your progress here!
+                </p>
               </div>
-              <p className="text-neutral-600 font-medium">No recent activity yet</p>
-              <p className="text-sm text-neutral-500 mt-2">
-                Start studying to see your progress here!
-              </p>
-            </div>
-          </div>
+            </CardContent>
+          </Card>
         </div>
 
         {/* Quick Actions */}

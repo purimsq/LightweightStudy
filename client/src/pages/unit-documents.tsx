@@ -45,29 +45,26 @@ export default function UnitDocuments() {
   }
 
   return (
-    <div className="p-6 min-h-screen">
+    <div className="p-6">
       <div className="max-w-4xl mx-auto">
-        <div className="gradient-card rounded-2xl p-8 mb-8">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <Button
-                variant="outline"
-                onClick={() => setLocation("/units")}
-                className="flex items-center space-x-2 hover:bg-primary/10 hover:text-primary hover:border-primary/20 transition-colors"
-              >
-                <ArrowLeft className="w-4 h-4" />
-                <span>Back to Units</span>
-              </Button>
-              <div>
-                <h1 className="text-3xl font-bold text-shimmer mb-2">
-                  {unit?.name || "Unknown Unit"}
-                </h1>
-                <p className="text-lg text-neutral-600">
-                  {documents.length} documents
-                </p>
-              </div>
+        <div className="flex items-center justify-between mb-8">
+          <div className="flex items-center space-x-4">
+            <Button
+              variant="outline"
+              onClick={() => setLocation("/units")}
+              className="flex items-center space-x-2"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              <span>Back to Units</span>
+            </Button>
+            <div>
+              <h1 className="text-2xl font-bold text-neutral-800">
+                {unit?.name || "Unknown Unit"}
+              </h1>
+              <p className="text-neutral-600 text-sm mt-1">
+                {documents.length} documents
+              </p>
             </div>
-            <DocumentUploadModal unitId={unitId} />
           </div>
         </div>
 
@@ -118,47 +115,44 @@ function DocumentCard({ document }: { document: Document }) {
   };
 
   return (
-    <div className="document-card p-6">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-4">
-          <div className="w-12 h-12 bg-gradient-to-br from-primary/10 to-primary/5 rounded-xl flex items-center justify-center text-xl shadow-sm">
-            {getFileIcon(document.fileType)}
+    <Card className="document-card">
+      <CardContent className="p-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-3">
+            <div className="w-10 h-10 bg-neutral-100 rounded-lg flex items-center justify-center text-lg">
+              {getFileIcon(document.fileType)}
+            </div>
+            <div>
+              <h3 className="font-medium text-neutral-800">{document.filename}</h3>
+              <p className="text-sm text-neutral-600">
+                {document.fileType} • Uploaded {new Date(document.uploadedAt).toLocaleDateString()}
+              </p>
+            </div>
           </div>
-          <div>
-            <h3 className="font-semibold text-neutral-800 mb-1">{document.filename}</h3>
-            <p className="text-sm text-neutral-600">
-              {document.fileType.split('/').pop()?.toUpperCase()} • Uploaded {new Date(document.uploadedAt).toLocaleDateString()}
+          <div className="flex items-center space-x-2">
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={() => setLocation(`/documents/${document.id}`)}
+            >
+              <Eye className="w-4 h-4 mr-1" />
+              View
+            </Button>
+            <Button variant="outline" size="sm">
+              <Download className="w-4 h-4 mr-1" />
+              Download
+            </Button>
+          </div>
+        </div>
+        
+        {document.summary && (
+          <div className="mt-4 p-3 bg-neutral-50 rounded-lg">
+            <p className="text-sm text-neutral-700 leading-relaxed">
+              <span className="font-medium">AI Summary:</span> {document.summary}
             </p>
           </div>
-        </div>
-        <div className="flex items-center space-x-2">
-          <Button 
-            variant="outline" 
-            size="sm"
-            onClick={() => setLocation(`/documents/${document.id}`)}
-            className="hover:bg-primary/10 hover:text-primary hover:border-primary/20 transition-colors"
-          >
-            <Eye className="w-4 h-4 mr-1" />
-            View
-          </Button>
-          <Button 
-            variant="outline" 
-            size="sm"
-            className="hover:bg-neutral-100 transition-colors"
-          >
-            <Download className="w-4 h-4 mr-1" />
-            Download
-          </Button>
-        </div>
-      </div>
-      
-      {document.summary && (
-        <div className="mt-4 p-4 glass-card rounded-lg">
-          <p className="text-sm text-neutral-700 leading-relaxed">
-            <span className="font-medium text-primary">AI Summary:</span> {document.summary}
-          </p>
-        </div>
-      )}
-    </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }

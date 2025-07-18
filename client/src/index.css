@@ -62,10 +62,8 @@
   }
 
   body {
-    @apply font-sans antialiased text-foreground;
+    @apply font-sans antialiased bg-neutral-50 text-foreground;
     font-family: 'Inter', system-ui, sans-serif;
-    background: linear-gradient(135deg, hsl(37, 26%, 96%) 0%, hsl(60, 9%, 98%) 100%);
-    min-height: 100vh;
   }
 }
 
@@ -112,63 +110,6 @@
 
   .modal-content {
     @apply bg-white rounded-xl p-8 max-w-md w-full mx-4 shadow-2xl;
-  }
-
-  .glass-card {
-    @apply bg-white/80 backdrop-blur-sm border border-white/20 shadow-lg shadow-black/5;
-  }
-
-  .gradient-card {
-    @apply bg-gradient-to-br from-white via-white/95 to-white/90 border border-white/40 shadow-xl shadow-black/10;
-  }
-
-  .floating-card {
-    @apply bg-white border border-neutral-200/60 shadow-lg shadow-black/5 hover:shadow-xl hover:shadow-black/10 transition-all duration-300 hover:-translate-y-1;
-  }
-
-  .soft-button {
-    @apply bg-primary hover:bg-primary shadow-lg transition-all duration-200;
-    background: linear-gradient(135deg, hsl(37, 25%, 68%) 0%, hsl(37, 25%, 64%) 100%);
-    box-shadow: 0 4px 14px 0 rgba(200, 168, 132, 0.3);
-  }
-
-  .soft-button:hover {
-    box-shadow: 0 6px 20px 0 rgba(200, 168, 132, 0.4);
-    transform: translateY(-1px);
-  }
-
-  .text-shimmer {
-    @apply bg-gradient-to-r from-neutral-700 via-neutral-600 to-neutral-700 bg-clip-text text-transparent;
-  }
-
-  .document-card {
-    @apply relative overflow-hidden rounded-xl bg-white border border-neutral-200/60 shadow-md hover:shadow-xl transition-all duration-300 cursor-pointer;
-  }
-
-  .document-card::before {
-    content: '';
-    @apply absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent transform -skew-x-12 -translate-x-full transition-transform duration-1000;
-  }
-
-  .document-card:hover::before {
-    @apply translate-x-full;
-  }
-
-  .pulse-dot {
-    @apply animate-pulse;
-  }
-
-  .unit-progress-bar {
-    @apply relative overflow-hidden rounded-full bg-neutral-200 h-2;
-  }
-
-  .unit-progress-fill {
-    @apply h-full bg-primary transition-all duration-500 ease-out;
-    background: linear-gradient(90deg, hsl(37, 25%, 68%) 0%, hsl(37, 25%, 64%) 100%);
-  }
-
-  .smooth-scale {
-    @apply transition-transform duration-200 hover:scale-105;
   }
 }
 
