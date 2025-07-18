@@ -5,8 +5,8 @@ export default function TopBar() {
 
   return (
     <div>
-      <header className="bg-white border-b border-neutral-200 px-6 py-4">
-        <div className="flex items-center justify-between">
+      <header className="bg-white border-b border-neutral-200 px-6 py-6">
+        <div className="flex items-start justify-between">
           {/* Centered Motivational Quote */}
           <div className="flex-1 text-center">
             <blockquote className="text-lg font-medium text-warm-gray italic">
@@ -16,8 +16,8 @@ export default function TopBar() {
               When you lack motivation you can always choose discipline
             </p>
           </div>
-          {/* By MyLo in orange */}
-          <div className="text-sm font-medium text-orange-500">
+          {/* By MyLo in orange - aligned with second line */}
+          <div className="text-xs font-medium text-orange-500 mt-6">
             by MyLo
           </div>
         </div>
