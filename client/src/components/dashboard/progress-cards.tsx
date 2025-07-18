@@ -27,7 +27,7 @@ export default function ProgressCards() {
       <Card>
         <CardContent className="p-6">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="font-semibold text-warm-gray">Today's Progress</h3>
+            <h3 className="font-semibold text-neutral-800">Today's Progress</h3>
             <BarChart3 className="w-5 h-5 text-primary" />
           </div>
           <div className="mb-3">
@@ -47,7 +47,7 @@ export default function ProgressCards() {
       <Card>
         <CardContent className="p-6">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="font-semibold text-warm-gray">Study Streak</h3>
+            <h3 className="font-semibold text-neutral-800">Study Streak</h3>
             <Flame className="w-5 h-5 text-accent" />
           </div>
           <div className="text-center">
@@ -66,7 +66,7 @@ export default function ProgressCards() {
       <Card>
         <CardContent className="p-6">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="font-semibold text-warm-gray">Up Next</h3>
+            <h3 className="font-semibold text-neutral-800">Up Next</h3>
             <Clock className="w-5 h-5 text-primary" />
           </div>
           <div className="text-center">

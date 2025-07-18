@@ -51,7 +51,7 @@ export default function QuickActions() {
                 <Icon className="w-5 h-5" />
               </div>
               <div>
-                <h4 className="font-medium text-warm-gray">{action.title}</h4>
+                <h4 className="font-medium text-neutral-800">{action.title}</h4>
                 <p className="text-sm text-neutral-600">{action.description}</p>
               </div>
             </div>

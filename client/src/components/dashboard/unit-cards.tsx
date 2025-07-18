@@ -58,7 +58,7 @@ export default function UnitCards({ units }: UnitCardsProps) {
                   {icon}
                 </div>
                 <div>
-                  <h4 className="font-semibold text-warm-gray">{unit.name}</h4>
+                  <h4 className="font-semibold text-neutral-800">{unit.name}</h4>
                   <p className="text-sm text-neutral-600">{unit.description}</p>
                 </div>
               </div>

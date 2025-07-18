@@ -188,7 +188,7 @@ function UnitCard({ unit }: { unit: Unit }) {
             {icon}
           </div>
           <div className="flex-1">
-            <CardTitle className="text-lg text-warm-gray">{unit.name}</CardTitle>
+            <CardTitle className="text-lg text-neutral-800">{unit.name}</CardTitle>
             <p className="text-sm text-neutral-600 mt-1">{unit.description}</p>
           </div>
         </div>
@@ -244,7 +244,7 @@ export default function Units() {
       <div className="max-w-7xl mx-auto">
         <div className="flex items-center justify-between mb-8">
           <div>
-            <h1 className="text-3xl font-bold text-warm-gray">Study Units</h1>
+            <h1 className="text-3xl font-bold text-neutral-800">Study Units</h1>
             <p className="text-neutral-600 mt-1">
               Organize your study materials by subject
             </p>

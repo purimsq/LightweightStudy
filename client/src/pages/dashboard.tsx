@@ -19,7 +19,7 @@ export default function Dashboard() {
       <div className="max-w-7xl mx-auto">
         {/* Welcome Section */}
         <div className="mb-8">
-          <h2 className="text-2xl font-bold text-warm-gray mb-2">
+          <h2 className="text-2xl font-bold text-neutral-800 mb-2">
             Hey, {user?.name || "Mitchell"}! 👋
           </h2>
           <p className="text-neutral-600">Ready for another productive study session?</p>
@@ -31,7 +31,7 @@ export default function Dashboard() {
         {/* Your Units Section */}
         <div className="mb-8">
           <div className="flex items-center justify-between mb-6">
-            <h3 className="text-xl font-semibold text-warm-gray">Your Units</h3>
+            <h3 className="text-xl font-semibold text-neutral-800">Your Units</h3>
             <a 
               href="/units" 
               className="text-sm text-primary hover:text-primary/80 transition-colors duration-200"
@@ -44,7 +44,7 @@ export default function Dashboard() {
 
         {/* Recent Activity */}
         <div className="mb-8">
-          <h3 className="text-xl font-semibold text-warm-gray mb-6">Recent Activity</h3>
+          <h3 className="text-xl font-semibold text-neutral-800 mb-6">Recent Activity</h3>
           <Card>
             <CardContent className="py-12">
               <div className="text-center">

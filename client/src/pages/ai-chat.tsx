@@ -151,7 +151,7 @@ export default function AiChat() {
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h1 className="text-3xl font-bold text-warm-gray">AI Study Companion</h1>
+            <h1 className="text-3xl font-bold text-neutral-800">AI Study Companion</h1>
             <p className="text-neutral-600 mt-1">
               Your personal offline study assistant
             </p>

@@ -45,7 +45,7 @@ export default function Sidebar() {
             <Book className="text-white text-sm" />
           </div>
           <div>
-            <h1 className="font-semibold text-warm-gray text-lg">StudyCompanion</h1>
+            <h1 className="font-semibold text-neutral-800 text-lg">StudyCompanion</h1>
             <p className="text-xs text-neutral-600">Lightweight</p>
           </div>
         </div>

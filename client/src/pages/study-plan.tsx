@@ -88,7 +88,7 @@ export default function StudyPlan() {
       <div className="max-w-7xl mx-auto">
         <div className="flex items-center justify-between mb-8">
           <div>
-            <h1 className="text-3xl font-bold text-warm-gray">Daily Study Plan</h1>
+            <h1 className="text-3xl font-bold text-neutral-800">Daily Study Plan</h1>
             <p className="text-neutral-600 mt-1">
               {format(today, "EEEE, MMMM d, yyyy")}
             </p>
@@ -166,7 +166,7 @@ export default function StudyPlan() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Scheduled Topics */}
           <div>
-            <h2 className="text-xl font-semibold text-warm-gray mb-4">Scheduled Topics</h2>
+            <h2 className="text-xl font-semibold text-neutral-800 mb-4">Scheduled Topics</h2>
             <div className="space-y-3">
               {studyPlan.scheduledTopics?.map((topic: any, index: number) => (
                 <Card key={index} className="transition-all duration-200 hover:shadow-md">
@@ -181,7 +181,7 @@ export default function StudyPlan() {
                             {topic.priority}
                           </Badge>
                         </div>
-                        <h3 className="font-medium text-warm-gray">{topic.topic}</h3>
+                        <h3 className="font-medium text-neutral-800">{topic.topic}</h3>
                         <div className="flex items-center text-sm text-neutral-600 mt-1">
                           <Clock className="w-3 h-3 mr-1" />
                           {topic.estimatedTime} minutes
@@ -208,7 +208,7 @@ export default function StudyPlan() {
 
           {/* Upcoming Deadlines */}
           <div>
-            <h2 className="text-xl font-semibold text-warm-gray mb-4">Upcoming Deadlines</h2>
+            <h2 className="text-xl font-semibold text-neutral-800 mb-4">Upcoming Deadlines</h2>
             <div className="space-y-3">
               {upcomingAssignments.length === 0 ? (
                 <Card>
@@ -238,7 +238,7 @@ export default function StudyPlan() {
                                 </Badge>
                               )}
                             </div>
-                            <h3 className="font-medium text-warm-gray">{assignment.title}</h3>
+                            <h3 className="font-medium text-neutral-800">{assignment.title}</h3>
                             <p className="text-sm text-neutral-600">
                               Due {format(new Date(assignment.deadline), "MMM d")} 
                               ({daysUntil} days)

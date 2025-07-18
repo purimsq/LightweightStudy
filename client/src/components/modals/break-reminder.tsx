@@ -36,7 +36,7 @@ export default function BreakReminder() {
               <Coffee className="w-5 h-5 text-accent" />
             </div>
             <div className="flex-1">
-              <h4 className="font-semibold text-warm-gray mb-1">Time for a break!</h4>
+              <h4 className="font-semibold text-neutral-800 mb-1">Time for a break!</h4>
               <p className="text-sm text-neutral-600 mb-3">
                 You've been studying for {Math.floor(studyTime / 60)} hours. 
                 Take a 15-minute break to stay fresh.

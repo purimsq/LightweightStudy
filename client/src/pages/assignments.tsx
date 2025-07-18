@@ -198,7 +198,7 @@ function AssignmentCard({ assignment }: { assignment: Assignment }) {
                 </Badge>
               )}
             </div>
-            <CardTitle className="text-lg text-warm-gray">{assignment.title}</CardTitle>
+            <CardTitle className="text-lg text-neutral-800">{assignment.title}</CardTitle>
             {assignment.description && (
               <p className="text-sm text-neutral-600 mt-1 line-clamp-2">
                 {assignment.description}
@@ -275,7 +275,7 @@ export default function Assignments() {
       <div className="max-w-7xl mx-auto">
         <div className="flex items-center justify-between mb-8">
           <div>
-            <h1 className="text-3xl font-bold text-warm-gray">Assignments & CATs</h1>
+            <h1 className="text-3xl font-bold text-neutral-800">Assignments & CATs</h1>
             <p className="text-neutral-600 mt-1">
               Track your assignments and continuous assessment tests
             </p>
@@ -301,7 +301,7 @@ export default function Assignments() {
             {/* Pending Assignments */}
             {pendingAssignments.length > 0 && (
               <div>
-                <h2 className="text-xl font-semibold text-warm-gray mb-4 flex items-center">
+                <h2 className="text-xl font-semibold text-neutral-800 mb-4 flex items-center">
                   <AlertCircle className="w-5 h-5 mr-2 text-yellow-600" />
                   Pending ({pendingAssignments.length})
                 </h2>
@@ -316,7 +316,7 @@ export default function Assignments() {
             {/* In Progress Assignments */}
             {inProgressAssignments.length > 0 && (
               <div>
-                <h2 className="text-xl font-semibold text-warm-gray mb-4 flex items-center">
+                <h2 className="text-xl font-semibold text-neutral-800 mb-4 flex items-center">
                   <Clock className="w-5 h-5 mr-2 text-blue-600" />
                   In Progress ({inProgressAssignments.length})
                 </h2>
@@ -331,7 +331,7 @@ export default function Assignments() {
             {/* Completed Assignments */}
             {completedAssignments.length > 0 && (
               <div>
-                <h2 className="text-xl font-semibold text-warm-gray mb-4 flex items-center">
+                <h2 className="text-xl font-semibold text-neutral-800 mb-4 flex items-center">
                   <CheckCircle className="w-5 h-5 mr-2 text-green-600" />
                   Completed ({completedAssignments.length})
                 </h2>
