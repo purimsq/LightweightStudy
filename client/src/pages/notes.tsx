@@ -99,7 +99,10 @@ export default function NotesPage({ documentId }: NotesPageProps) {
       toast({ title: "Please fill in both title and content", variant: "destructive" });
       return;
     }
-    createNoteMutation.mutate({ ...newNote, content: cleanedContent });
+    createNoteMutation.mutate({ 
+      title: newNote.title.toUpperCase(), 
+      content: cleanedContent 
+    });
   };
 
   const handleUpdateNote = () => {
@@ -109,7 +112,11 @@ export default function NotesPage({ documentId }: NotesPageProps) {
       toast({ title: "Please fill in both title and content", variant: "destructive" });
       return;
     }
-    updateNoteMutation.mutate({ ...editingNote, content: cleanedContent });
+    updateNoteMutation.mutate({ 
+      ...editingNote, 
+      title: editingNote.title.toUpperCase(),
+      content: cleanedContent 
+    });
   };
 
   const handleDeleteNote = (noteId: number) => {
@@ -227,11 +234,11 @@ export default function NotesPage({ documentId }: NotesPageProps) {
                   
                   <Input
                     placeholder="Note title..."
-                    value={editingNote ? editingNote.title.toUpperCase() : newNote.title.toUpperCase()}
+                    value={editingNote ? editingNote.title : newNote.title}
                     onChange={(e) => 
                       editingNote 
-                        ? setEditingNote({ ...editingNote, title: e.target.value.toUpperCase() })
-                        : setNewNote({ ...newNote, title: e.target.value.toUpperCase() })
+                        ? setEditingNote({ ...editingNote, title: e.target.value })
+                        : setNewNote({ ...newNote, title: e.target.value })
                     }
                     className="text-base font-medium border-none shadow-none focus:ring-0 bg-transparent border-b-2 border-amber-200 focus:border-amber-400 rounded-none pb-2 uppercase"
                   />
