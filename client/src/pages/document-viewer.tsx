@@ -92,7 +92,24 @@ export default function DocumentViewer() {
               </p>
             </div>
           </div>
-          
+          <div className="flex items-center space-x-2">
+            <Button size="sm" variant="outline" className="text-xs">
+              <BookOpen className="w-3 h-3 mr-2" />
+              Notes
+            </Button>
+            <Button size="sm" variant="outline" className="text-xs">
+              <FileText className="w-3 h-3 mr-2" />
+              Summary
+            </Button>
+            <Button size="sm" variant="outline" className="text-xs">
+              <Eye className="w-3 h-3 mr-2" />
+              Quiz
+            </Button>
+            <Button variant="outline" onClick={handleDownload} size="sm">
+              <Download className="w-4 h-4 mr-2" />
+              Download
+            </Button>
+          </div>
         </div>
       </div>
 
@@ -170,26 +187,7 @@ export default function DocumentViewer() {
         </div>
       </div>
 
-      {/* Floating Study Actions */}
-      <div className="fixed bottom-6 right-6">
-        <div className="bg-white rounded-lg shadow-lg border border-neutral-200 p-4">
-          <h3 className="font-semibold text-neutral-800 mb-3 text-sm">Study Actions</h3>
-          <div className="space-y-2">
-            <Button size="sm" variant="outline" className="w-full justify-start text-xs">
-              <BookOpen className="w-3 h-3 mr-2" />
-              Take Notes
-            </Button>
-            <Button size="sm" variant="outline" className="w-full justify-start text-xs">
-              <FileText className="w-3 h-3 mr-2" />
-              Summary
-            </Button>
-            <Button size="sm" variant="outline" className="w-full justify-start text-xs">
-              <Eye className="w-3 h-3 mr-2" />
-              Quiz
-            </Button>
-          </div>
-        </div>
-      </div>
+
     </div>
   );
 }
