@@ -9,6 +9,9 @@ import Dashboard from "@/pages/dashboard";
 import Units from "@/pages/units";
 import UnitDocuments from "@/pages/unit-documents";
 import DocumentViewer from "@/pages/document-viewer";
+import Notes from "@/pages/notes";
+import Summary from "@/pages/summary";
+import Quiz from "@/pages/quiz";
 import Assignments from "@/pages/assignments";
 import StudyPlan from "@/pages/study-plan";
 import AiChat from "@/pages/ai-chat";
@@ -48,6 +51,15 @@ function Router() {
         <Route path="/units" component={Units} />
         <Route path="/units/:id/documents" component={UnitDocuments} />
         <Route path="/documents/:id" component={DocumentViewer} />
+        <Route path="/documents/:id/notes">
+          {params => <Notes documentId={params.id} />}
+        </Route>
+        <Route path="/documents/:id/summary">
+          {params => <Summary documentId={params.id} />}
+        </Route>
+        <Route path="/documents/:id/quiz">
+          {params => <Quiz documentId={params.id} />}
+        </Route>
         <Route path="/assignments" component={Assignments} />
         <Route path="/study-plan" component={StudyPlan} />
         <Route path="/ai-chat" component={AiChat} />

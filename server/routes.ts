@@ -242,6 +242,32 @@ This document has been uploaded and is ready for viewing. The content will be di
     }
   });
 
+  // Document-specific notes routes
+  app.get("/api/documents/:id/notes", async (req, res) => {
+    try {
+      const documentId = parseInt(req.params.id);
+      const notes = await storage.getNotesByDocument(documentId);
+      res.json(notes);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to get notes", error: error instanceof Error ? error.message : "Unknown error" });
+    }
+  });
+
+  app.post("/api/documents/:id/notes", async (req, res) => {
+    try {
+      const documentId = parseInt(req.params.id);
+      const noteData = { ...req.body, documentId };
+      const validatedData = insertNoteSchema.parse(noteData);
+      const note = await storage.createNote(validatedData);
+      res.status(201).json(note);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to create note", error: error instanceof Error ? error.message : "Unknown error" });
+    }
+  });
+
   app.post("/api/notes", async (req, res) => {
     try {
       const validatedData = insertNoteSchema.parse(req.body);
@@ -355,6 +381,173 @@ This document has been uploaded and is ready for viewing. The content will be di
       res.status(201).json(plan);
     } catch (error) {
       res.status(500).json({ message: "Failed to create study plan", error: error instanceof Error ? error.message : "Unknown error" });
+    }
+  });
+
+  // Document Summary routes
+  app.get("/api/documents/:id/summary", async (req, res) => {
+    try {
+      const documentId = parseInt(req.params.id);
+      const document = await storage.getDocument(documentId);
+      if (!document) {
+        return res.status(404).json({ message: "Document not found" });
+      }
+      
+      // Check if document already has a summary
+      if (document.summary) {
+        res.json({
+          content: document.summary,
+          createdAt: document.updatedAt,
+        });
+      } else {
+        res.json(null);
+      }
+    } catch (error) {
+      res.status(500).json({ message: "Failed to get summary", error: error instanceof Error ? error.message : "Unknown error" });
+    }
+  });
+
+  app.post("/api/documents/:id/generate-summary", async (req, res) => {
+    try {
+      const documentId = parseInt(req.params.id);
+      const document = await storage.getDocument(documentId);
+      
+      if (!document) {
+        return res.status(404).json({ message: "Document not found" });
+      }
+
+      if (!document.extractedText) {
+        return res.status(400).json({ message: "Document has no extracted text to summarize" });
+      }
+
+      // Call Ollama API for summary generation
+      const ollamaResponse = await fetch("http://localhost:11434/api/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: "phi",
+          prompt: `Please create a comprehensive summary of the following document. Focus on key concepts, main points, and important details that would be useful for studying:\n\n${document.extractedText}`,
+          system: "You are an expert academic assistant. Create clear, well-structured summaries that capture the essential information from academic documents. Use bullet points and clear headings when appropriate.",
+          stream: false
+        }),
+      });
+
+      if (!ollamaResponse.ok) {
+        throw new Error(`Ollama API error: ${ollamaResponse.statusText}`);
+      }
+
+      const aiResponse = await ollamaResponse.json();
+      
+      // Update document with summary
+      await storage.updateDocument(documentId, { 
+        summary: aiResponse.response 
+      });
+
+      res.json({
+        content: aiResponse.response,
+        createdAt: new Date().toISOString(),
+      });
+    } catch (error) {
+      res.status(500).json({ 
+        message: "Failed to generate summary. Make sure Ollama is running with the phi model.", 
+        error: error instanceof Error ? error.message : "Unknown error" 
+      });
+    }
+  });
+
+  // Document Quiz routes
+  app.get("/api/documents/:id/quiz", async (req, res) => {
+    try {
+      const documentId = parseInt(req.params.id);
+      // For now, return null as we'll generate quizzes on-demand
+      // In a real implementation, you might store generated quizzes
+      res.json(null);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to get quiz", error: error instanceof Error ? error.message : "Unknown error" });
+    }
+  });
+
+  app.post("/api/documents/:id/generate-quiz", async (req, res) => {
+    try {
+      const documentId = parseInt(req.params.id);
+      const document = await storage.getDocument(documentId);
+      
+      if (!document) {
+        return res.status(404).json({ message: "Document not found" });
+      }
+
+      if (!document.extractedText) {
+        return res.status(400).json({ message: "Document has no extracted text to create quiz from" });
+      }
+
+      // Call Ollama API for quiz generation
+      const ollamaResponse = await fetch("http://localhost:11434/api/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: "phi",
+          prompt: `Create a multiple-choice quiz with 5 questions based on the following document. Format your response as JSON with the following structure:
+{
+  "questions": [
+    {
+      "id": 1,
+      "question": "Question text here?",
+      "options": ["Option A", "Option B", "Option C", "Option D"],
+      "correctAnswer": 0,
+      "explanation": "Explanation of the correct answer"
+    }
+  ]
+}
+
+Document content:
+${document.extractedText}`,
+          system: "You are an expert quiz generator. Create challenging but fair multiple-choice questions that test understanding of key concepts. Always respond with valid JSON only.",
+          stream: false
+        }),
+      });
+
+      if (!ollamaResponse.ok) {
+        throw new Error(`Ollama API error: ${ollamaResponse.statusText}`);
+      }
+
+      const aiResponse = await ollamaResponse.json();
+      
+      try {
+        // Parse the AI response as JSON
+        const quizData = JSON.parse(aiResponse.response);
+        res.json({
+          id: Date.now(),
+          documentId: documentId,
+          questions: quizData.questions,
+          createdAt: new Date().toISOString()
+        });
+      } catch (parseError) {
+        // If JSON parsing fails, create a fallback quiz
+        res.json({
+          id: Date.now(),
+          documentId: documentId,
+          questions: [
+            {
+              id: 1,
+              question: "Based on the document content, which topic was primarily discussed?",
+              options: [
+                "The main subject of the document",
+                "A secondary topic mentioned",
+                "An unrelated topic",
+                "None of the above"
+              ],
+              correctAnswer: 0,
+              explanation: "The document primarily focuses on its main subject matter."
+            }
+          ],
+          createdAt: new Date().toISOString()
+        });
+      }
+    } catch (error) {
+      res.status(500).json({ 
+        message: "Failed to generate quiz. Make sure Ollama is running with the phi model.", 
+        error: error instanceof Error ? error.message : "Unknown error" 
+      });
     }
   });
 

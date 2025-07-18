@@ -93,15 +93,30 @@ export default function DocumentViewer() {
             </div>
           </div>
           <div className="flex items-center space-x-2">
-            <Button size="sm" variant="outline" className="text-xs">
+            <Button 
+              size="sm" 
+              variant="outline" 
+              className="text-xs"
+              onClick={() => setLocation(`/documents/${documentId}/notes`)}
+            >
               <BookOpen className="w-3 h-3 mr-2" />
               Notes
             </Button>
-            <Button size="sm" variant="outline" className="text-xs">
+            <Button 
+              size="sm" 
+              variant="outline" 
+              className="text-xs"
+              onClick={() => setLocation(`/documents/${documentId}/summary`)}
+            >
               <FileText className="w-3 h-3 mr-2" />
               Summary
             </Button>
-            <Button size="sm" variant="outline" className="text-xs">
+            <Button 
+              size="sm" 
+              variant="outline" 
+              className="text-xs"
+              onClick={() => setLocation(`/documents/${documentId}/quiz`)}
+            >
               <Eye className="w-3 h-3 mr-2" />
               Quiz
             </Button>
