@@ -52,7 +52,7 @@ export default function NotesPage({ documentId }: NotesPageProps) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/documents/${documentId}/notes`] });
-      setNewNote({ title: "", content: "~ " });
+      setNewNote({ title: "", content: "" });
       toast({ title: "Note created successfully!" });
     },
   });
@@ -94,16 +94,22 @@ export default function NotesPage({ documentId }: NotesPageProps) {
   };
 
   const handleCreateNote = () => {
-    if (!newNote.title.trim() || !newNote.content.trim() || newNote.content.trim() === "~") {
+    const cleanedContent = cleanContent(newNote.content);
+    if (!newNote.title.trim() || !cleanedContent) {
       toast({ title: "Please fill in both title and content", variant: "destructive" });
       return;
     }
-    createNoteMutation.mutate(newNote);
+    createNoteMutation.mutate({ ...newNote, content: cleanedContent });
   };
 
   const handleUpdateNote = () => {
     if (!editingNote) return;
-    updateNoteMutation.mutate(editingNote);
+    const cleanedContent = cleanContent(editingNote.content);
+    if (!editingNote.title.trim() || !cleanedContent) {
+      toast({ title: "Please fill in both title and content", variant: "destructive" });
+      return;
+    }
+    updateNoteMutation.mutate({ ...editingNote, content: cleanedContent });
   };
 
   const handleDeleteNote = (noteId: number) => {
@@ -150,11 +156,9 @@ export default function NotesPage({ documentId }: NotesPageProps) {
 
   // Handle content change to ensure ~ bullets
   const handleContentChange = (value: string, isEditing = false) => {
-    // If content is empty and user starts typing, add initial ~
+    // Only add ~ when user starts typing (not on empty)
     let processedValue = value;
-    if (!value.trim()) {
-      processedValue = "";
-    } else if (value.length === 1 && !value.startsWith('~')) {
+    if (value && value.length === 1 && !value.startsWith('~')) {
       processedValue = `~ ${value}`;
     }
     
@@ -165,12 +169,14 @@ export default function NotesPage({ documentId }: NotesPageProps) {
     }
   };
 
-  // Initialize new note content when component mounts or when creating new note
-  useEffect(() => {
-    if (!newNote.content && !editingNote) {
-      setNewNote({ ...newNote, content: "~ " });
-    }
-  }, [editingNote]);
+  // Clean up content before saving - remove empty ~ lines
+  const cleanContent = (content: string) => {
+    return content
+      .split('\n')
+      .filter(line => line.trim() !== '~')
+      .join('\n')
+      .trim();
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-amber-50 to-orange-50">
@@ -197,7 +203,88 @@ export default function NotesPage({ documentId }: NotesPageProps) {
 
       <div className="max-w-6xl mx-auto px-6 py-6">
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-          {/* Left Side - Saved Notes */}
+          {/* Left Side - Notebook Writing Area */}
+          <div className="lg:col-span-3">
+            <div className="bg-white shadow-xl rounded-lg border-2 border-amber-200 relative overflow-hidden">
+              {/* Red Margin Line */}
+              <div className="absolute left-14 top-0 bottom-0 w-0.5 bg-red-400 opacity-60"></div>
+              
+              {/* Spiral Holes */}
+              <div className="absolute left-3 top-6 space-y-6">
+                {Array.from({ length: 12 }).map((_, i) => (
+                  <div key={i} className="w-2.5 h-2.5 bg-gray-100 border border-gray-300 rounded-full shadow-inner"></div>
+                ))}
+              </div>
+
+              <div className="pl-16 pr-6 py-6">
+                <div className="space-y-3">
+                  <div className="flex items-center space-x-2 mb-4">
+                    <BookOpen className="w-5 h-5 text-amber-600" />
+                    <h2 className="text-lg font-semibold text-neutral-800">
+                      {editingNote ? "Edit Note" : "Write in Your Notebook"}
+                    </h2>
+                  </div>
+                  
+                  <Input
+                    placeholder="Note title..."
+                    value={editingNote ? editingNote.title.toUpperCase() : newNote.title.toUpperCase()}
+                    onChange={(e) => 
+                      editingNote 
+                        ? setEditingNote({ ...editingNote, title: e.target.value.toUpperCase() })
+                        : setNewNote({ ...newNote, title: e.target.value.toUpperCase() })
+                    }
+                    className="text-base font-medium border-none shadow-none focus:ring-0 bg-transparent border-b-2 border-amber-200 focus:border-amber-400 rounded-none pb-2 uppercase"
+                  />
+                  
+                  {/* Notebook Lines Background */}
+                  <div className="relative">
+                    <div 
+                      className="absolute inset-0 opacity-20 pointer-events-none"
+                      style={{
+                        backgroundImage: `repeating-linear-gradient(
+                          transparent,
+                          transparent 27px,
+                          #cbd5e0 27px,
+                          #cbd5e0 28px
+                        )`
+                      }}
+                    ></div>
+                    
+                    <Textarea
+                      placeholder="Start writing your notes here... Press Enter to create a new sentence with ~"
+                      value={editingNote ? editingNote.content : newNote.content}
+                      onChange={(e) => handleContentChange(e.target.value, !!editingNote)}
+                      onKeyDown={(e) => handleNoteKeyDown(e, !!editingNote)}
+                      rows={14}
+                      className="relative z-10 border-none shadow-none focus:ring-0 bg-transparent text-base leading-7 resize-none"
+                      style={{ lineHeight: '28px' }}
+                    />
+                  </div>
+                  
+                  <div className="flex space-x-3 pt-3">
+                    <Button 
+                      onClick={editingNote ? handleUpdateNote : handleCreateNote}
+                      disabled={createNoteMutation.isPending || updateNoteMutation.isPending}
+                      className="bg-amber-600 hover:bg-amber-700"
+                    >
+                      <Save className="w-4 h-4 mr-2" />
+                      {editingNote ? "Update Note" : "Save Note"}
+                    </Button>
+                    {editingNote && (
+                      <Button 
+                        variant="outline" 
+                        onClick={() => setEditingNote(null)}
+                      >
+                        Cancel
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Right Side - Saved Notes */}
           <div className="lg:col-span-1">
             <Collapsible open={isNotesOpen} onOpenChange={setIsNotesOpen}>
               <CollapsibleTrigger asChild>
@@ -234,7 +321,7 @@ export default function NotesPage({ documentId }: NotesPageProps) {
                       {notes.map((note: Note) => (
                         <div key={note.id} className="border border-amber-100 rounded-md p-3 hover:bg-amber-50 transition-colors">
                           <div className="flex items-center justify-between mb-1">
-                            <h4 className="font-medium text-neutral-800 text-sm flex items-center">
+                            <h4 className="font-medium text-neutral-800 text-sm flex items-center uppercase">
                               <BookOpen className="w-3 h-3 mr-1 text-amber-600" />
                               {note.title}
                             </h4>
@@ -270,87 +357,6 @@ export default function NotesPage({ documentId }: NotesPageProps) {
                 </div>
               </CollapsibleContent>
             </Collapsible>
-          </div>
-
-          {/* Right Side - Notebook Writing Area */}
-          <div className="lg:col-span-3">
-            <div className="bg-white shadow-xl rounded-lg border-2 border-amber-200 relative overflow-hidden">
-              {/* Red Margin Line */}
-              <div className="absolute left-14 top-0 bottom-0 w-0.5 bg-red-400 opacity-60"></div>
-              
-              {/* Spiral Holes */}
-              <div className="absolute left-3 top-6 space-y-6">
-                {Array.from({ length: 12 }).map((_, i) => (
-                  <div key={i} className="w-2.5 h-2.5 bg-gray-100 border border-gray-300 rounded-full shadow-inner"></div>
-                ))}
-              </div>
-
-              <div className="pl-16 pr-6 py-6">
-                <div className="space-y-3">
-                  <div className="flex items-center space-x-2 mb-4">
-                    <BookOpen className="w-5 h-5 text-amber-600" />
-                    <h2 className="text-lg font-semibold text-neutral-800">
-                      {editingNote ? "Edit Note" : "Write in Your Notebook"}
-                    </h2>
-                  </div>
-                  
-                  <Input
-                    placeholder="Note title..."
-                    value={editingNote ? editingNote.title : newNote.title}
-                    onChange={(e) => 
-                      editingNote 
-                        ? setEditingNote({ ...editingNote, title: e.target.value })
-                        : setNewNote({ ...newNote, title: e.target.value })
-                    }
-                    className="text-base font-medium border-none shadow-none focus:ring-0 bg-transparent border-b-2 border-amber-200 focus:border-amber-400 rounded-none pb-2"
-                  />
-                  
-                  {/* Notebook Lines Background */}
-                  <div className="relative">
-                    <div 
-                      className="absolute inset-0 opacity-20 pointer-events-none"
-                      style={{
-                        backgroundImage: `repeating-linear-gradient(
-                          transparent,
-                          transparent 27px,
-                          #cbd5e0 27px,
-                          #cbd5e0 28px
-                        )`
-                      }}
-                    ></div>
-                    
-                    <Textarea
-                      placeholder="~ Start writing your notes here... Press Enter to create a new sentence with ~"
-                      value={editingNote ? editingNote.content : newNote.content}
-                      onChange={(e) => handleContentChange(e.target.value, !!editingNote)}
-                      onKeyDown={(e) => handleNoteKeyDown(e, !!editingNote)}
-                      rows={14}
-                      className="relative z-10 border-none shadow-none focus:ring-0 bg-transparent text-base leading-7 resize-none"
-                      style={{ lineHeight: '28px' }}
-                    />
-                  </div>
-                  
-                  <div className="flex space-x-3 pt-3">
-                    <Button 
-                      onClick={editingNote ? handleUpdateNote : handleCreateNote}
-                      disabled={createNoteMutation.isPending || updateNoteMutation.isPending}
-                      className="bg-amber-600 hover:bg-amber-700"
-                    >
-                      <Save className="w-4 h-4 mr-2" />
-                      {editingNote ? "Update Note" : "Save Note"}
-                    </Button>
-                    {editingNote && (
-                      <Button 
-                        variant="outline" 
-                        onClick={() => setEditingNote(null)}
-                      >
-                        Cancel
-                      </Button>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </div>
           </div>
         </div>
       </div>
