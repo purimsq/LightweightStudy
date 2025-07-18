@@ -20,14 +20,6 @@ export default function Dashboard() {
       <div className="max-w-7xl mx-auto">
         {/* Welcome Section */}
         <div className="mb-8">
-          <div className="flex items-center justify-between mb-2">
-            <h2 className="text-2xl font-bold text-neutral-800">
-              Hey, {user?.name || "Mitchell"}! 👋
-            </h2>
-            <p className="text-lg text-neutral-600">
-              {format(new Date(), "EEEE, MMMM d, yyyy")}
-            </p>
-          </div>
           <p className="text-neutral-600">Ready for another productive study session?</p>
         </div>
 
