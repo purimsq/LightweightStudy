@@ -143,9 +143,9 @@ export default function DocumentViewer() {
                     Document Content
                   </h3>
                   {document.extractedText ? (
-                    <div className="flex bg-neutral-100 rounded-lg overflow-hidden border-2 border-neutral-200">
+                    <div className="flex bg-neutral-100 rounded-lg overflow-hidden border-2 border-neutral-200 min-h-[800px]">
                       {/* Navigation Sidebar */}
-                      <div className="w-64 bg-neutral-900 text-white p-4 border-r">
+                      <div className="w-64 bg-neutral-900 text-white p-4 border-r flex-shrink-0">
                         <div className="mb-4">
                           <h4 className="text-sm font-medium text-neutral-300 mb-2">Navigation</h4>
                           <div className="text-xs text-neutral-400 mb-3 flex items-center">
@@ -155,158 +155,55 @@ export default function DocumentViewer() {
                         </div>
                         
                         <div className="space-y-1 text-xs">
-                          <div className="text-neutral-300 font-medium mb-2">Sections</div>
+                          <div className="text-neutral-300 font-medium mb-2">Document</div>
                           <div className="bg-blue-600 text-white px-2 py-1 rounded text-xs">
-                            Station 1: Subcutaneous Emphysema
+                            {document.filename}
                           </div>
                           <div className="text-neutral-400 px-2 py-1 hover:bg-neutral-800 rounded cursor-pointer">
-                            Station 2: Platysma During Surgery
+                            Jump to top
                           </div>
                           <div className="text-neutral-400 px-2 py-1 hover:bg-neutral-800 rounded cursor-pointer">
-                            Station 3: Fascial Planes and Neck...
+                            Full content
                           </div>
                           <div className="text-neutral-400 px-2 py-1 hover:bg-neutral-800 rounded cursor-pointer">
-                            Station 4: Investing Layer in Paroti...
+                            Study actions
                           </div>
-                          <div className="text-neutral-400 px-2 py-1 hover:bg-neutral-800 rounded cursor-pointer">
-                            Station 5: Danger Space in Retroph...
-                          </div>
-                          <div className="text-neutral-400 px-2 py-1 hover:bg-neutral-800 rounded cursor-pointer">
-                            Station 6: Hyoid Bone and Forensics
-                          </div>
-                          <div className="text-neutral-400 px-2 py-1 hover:bg-neutral-800 rounded cursor-pointer">
-                            Station 7: Transverse Foramen an...
-                          </div>
-                          <div className="text-neutral-400 px-2 py-1 hover:bg-neutral-800 rounded cursor-pointer">
-                            Station 8: Posterior Triangle Lymph...
-                          </div>
-                          <div className="text-neutral-400 px-2 py-1 hover:bg-neutral-800 rounded cursor-pointer">
-                            Station 9: Posterior Triangle Injury
-                          </div>
-                          <div className="text-neutral-400 px-2 py-1 hover:bg-neutral-800 rounded cursor-pointer">
-                            Station 10: Central Line and Carot...
+                        </div>
+                        
+                        <div className="mt-6 pt-4 border-t border-neutral-700">
+                          <div className="text-neutral-300 font-medium mb-2 text-xs">File Info</div>
+                          <div className="text-xs text-neutral-400 space-y-1">
+                            <div>Type: {document.fileType}</div>
+                            <div>Size: {document.fileSize ? `${Math.round(document.fileSize / 1024)} KB` : 'Unknown'}</div>
+                            <div>Unit: {unit?.name}</div>
                           </div>
                         </div>
                       </div>
                       
                       {/* Document Content */}
-                      <div className="flex-1 bg-white">
-                        <div className="p-8 max-w-4xl mx-auto">
+                      <div className="flex-1 bg-white overflow-auto">
+                        <div className="p-8 max-w-5xl mx-auto">
                           {/* Document Header */}
                           <div className="text-center mb-8 border-b border-neutral-200 pb-6">
                             <h1 className="text-3xl font-bold text-neutral-800 mb-2">
-                              Marking Rubrics and Ideal Answers:
+                              {document.filename}
                             </h1>
-                            <h2 className="text-2xl font-semibold text-neutral-700">
-                              OSCE Stations on Neck Anatomy
-                            </h2>
+                            <div className="text-sm text-neutral-600 space-x-4">
+                              <span>Unit: {unit?.name}</span>
+                              <span>•</span>
+                              <span>Type: {document.fileType}</span>
+                              <span>•</span>
+                              <span>Uploaded: {new Date(document.uploadedAt).toLocaleDateString()}</span>
+                            </div>
                           </div>
                           
-                          {/* Content Sections */}
-                          <div className="space-y-8">
-                            <section>
-                              <h3 className="text-xl font-bold text-blue-700 mb-4 border-l-4 border-blue-500 pl-3">
-                                Station 1: Subcutaneous Emphysema
-                              </h3>
-                              
-                              <div className="space-y-4">
-                                <div>
-                                  <p className="font-semibold text-neutral-800 mb-2">
-                                    **Clinical Scenario:** A 30 year old male presents with neck trauma and palpable crepitus under the skin.
-                                  </p>
-                                </div>
-                                
-                                <div>
-                                  <p className="font-semibold text-neutral-800 mb-2">
-                                    **Candidate Task:** Explain the anatomical basis for the spread of air through the neck and chest wall.
-                                  </p>
-                                </div>
-                                
-                                <div className="bg-blue-50 p-4 rounded-lg border-l-4 border-blue-400">
-                                  <p className="font-semibold text-blue-800 mb-3">
-                                    **Marking Rubric (out of 10 marks):**
-                                  </p>
-                                  
-                                  <div className="space-y-2 text-neutral-700">
-                                    <div className="flex items-start">
-                                      <span className="w-2 h-2 bg-blue-500 rounded-full mt-2 mr-3 flex-shrink-0"></span>
-                                      <span><strong>Identification of relevant anatomical structure(s):</strong> 2 marks</span>
-                                    </div>
-                                    <div className="flex items-start">
-                                      <span className="w-2 h-2 bg-blue-500 rounded-full mt-2 mr-3 flex-shrink-0"></span>
-                                      <span><strong>Explanation of anatomical relationships:</strong> 2 marks</span>
-                                    </div>
-                                    <div className="flex items-start">
-                                      <span className="w-2 h-2 bg-blue-500 rounded-full mt-2 mr-3 flex-shrink-0"></span>
-                                      <span><strong>Clinical relevance or implications:</strong> 2 marks</span>
-                                    </div>
-                                    <div className="flex items-start">
-                                      <span className="w-2 h-2 bg-blue-500 rounded-full mt-2 mr-3 flex-shrink-0"></span>
-                                      <span><strong>Use of correct anatomical terminology:</strong> 2 marks</span>
-                                    </div>
-                                    <div className="flex items-start">
-                                      <span className="w-2 h-2 bg-blue-500 rounded-full mt-2 mr-3 flex-shrink-0"></span>
-                                      <span><strong>Structured and logical explanation:</strong> 2 marks</span>
-                                    </div>
-                                  </div>
-                                </div>
-                                
-                                <div className="bg-green-50 p-4 rounded-lg border-l-4 border-green-400">
-                                  <p className="font-semibold text-green-800 mb-3">
-                                    **Ideal Answer:**
-                                  </p>
-                                  <p className="text-neutral-700 leading-relaxed">
-                                    Expect candidate to mention skin and superficial fascia composition and the continuity of 
-                                    fascial planes into thorax.
-                                  </p>
-                                </div>
+                          {/* Full Document Content */}
+                          <div className="prose prose-lg max-w-none">
+                            <div className="bg-white p-8 rounded-lg border border-neutral-200 shadow-sm">
+                              <div className="text-base text-neutral-900 leading-relaxed whitespace-pre-wrap font-normal">
+                                {document.extractedText}
                               </div>
-                            </section>
-                            
-                            <section>
-                              <h3 className="text-xl font-bold text-blue-700 mb-4 border-l-4 border-blue-500 pl-3">
-                                Station 2: Platysma During Surgery
-                              </h3>
-                              
-                              <div className="space-y-4">
-                                <div>
-                                  <p className="font-semibold text-neutral-800 mb-2">
-                                    **Clinical Scenario:** During neck surgery, careful dissection around the platysma muscle is required.
-                                  </p>
-                                </div>
-                                
-                                <div>
-                                  <p className="font-semibold text-neutral-800 mb-2">
-                                    **Candidate Task:** Describe the anatomical relations and surgical considerations of the platysma muscle.
-                                  </p>
-                                </div>
-                                
-                                <div className="bg-blue-50 p-4 rounded-lg border-l-4 border-blue-400">
-                                  <p className="font-semibold text-blue-800 mb-3">
-                                    **Marking Rubric (out of 10 marks):**
-                                  </p>
-                                  
-                                  <div className="space-y-2 text-neutral-700">
-                                    <div className="flex items-start">
-                                      <span className="w-2 h-2 bg-blue-500 rounded-full mt-2 mr-3 flex-shrink-0"></span>
-                                      <span><strong>Origin and insertion of platysma:</strong> 2 marks</span>
-                                    </div>
-                                    <div className="flex items-start">
-                                      <span className="w-2 h-2 bg-blue-500 rounded-full mt-2 mr-3 flex-shrink-0"></span>
-                                      <span><strong>Innervation and blood supply:</strong> 2 marks</span>
-                                    </div>
-                                    <div className="flex items-start">
-                                      <span className="w-2 h-2 bg-blue-500 rounded-full mt-2 mr-3 flex-shrink-0"></span>
-                                      <span><strong>Surgical implications and precautions:</strong> 3 marks</span>
-                                    </div>
-                                    <div className="flex items-start">
-                                      <span className="w-2 h-2 bg-blue-500 rounded-full mt-2 mr-3 flex-shrink-0"></span>
-                                      <span><strong>Anatomical terminology and accuracy:</strong> 3 marks</span>
-                                    </div>
-                                  </div>
-                                </div>
-                              </div>
-                            </section>
+                            </div>
                           </div>
                         </div>
                       </div>
