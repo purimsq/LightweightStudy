@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
-import { ChevronLeft, ChevronRight, ZoomIn, ZoomOut, ArrowLeft, Menu, BookOpen } from "lucide-react";
+import { ChevronLeft, ChevronRight, ZoomIn, ZoomOut, ArrowLeft, Menu, BookOpen, FileText } from "lucide-react";
 import { useLocation } from "wouter";
 
 interface PDFViewerProps {
@@ -25,23 +25,31 @@ export default function PDFViewer({ fileUrl, documentId, unitId }: PDFViewerProp
     let isNavigating = false;
     
     const handleKeyDown = (event: KeyboardEvent) => {
+      // Don't interfere with form inputs
+      const target = event.target as HTMLElement;
+      if (target?.tagName === 'INPUT' || 
+          target?.tagName === 'TEXTAREA' ||
+          target?.isContentEditable) {
+        return;
+      }
+
       if (isNavigating) return; // Prevent rapid navigation
       
       if (event.key === 'ArrowLeft' && currentPage > 1) {
         event.preventDefault();
         isNavigating = true;
         goToPrevPage();
-        setTimeout(() => { isNavigating = false; }, 200); // 200ms throttle
+        setTimeout(() => { isNavigating = false; }, 300); // Increased throttle
       } else if (event.key === 'ArrowRight' && currentPage < totalPages) {
         event.preventDefault();
         isNavigating = true;
         goToNextPage();
-        setTimeout(() => { isNavigating = false; }, 200); // 200ms throttle
+        setTimeout(() => { isNavigating = false; }, 300); // Increased throttle
       }
     };
 
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
   }, [currentPage, totalPages]);
 
   useEffect(() => {

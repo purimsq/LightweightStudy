@@ -20,43 +20,28 @@ export default function DOCXViewer({ fileUrl, filename, documentId, unitId }: DO
 
   // Keyboard navigation for DOCX (smooth scrolling with arrow keys)
   useEffect(() => {
-    let scrollTimeout: NodeJS.Timeout | null = null;
-    
     const handleKeyDown = (event: KeyboardEvent) => {
-      // Only handle arrow keys when not typing in inputs or sidebar is closed
-      if ((event.target as HTMLElement)?.tagName === 'INPUT' || 
-          (event.target as HTMLElement)?.tagName === 'TEXTAREA') {
+      // Only handle arrow keys when not typing in inputs or textarea
+      const target = event.target as HTMLElement;
+      if (target?.tagName === 'INPUT' || 
+          target?.tagName === 'TEXTAREA' ||
+          target?.isContentEditable) {
         return;
       }
       
       if (event.key === 'ArrowUp') {
         event.preventDefault();
-        if (scrollTimeout) clearTimeout(scrollTimeout);
-        window.scrollBy({ top: -150, behavior: 'smooth' });
-        scrollTimeout = setTimeout(() => { scrollTimeout = null; }, 50);
+        window.scrollBy({ top: -200, behavior: 'smooth' });
       } else if (event.key === 'ArrowDown') {
         event.preventDefault();
-        if (scrollTimeout) clearTimeout(scrollTimeout);
-        window.scrollBy({ top: 150, behavior: 'smooth' });
-        scrollTimeout = setTimeout(() => { scrollTimeout = null; }, 50);
+        window.scrollBy({ top: 200, behavior: 'smooth' });
       }
     };
 
-    // Also handle keyup for continuous scrolling
-    const handleKeyUp = (event: KeyboardEvent) => {
-      if (scrollTimeout && (event.key === 'ArrowUp' || event.key === 'ArrowDown')) {
-        clearTimeout(scrollTimeout);
-        scrollTimeout = null;
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    window.addEventListener('keyup', handleKeyUp);
+    document.addEventListener('keydown', handleKeyDown);
     
     return () => {
-      window.removeEventListener('keydown', handleKeyDown);
-      window.removeEventListener('keyup', handleKeyUp);
-      if (scrollTimeout) clearTimeout(scrollTimeout);
+      document.removeEventListener('keydown', handleKeyDown);
     };
   }, []);
 
