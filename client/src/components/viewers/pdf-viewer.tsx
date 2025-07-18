@@ -20,6 +20,22 @@ export default function PDFViewer({ fileUrl, documentId, unitId }: PDFViewerProp
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [, setLocation] = useLocation();
 
+  // Keyboard navigation for PDF
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'ArrowLeft' && currentPage > 1) {
+        event.preventDefault();
+        goToPrevPage();
+      } else if (event.key === 'ArrowRight' && currentPage < totalPages) {
+        event.preventDefault();
+        goToNextPage();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [currentPage, totalPages]);
+
   useEffect(() => {
     const loadPDF = async () => {
       try {

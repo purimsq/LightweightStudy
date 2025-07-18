@@ -18,6 +18,22 @@ export default function DOCXViewer({ fileUrl, filename, documentId, unitId }: DO
   const [outline, setOutline] = useState<Array<{title: string, id: string, level: number}>>([]);
   const [, setLocation] = useLocation();
 
+  // Keyboard navigation for DOCX (smooth scrolling with arrow keys)
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'ArrowUp') {
+        event.preventDefault();
+        window.scrollBy({ top: -100, behavior: 'smooth' });
+      } else if (event.key === 'ArrowDown') {
+        event.preventDefault();
+        window.scrollBy({ top: 100, behavior: 'smooth' });
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
   useEffect(() => {
     const loadDOCX = async () => {
       try {
