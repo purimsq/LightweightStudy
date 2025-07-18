@@ -9,10 +9,10 @@ export default function TopBar() {
         <div className="flex items-start justify-between">
           {/* Centered Motivational Quote */}
           <div className="flex-1 text-center">
-            <blockquote className="text-xl font-semibold text-warm-gray italic">
+            <blockquote className="text-2xl font-bold text-warm-gray italic">
               "Discipline is choosing between what you want and what you want most"
             </blockquote>
-            <p className="text-base text-neutral-600 mt-2">
+            <p className="text-lg text-neutral-600 mt-2">
               When you lack motivation you can always choose discipline
             </p>
           </div>
