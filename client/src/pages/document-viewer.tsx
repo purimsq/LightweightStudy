@@ -121,18 +121,20 @@ export default function DocumentViewer() {
         {/* Content */}
         <div className="space-y-6">
           {document.summary && (
-            <Card>
+            <Card className="border-2 border-blue-200 bg-blue-50/30">
               <CardContent className="p-6">
                 <div className="flex items-center mb-3">
                   <BookOpen className="w-5 h-5 text-blue-600 mr-2" />
                   <h3 className="font-semibold text-neutral-800">AI Summary</h3>
                 </div>
-                <p className="text-neutral-700 leading-relaxed">{document.summary}</p>
+                <div className="bg-white p-4 rounded-lg border border-blue-200">
+                  <p className="text-neutral-800 leading-relaxed">{document.summary}</p>
+                </div>
               </CardContent>
             </Card>
           )}
 
-          <Card>
+          <Card className="border-2 border-neutral-200">
             <CardContent className="p-6">
               {viewMode === "text" ? (
                 <div>
@@ -142,10 +144,10 @@ export default function DocumentViewer() {
                   </h3>
                   {document.extractedText ? (
                     <div className="prose max-w-none">
-                      <div className="bg-neutral-50 p-6 rounded-lg border">
-                        <pre className="whitespace-pre-wrap text-sm text-neutral-800 font-sans leading-relaxed">
+                      <div className="bg-white p-8 rounded-lg border-2 border-neutral-200 shadow-sm">
+                        <div className="text-base text-neutral-900 font-normal leading-relaxed whitespace-pre-wrap">
                           {document.extractedText}
-                        </pre>
+                        </div>
                       </div>
                     </div>
                   ) : (
@@ -215,20 +217,32 @@ export default function DocumentViewer() {
           </Card>
 
           {/* Study Actions */}
-          <Card>
+          <Card className="border-2 border-green-200 bg-green-50/30">
             <CardContent className="p-6">
-              <h3 className="font-semibold text-neutral-800 mb-4">Study Actions</h3>
+              <h3 className="font-semibold text-neutral-800 mb-4 flex items-center">
+                <BookOpen className="w-5 h-5 text-green-600 mr-2" />
+                Study Actions
+              </h3>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <Button variant="outline" className="justify-start">
-                  <BookOpen className="w-4 h-4 mr-2" />
+                <Button 
+                  variant="outline" 
+                  className="justify-start border-green-300 hover:bg-green-50 hover:border-green-400"
+                >
+                  <BookOpen className="w-4 h-4 mr-2 text-green-600" />
                   Take Notes
                 </Button>
-                <Button variant="outline" className="justify-start">
-                  <FileText className="w-4 h-4 mr-2" />
+                <Button 
+                  variant="outline" 
+                  className="justify-start border-blue-300 hover:bg-blue-50 hover:border-blue-400"
+                >
+                  <FileText className="w-4 h-4 mr-2 text-blue-600" />
                   Create Summary
                 </Button>
-                <Button variant="outline" className="justify-start">
-                  <Eye className="w-4 h-4 mr-2" />
+                <Button 
+                  variant="outline" 
+                  className="justify-start border-purple-300 hover:bg-purple-50 hover:border-purple-400"
+                >
+                  <Eye className="w-4 h-4 mr-2 text-purple-600" />
                   Generate Quiz
                 </Button>
               </div>
