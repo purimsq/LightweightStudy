@@ -50,7 +50,7 @@ export default function NotesPage({ documentId }: NotesPageProps) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/documents/${documentId}/notes`] });
-      setNewNote({ title: "", content: "" });
+      setNewNote({ title: "", content: "~ " });
       toast({ title: "Note created successfully!" });
     },
   });
@@ -92,7 +92,7 @@ export default function NotesPage({ documentId }: NotesPageProps) {
   };
 
   const handleCreateNote = () => {
-    if (!newNote.title.trim() || !newNote.content.trim()) {
+    if (!newNote.title.trim() || !newNote.content.trim() || newNote.content.trim() === "~") {
       toast({ title: "Please fill in both title and content", variant: "destructive" });
       return;
     }
@@ -109,6 +109,66 @@ export default function NotesPage({ documentId }: NotesPageProps) {
       deleteNoteMutation.mutate(noteId);
     }
   };
+
+  // Format content with ~ bullets for display
+  const formatContentForDisplay = (content: string) => {
+    if (!content) return "";
+    return content.split('\n')
+      .filter(line => line.trim())
+      .map(line => line.startsWith('~ ') ? line : `~ ${line}`)
+      .join('\n');
+  };
+
+  // Handle special Enter key behavior for notes
+  const handleNoteKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>, isEditing = false) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      const textarea = e.currentTarget;
+      const cursorPos = textarea.selectionStart;
+      const content = textarea.value;
+      const beforeCursor = content.substring(0, cursorPos);
+      const afterCursor = content.substring(cursorPos);
+      
+      // Add new line with ~ bullet
+      const newContent = beforeCursor + '\n~ ' + afterCursor;
+      
+      if (isEditing && editingNote) {
+        setEditingNote({ ...editingNote, content: newContent });
+      } else {
+        setNewNote({ ...newNote, content: newContent });
+      }
+      
+      // Set cursor position after the ~ 
+      setTimeout(() => {
+        textarea.selectionStart = textarea.selectionEnd = cursorPos + 3;
+        textarea.focus();
+      }, 0);
+    }
+  };
+
+  // Handle content change to ensure ~ bullets
+  const handleContentChange = (value: string, isEditing = false) => {
+    // If content is empty and user starts typing, add initial ~
+    let processedValue = value;
+    if (!value.trim()) {
+      processedValue = "";
+    } else if (value.length === 1 && !value.startsWith('~')) {
+      processedValue = `~ ${value}`;
+    }
+    
+    if (isEditing && editingNote) {
+      setEditingNote({ ...editingNote, content: processedValue });
+    } else {
+      setNewNote({ ...newNote, content: processedValue });
+    }
+  };
+
+  // Initialize new note content when component mounts or when creating new note
+  useEffect(() => {
+    if (!newNote.content && !editingNote) {
+      setNewNote({ ...newNote, content: "~ " });
+    }
+  }, [editingNote]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50">
@@ -155,13 +215,10 @@ export default function NotesPage({ documentId }: NotesPageProps) {
                 className="border-neutral-300 focus:border-blue-500"
               />
               <Textarea
-                placeholder="Write your notes here... You can use markdown formatting."
+                placeholder="~ Start typing your notes here... Press Enter to create a new sentence with ~"
                 value={editingNote ? editingNote.content : newNote.content}
-                onChange={(e) => 
-                  editingNote 
-                    ? setEditingNote({ ...editingNote, content: e.target.value })
-                    : setNewNote({ ...newNote, content: e.target.value })
-                }
+                onChange={(e) => handleContentChange(e.target.value, !!editingNote)}
+                onKeyDown={(e) => handleNoteKeyDown(e, !!editingNote)}
                 rows={12}
                 className="border-neutral-300 focus:border-blue-500 font-mono text-sm"
               />
