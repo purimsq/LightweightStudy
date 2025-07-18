@@ -10,6 +10,7 @@ import { Progress } from "@/components/ui/progress";
 import { Plus, FolderOpen, BookOpen, FileText } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { useLocation } from "wouter";
 import type { Unit, InsertUnit } from "@shared/schema";
 
 const iconMap = {
@@ -164,6 +165,7 @@ function CreateUnitDialog() {
 }
 
 function UnitCard({ unit }: { unit: Unit }) {
+  const [, setLocation] = useLocation();
   const { data: documents = [] } = useQuery({
     queryKey: ["/api/documents", { unitId: unit.id }],
     queryFn: async () => {
@@ -207,7 +209,11 @@ function UnitCard({ unit }: { unit: Unit }) {
             <FileText className="w-4 h-4 mr-1" />
             {documents.length} documents
           </div>
-          <Button variant="outline" size="sm">
+          <Button 
+            variant="outline" 
+            size="sm"
+            onClick={() => setLocation(`/units/${unit.id}/documents`)}
+          >
             <FolderOpen className="w-4 h-4 mr-1" />
             Open
           </Button>

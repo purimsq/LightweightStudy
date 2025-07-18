@@ -2,7 +2,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -52,11 +52,18 @@ function CreateAssignmentDialog() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.title || !formData.deadline) return;
+    if (!formData.title || !formData.deadline) {
+      toast({ 
+        title: "Error", 
+        description: "Please fill in all required fields",
+        variant: "destructive" 
+      });
+      return;
+    }
     
     createAssignmentMutation.mutate({
       ...formData,
-      deadline: new Date(formData.deadline),
+      deadline: formData.deadline, // Backend will handle date conversion
     } as InsertAssignment);
   };
 
@@ -71,6 +78,9 @@ function CreateAssignmentDialog() {
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle>Create New Assignment</DialogTitle>
+          <DialogDescription>
+            Add a new assignment or CAT with a deadline
+          </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>

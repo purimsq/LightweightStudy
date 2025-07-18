@@ -203,7 +203,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/assignments", async (req, res) => {
     try {
-      const validatedData = insertAssignmentSchema.parse(req.body);
+      // Convert deadline string to Date object if it's a string
+      const requestData = { ...req.body };
+      if (typeof requestData.deadline === 'string') {
+        requestData.deadline = new Date(requestData.deadline);
+      }
+      
+      const validatedData = insertAssignmentSchema.parse(requestData);
       const assignment = await storage.createAssignment(validatedData);
       res.status(201).json(assignment);
     } catch (error) {
