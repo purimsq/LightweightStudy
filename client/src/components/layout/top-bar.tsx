@@ -28,10 +28,7 @@ export default function TopBar() {
       </header>
       {/* Date below header on the right side */}
       <div className="px-6 py-2 bg-neutral-50 border-b border-neutral-100">
-        <div className="flex justify-between items-center">
-          <div className="text-lg font-bold text-neutral-800">
-            Hey, {user?.name || "Mitchell"}! 👋
-          </div>
+        <div className="flex justify-end">
           <div className="text-sm text-neutral-600">
             <div className="text-right">
               <div className="font-medium">Today</div>

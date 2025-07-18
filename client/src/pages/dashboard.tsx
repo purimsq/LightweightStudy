@@ -20,6 +20,9 @@ export default function Dashboard() {
       <div className="max-w-7xl mx-auto">
         {/* Welcome Section */}
         <div className="mb-8">
+          <h2 className="text-2xl font-bold text-neutral-800 mb-2">
+            Hey, {user?.name || "Mitchell"}! 👋
+          </h2>
           <p className="text-neutral-600">Ready for another productive study session?</p>
         </div>
 
