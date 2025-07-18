@@ -98,24 +98,58 @@ export default function DocumentViewer() {
       </div>
 
       {/* Document Content */}
-      <div className="pt-20 px-8 pb-8">
-        <div className="max-w-4xl mx-auto">
+      <div className="pt-20 px-8 pb-8 bg-neutral-50 min-h-screen">
+        <div className="max-w-5xl mx-auto">
           {document.extractedText ? (
             <div className="bg-white">
-              {/* Document Title */}
-              <div className="text-center mb-8 pb-6 border-b border-neutral-200">
-                <h1 className="text-3xl font-bold text-neutral-800 mb-2">
-                  {document.filename.replace(/\.[^/.]+$/, "")}
-                </h1>
-                <div className="text-sm text-neutral-600">
-                  {unit?.name} • {document.fileType} • {new Date(document.uploadedAt).toLocaleDateString()}
+              {/* Document Toolbar */}
+              <div className="bg-white border border-neutral-200 rounded-t-lg p-4 flex items-center justify-between">
+                <div className="flex items-center space-x-4">
+                  <div className="flex items-center space-x-2 text-sm text-neutral-600">
+                    <span className="w-2 h-2 bg-green-500 rounded-full"></span>
+                    <span>Document loaded</span>
+                  </div>
+                  <div className="text-sm text-neutral-500">
+                    {document.extractedText.split(' ').length} words • {document.extractedText.length} characters
+                  </div>
+                </div>
+                <div className="flex items-center space-x-3">
+                  <div className="text-xs text-neutral-500">
+                    Font: Georgia • Size: 16px • Zoom: 100%
+                  </div>
                 </div>
               </div>
               
-              {/* Full Document Content */}
-              <div className="prose prose-lg max-w-none">
-                <div className="text-base text-neutral-900 leading-relaxed whitespace-pre-wrap font-normal">
-                  {document.extractedText}
+              {/* Full Document Content - Word Processor Style */}
+              <div className="bg-white shadow-lg border border-neutral-200 rounded-lg min-h-[800px]">
+                {/* Document Paper */}
+                <div className="bg-white p-12 min-h-[800px]" style={{ 
+                  fontFamily: 'Georgia, "Times New Roman", serif',
+                  lineHeight: '1.6',
+                  fontSize: '16px'
+                }}>
+                  <div 
+                    className="text-neutral-900 whitespace-pre-wrap"
+                    style={{
+                      wordWrap: 'break-word',
+                      hyphens: 'auto',
+                      textAlign: 'justify'
+                    }}
+                    dangerouslySetInnerHTML={{
+                      __html: document.extractedText
+                        .replace(/\n\n/g, '</p><p class="mb-4">')
+                        .replace(/\n/g, '<br>')
+                        .replace(/^\s*/, '<p class="mb-4">')
+                        .replace(/\s*$/, '</p>')
+                        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                        .replace(/\*(.*?)\*/g, '<em>$1</em>')
+                        .replace(/^#\s+(.+)$/gm, '<h1 class="text-2xl font-bold mb-4 mt-6">$1</h1>')
+                        .replace(/^##\s+(.+)$/gm, '<h2 class="text-xl font-bold mb-3 mt-5">$1</h2>')
+                        .replace(/^###\s+(.+)$/gm, '<h3 class="text-lg font-bold mb-2 mt-4">$1</h3>')
+                        .replace(/^-\s+(.+)$/gm, '<li class="ml-4">• $1</li>')
+                        .replace(/^(\d+\.)\s+(.+)$/gm, '<li class="ml-4">$1 $2</li>')
+                    }}
+                  />
                 </div>
               </div>
             </div>
