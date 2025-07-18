@@ -26,8 +26,8 @@ export default function TopBar() {
             When you lack motivation you can always choose discipline
           </p>
         </div>
-        {/* By MyLo in orange - positioned at bottom left */}
-        <div className="absolute bottom-2 left-6 text-xs font-medium text-orange-500">
+        {/* By MyLo in orange - positioned at bottom right */}
+        <div className="absolute bottom-2 right-6 text-xs font-medium text-orange-500">
           by MyLo
         </div>
       </header>
