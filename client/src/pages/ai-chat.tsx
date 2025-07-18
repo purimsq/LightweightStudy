@@ -1,0 +1,315 @@
+import { useState, useRef, useEffect } from "react";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Badge } from "@/components/ui/badge";
+import { Send, Bot, User, AlertCircle, CheckCircle, Lightbulb } from "lucide-react";
+import { apiRequest } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
+import { format } from "date-fns";
+
+interface Message {
+  role: "user" | "assistant";
+  content: string;
+  timestamp: string;
+}
+
+function MessageBubble({ message }: { message: Message }) {
+  const isUser = message.role === "user";
+  
+  return (
+    <div className={`flex items-start space-x-3 ${isUser ? "flex-row-reverse space-x-reverse" : ""}`}>
+      <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
+        isUser ? "bg-primary text-white" : "bg-accent/20 text-accent"
+      }`}>
+        {isUser ? <User className="w-4 h-4" /> : <Bot className="w-4 h-4" />}
+      </div>
+      <div className={`flex-1 max-w-md ${isUser ? "text-right" : ""}`}>
+        <div className={`inline-block p-3 rounded-lg ${
+          isUser 
+            ? "bg-primary text-white rounded-br-sm" 
+            : "bg-white border border-neutral-200 rounded-bl-sm shadow-sm"
+        }`}>
+          <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+        </div>
+        <p className="text-xs text-neutral-500 mt-1">
+          {format(new Date(message.timestamp), "h:mm a")}
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function QuickPrompts({ onPromptClick }: { onPromptClick: (prompt: string) => void }) {
+  const prompts = [
+    "Help me create a study plan for this week",
+    "Generate quiz questions on cardiovascular system",
+    "Summarize my notes on immune responses",
+    "What's the best way to memorize anatomy terms?",
+    "Create a study schedule for my upcoming CAT",
+    "Explain the concept of homeostasis simply",
+  ];
+
+  return (
+    <div className="space-y-3">
+      <h3 className="text-sm font-medium text-neutral-600 flex items-center">
+        <Lightbulb className="w-4 h-4 mr-2" />
+        Quick Prompts
+      </h3>
+      <div className="grid grid-cols-1 gap-2">
+        {prompts.map((prompt, index) => (
+          <Button
+            key={index}
+            variant="outline"
+            size="sm"
+            className="text-left justify-start h-auto p-3 text-xs whitespace-normal"
+            onClick={() => onPromptClick(prompt)}
+          >
+            {prompt}
+          </Button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+export default function AiChat() {
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [inputValue, setInputValue] = useState("");
+  const [sessionId] = useState(() => `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const { toast } = useToast();
+
+  const { data: aiHealth } = useQuery({
+    queryKey: ["/api/ai/health"],
+    refetchInterval: 30000, // Check every 30 seconds
+  });
+
+  const chatMutation = useMutation({
+    mutationFn: async (message: string) => {
+      const response = await apiRequest("POST", "/api/ai/chat", {
+        message,
+        sessionId,
+      });
+      return response.json();
+    },
+    onSuccess: (data) => {
+      const aiMessage: Message = {
+        role: "assistant",
+        content: data.response,
+        timestamp: new Date().toISOString(),
+      };
+      setMessages(prev => [...prev, aiMessage]);
+    },
+    onError: (error) => {
+      toast({
+        title: "AI Assistant Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
+
+  const handleSendMessage = (messageText?: string) => {
+    const text = messageText || inputValue.trim();
+    if (!text) return;
+
+    const userMessage: Message = {
+      role: "user",
+      content: text,
+      timestamp: new Date().toISOString(),
+    };
+
+    setMessages(prev => [...prev, userMessage]);
+    setInputValue("");
+    chatMutation.mutate(text);
+  };
+
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      handleSendMessage();
+    }
+  };
+
+  const isConnected = aiHealth?.status === "connected";
+  const hasPhiModel = aiHealth?.hasPhiModel;
+
+  return (
+    <div className="p-6 h-full">
+      <div className="max-w-6xl mx-auto h-full flex flex-col">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h1 className="text-3xl font-bold text-warm-gray">AI Study Companion</h1>
+            <p className="text-neutral-600 mt-1">
+              Your personal offline study assistant
+            </p>
+          </div>
+          <div className="flex items-center space-x-2">
+            <Badge 
+              variant={isConnected ? "default" : "destructive"}
+              className={isConnected ? "bg-green-100 text-green-700" : ""}
+            >
+              {isConnected ? (
+                <CheckCircle className="w-3 h-3 mr-1" />
+              ) : (
+                <AlertCircle className="w-3 h-3 mr-1" />
+              )}
+              {isConnected ? "AI Connected" : "AI Disconnected"}
+            </Badge>
+            {isConnected && !hasPhiModel && (
+              <Badge variant="destructive" className="text-xs">
+                Phi model not found
+              </Badge>
+            )}
+          </div>
+        </div>
+
+        {/* Connection Warning */}
+        {!isConnected && (
+          <Card className="mb-6 border-orange-200 bg-orange-50">
+            <CardContent className="p-4">
+              <div className="flex items-center space-x-2 text-orange-800">
+                <AlertCircle className="w-5 h-5" />
+                <div>
+                  <p className="font-medium">AI Assistant Unavailable</p>
+                  <p className="text-sm text-orange-700 mt-1">
+                    Make sure Ollama is running with the phi model. Run: <code className="bg-orange-100 px-1 rounded">ollama pull phi</code>
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        <div className="flex-1 grid grid-cols-1 lg:grid-cols-4 gap-6 min-h-0">
+          {/* Chat Area */}
+          <div className="lg:col-span-3 flex flex-col">
+            <Card className="flex-1 flex flex-col">
+              <CardHeader className="border-b">
+                <CardTitle className="flex items-center text-lg">
+                  <Bot className="w-5 h-5 mr-2 text-accent" />
+                  StudyCompanion
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="flex-1 flex flex-col p-0">
+                {/* Messages */}
+                <ScrollArea className="flex-1 p-4">
+                  <div className="space-y-4">
+                    {messages.length === 0 ? (
+                      <div className="text-center py-12">
+                        <Bot className="mx-auto h-12 w-12 text-neutral-400 mb-4" />
+                        <h3 className="text-lg font-medium text-neutral-600 mb-2">
+                          Hello! I'm your Study Companion
+                        </h3>
+                        <p className="text-neutral-500 max-w-md mx-auto">
+                          I'm here to help you with your studies. I can create study plans, 
+                          generate quizzes, summarize notes, and answer questions about your materials.
+                        </p>
+                      </div>
+                    ) : (
+                      messages.map((message, index) => (
+                        <MessageBubble key={index} message={message} />
+                      ))
+                    )}
+                    {chatMutation.isPending && (
+                      <div className="flex items-center space-x-2 text-neutral-500">
+                        <Bot className="w-4 h-4" />
+                        <div className="flex space-x-1">
+                          <div className="w-2 h-2 bg-current rounded-full animate-bounce"></div>
+                          <div className="w-2 h-2 bg-current rounded-full animate-bounce" style={{ animationDelay: "0.1s" }}></div>
+                          <div className="w-2 h-2 bg-current rounded-full animate-bounce" style={{ animationDelay: "0.2s" }}></div>
+                        </div>
+                      </div>
+                    )}
+                    <div ref={messagesEndRef} />
+                  </div>
+                </ScrollArea>
+
+                {/* Input */}
+                <div className="border-t p-4">
+                  <div className="flex space-x-2">
+                    <Input
+                      value={inputValue}
+                      onChange={(e) => setInputValue(e.target.value)}
+                      onKeyPress={handleKeyPress}
+                      placeholder={isConnected ? "Ask me anything about your studies..." : "AI assistant is offline"}
+                      disabled={chatMutation.isPending || !isConnected}
+                      className="flex-1"
+                    />
+                    <Button
+                      onClick={() => handleSendMessage()}
+                      disabled={!inputValue.trim() || chatMutation.isPending || !isConnected}
+                      className="bg-primary hover:bg-primary/90"
+                    >
+                      <Send className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Sidebar */}
+          <div className="space-y-6">
+            {/* Quick Prompts */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">Quick Prompts</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <QuickPrompts onPromptClick={handleSendMessage} />
+              </CardContent>
+            </Card>
+
+            {/* AI Capabilities */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">I can help with:</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3 text-sm">
+                  <div className="flex items-start space-x-2">
+                    <div className="w-1.5 h-1.5 bg-primary rounded-full mt-2"></div>
+                    <span>Creating personalized study plans</span>
+                  </div>
+                  <div className="flex items-start space-x-2">
+                    <div className="w-1.5 h-1.5 bg-primary rounded-full mt-2"></div>
+                    <span>Generating quiz questions</span>
+                  </div>
+                  <div className="flex items-start space-x-2">
+                    <div className="w-1.5 h-1.5 bg-primary rounded-full mt-2"></div>
+                    <span>Summarizing your notes</span>
+                  </div>
+                  <div className="flex items-start space-x-2">
+                    <div className="w-1.5 h-1.5 bg-primary rounded-full mt-2"></div>
+                    <span>Explaining complex topics</span>
+                  </div>
+                  <div className="flex items-start space-x-2">
+                    <div className="w-1.5 h-1.5 bg-primary rounded-full mt-2"></div>
+                    <span>Study motivation & tips</span>
+                  </div>
+                  <div className="flex items-start space-x-2">
+                    <div className="w-1.5 h-1.5 bg-primary rounded-full mt-2"></div>
+                    <span>Finding relevant materials</span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}

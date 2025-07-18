@@ -1,0 +1,359 @@
+import type { Express } from "express";
+import { createServer, type Server } from "http";
+import { storage } from "./storage";
+import { z } from "zod";
+import { insertUnitSchema, insertDocumentSchema, insertNoteSchema, insertAssignmentSchema } from "@shared/schema";
+
+export async function registerRoutes(app: Express): Promise<Server> {
+  
+  // Users
+  app.get("/api/users/current", async (req, res) => {
+    try {
+      const user = await storage.getUserByUsername("mitchell");
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      res.json(user);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to get user", error: error instanceof Error ? error.message : "Unknown error" });
+    }
+  });
+
+  app.patch("/api/users/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const updateData = req.body;
+      const user = await storage.updateUser(id, updateData);
+      res.json(user);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to update user", error: error instanceof Error ? error.message : "Unknown error" });
+    }
+  });
+
+  // Units
+  app.get("/api/units", async (req, res) => {
+    try {
+      const units = await storage.getUnits();
+      res.json(units);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to get units", error: error instanceof Error ? error.message : "Unknown error" });
+    }
+  });
+
+  app.get("/api/units/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const unit = await storage.getUnit(id);
+      if (!unit) {
+        return res.status(404).json({ message: "Unit not found" });
+      }
+      res.json(unit);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to get unit", error: error instanceof Error ? error.message : "Unknown error" });
+    }
+  });
+
+  app.post("/api/units", async (req, res) => {
+    try {
+      const validatedData = insertUnitSchema.parse(req.body);
+      const unit = await storage.createUnit(validatedData);
+      res.status(201).json(unit);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to create unit", error: error instanceof Error ? error.message : "Unknown error" });
+    }
+  });
+
+  app.patch("/api/units/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const updateData = req.body;
+      const unit = await storage.updateUnit(id, updateData);
+      res.json(unit);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to update unit", error: error instanceof Error ? error.message : "Unknown error" });
+    }
+  });
+
+  app.delete("/api/units/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const deleted = await storage.deleteUnit(id);
+      if (!deleted) {
+        return res.status(404).json({ message: "Unit not found" });
+      }
+      res.json({ message: "Unit deleted successfully" });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to delete unit", error: error instanceof Error ? error.message : "Unknown error" });
+    }
+  });
+
+  // Documents
+  app.get("/api/documents", async (req, res) => {
+    try {
+      const unitId = req.query.unitId ? parseInt(req.query.unitId as string) : undefined;
+      let documents;
+      if (unitId) {
+        documents = await storage.getDocumentsByUnit(unitId);
+      } else {
+        documents = await storage.getDocuments();
+      }
+      res.json(documents);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to get documents", error: error instanceof Error ? error.message : "Unknown error" });
+    }
+  });
+
+  app.post("/api/documents", async (req, res) => {
+    try {
+      const validatedData = insertDocumentSchema.parse(req.body);
+      const document = await storage.createDocument(validatedData);
+      res.status(201).json(document);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to create document", error: error instanceof Error ? error.message : "Unknown error" });
+    }
+  });
+
+  app.patch("/api/documents/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const updateData = req.body;
+      const document = await storage.updateDocument(id, updateData);
+      res.json(document);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to update document", error: error instanceof Error ? error.message : "Unknown error" });
+    }
+  });
+
+  app.delete("/api/documents/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const deleted = await storage.deleteDocument(id);
+      if (!deleted) {
+        return res.status(404).json({ message: "Document not found" });
+      }
+      res.json({ message: "Document deleted successfully" });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to delete document", error: error instanceof Error ? error.message : "Unknown error" });
+    }
+  });
+
+  // Notes
+  app.get("/api/notes", async (req, res) => {
+    try {
+      const documentId = parseInt(req.query.documentId as string);
+      const notes = await storage.getNotesByDocument(documentId);
+      res.json(notes);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to get notes", error: error instanceof Error ? error.message : "Unknown error" });
+    }
+  });
+
+  app.post("/api/notes", async (req, res) => {
+    try {
+      const validatedData = insertNoteSchema.parse(req.body);
+      const note = await storage.createNote(validatedData);
+      res.status(201).json(note);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to create note", error: error instanceof Error ? error.message : "Unknown error" });
+    }
+  });
+
+  app.patch("/api/notes/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const updateData = req.body;
+      const note = await storage.updateNote(id, updateData);
+      res.json(note);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to update note", error: error instanceof Error ? error.message : "Unknown error" });
+    }
+  });
+
+  app.delete("/api/notes/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const deleted = await storage.deleteNote(id);
+      if (!deleted) {
+        return res.status(404).json({ message: "Note not found" });
+      }
+      res.json({ message: "Note deleted successfully" });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to delete note", error: error instanceof Error ? error.message : "Unknown error" });
+    }
+  });
+
+  // Assignments
+  app.get("/api/assignments", async (req, res) => {
+    try {
+      const assignments = await storage.getAssignments();
+      res.json(assignments);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to get assignments", error: error instanceof Error ? error.message : "Unknown error" });
+    }
+  });
+
+  app.post("/api/assignments", async (req, res) => {
+    try {
+      const validatedData = insertAssignmentSchema.parse(req.body);
+      const assignment = await storage.createAssignment(validatedData);
+      res.status(201).json(assignment);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to create assignment", error: error instanceof Error ? error.message : "Unknown error" });
+    }
+  });
+
+  app.patch("/api/assignments/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const updateData = req.body;
+      const assignment = await storage.updateAssignment(id, updateData);
+      res.json(assignment);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to update assignment", error: error instanceof Error ? error.message : "Unknown error" });
+    }
+  });
+
+  app.delete("/api/assignments/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const deleted = await storage.deleteAssignment(id);
+      if (!deleted) {
+        return res.status(404).json({ message: "Assignment not found" });
+      }
+      res.json({ message: "Assignment deleted successfully" });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to delete assignment", error: error instanceof Error ? error.message : "Unknown error" });
+    }
+  });
+
+  // Study Plans
+  app.get("/api/study-plans", async (req, res) => {
+    try {
+      const dateParam = req.query.date as string;
+      if (dateParam) {
+        const date = new Date(dateParam);
+        const plan = await storage.getStudyPlanByDate(date);
+        return res.json(plan || null);
+      }
+      
+      const plans = await storage.getStudyPlans();
+      res.json(plans);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to get study plans", error: error instanceof Error ? error.message : "Unknown error" });
+    }
+  });
+
+  app.post("/api/study-plans", async (req, res) => {
+    try {
+      const plan = await storage.createStudyPlan(req.body);
+      res.status(201).json(plan);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to create study plan", error: error instanceof Error ? error.message : "Unknown error" });
+    }
+  });
+
+  // AI Chat
+  app.post("/api/ai/chat", async (req, res) => {
+    try {
+      const { message, sessionId } = req.body;
+      
+      // Call Ollama API
+      const ollamaResponse = await fetch("http://localhost:11434/api/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: "phi",
+          prompt: message,
+          system: `You are StudyCompanion, a private offline assistant for a single user. 
+You must:
+1. Never overwrite user summaries or notes without their approval.
+2. Help generate study plans based on deadlines, topic size, and pace level.
+3. Remind the user to rest when study time is excessive (especially weekends).
+4. Generate summaries and quizzes upon request only.(But sometimes suggest and wait for approval or decline)
+5. Match assignment/CAT questions to notes using local embedding.
+6. Always be kind, encouraging, and use concise explanations.
+7. Never connect to the internet, always work locally unless asked by user.`,
+          stream: false
+        }),
+      });
+
+      if (!ollamaResponse.ok) {
+        throw new Error(`Ollama API error: ${ollamaResponse.statusText}`);
+      }
+
+      const aiResponse = await ollamaResponse.json();
+      
+      // Save chat to storage
+      let chat = await storage.getAiChatBySession(sessionId);
+      const newMessage = {
+        role: "user",
+        content: message,
+        timestamp: new Date().toISOString(),
+      };
+      const aiMessage = {
+        role: "assistant",
+        content: aiResponse.response,
+        timestamp: new Date().toISOString(),
+      };
+
+      if (chat) {
+        const messages = [...(chat.messages as any[]), newMessage, aiMessage];
+        chat = await storage.updateAiChat(chat.id, { messages });
+      } else {
+        chat = await storage.createAiChat({
+          sessionId,
+          messages: [newMessage, aiMessage],
+        });
+      }
+
+      res.json({ 
+        response: aiResponse.response,
+        chat: chat
+      });
+    } catch (error) {
+      res.status(500).json({ 
+        message: "Failed to get AI response. Make sure Ollama is running with the phi model.", 
+        error: error instanceof Error ? error.message : "Unknown error" 
+      });
+    }
+  });
+
+  // Health check for Ollama
+  app.get("/api/ai/health", async (req, res) => {
+    try {
+      const response = await fetch("http://localhost:11434/api/tags");
+      if (response.ok) {
+        const models = await response.json();
+        const hasPhiModel = models.models?.some((model: any) => model.name.includes("phi"));
+        res.json({ 
+          status: "connected", 
+          hasPhiModel,
+          message: hasPhiModel ? "Ollama is ready" : "Ollama connected but phi model not found"
+        });
+      } else {
+        res.status(503).json({ status: "error", message: "Ollama not responding" });
+      }
+    } catch (error) {
+      res.status(503).json({ 
+        status: "disconnected", 
+        message: "Cannot connect to Ollama. Make sure it's running on localhost:11434",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
+  const httpServer = createServer(app);
+  return httpServer;
+}
