@@ -1,16 +1,20 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Download, FileText } from "lucide-react";
+import { Download, FileText, ArrowLeft } from "lucide-react";
+import { useLocation } from "wouter";
 
 interface DOCXViewerProps {
   fileUrl: string;
   filename: string;
+  documentId?: string;
+  unitId?: number;
 }
 
-export default function DOCXViewer({ fileUrl, filename }: DOCXViewerProps) {
+export default function DOCXViewer({ fileUrl, filename, documentId, unitId }: DOCXViewerProps) {
   const [htmlContent, setHtmlContent] = useState<string>("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [, setLocation] = useLocation();
 
   useEffect(() => {
     const loadDOCX = async () => {
@@ -57,6 +61,14 @@ export default function DOCXViewer({ fileUrl, filename }: DOCXViewerProps) {
     link.click();
   };
 
+  const goBack = () => {
+    if (unitId) {
+      setLocation(`/units/${unitId}/documents`);
+    } else {
+      setLocation("/units");
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-96">
@@ -88,6 +100,10 @@ export default function DOCXViewer({ fileUrl, filename }: DOCXViewerProps) {
       {/* DOCX Controls */}
       <div className="bg-neutral-100 border-b border-neutral-200 p-4 flex items-center justify-between">
         <div className="flex items-center space-x-4">
+          <Button variant="outline" size="sm" onClick={goBack}>
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Back
+          </Button>
           <FileText className="w-5 h-5 text-blue-600" />
           <span className="font-medium text-neutral-800">{filename}</span>
         </div>

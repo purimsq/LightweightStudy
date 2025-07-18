@@ -124,9 +124,18 @@ export default function DocumentViewer() {
               
               {/* Document Viewer */}
               {document.fileType === 'application/pdf' ? (
-                <PDFViewer fileUrl={document.filePath} />
+                <PDFViewer 
+                  fileUrl={document.filePath} 
+                  documentId={documentId.toString()}
+                  unitId={document.unitId}
+                />
               ) : document.fileType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ? (
-                <DOCXViewer fileUrl={document.filePath} filename={document.filename} />
+                <DOCXViewer 
+                  fileUrl={document.filePath} 
+                  filename={document.filename}
+                  documentId={documentId.toString()}
+                  unitId={document.unitId}
+                />
               ) : (
                 <div className="bg-white shadow-lg border border-neutral-200 rounded-lg min-h-[800px]">
                   <div className="bg-white p-12 min-h-[800px]" style={{ 

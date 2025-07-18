@@ -1,12 +1,15 @@
 import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
-import { ChevronLeft, ChevronRight, ZoomIn, ZoomOut } from "lucide-react";
+import { ChevronLeft, ChevronRight, ZoomIn, ZoomOut, ArrowLeft } from "lucide-react";
+import { useLocation } from "wouter";
 
 interface PDFViewerProps {
   fileUrl: string;
+  documentId?: string;
+  unitId?: number;
 }
 
-export default function PDFViewer({ fileUrl }: PDFViewerProps) {
+export default function PDFViewer({ fileUrl, documentId, unitId }: PDFViewerProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [pdf, setPdf] = useState<any>(null);
   const [currentPage, setCurrentPage] = useState(1);
@@ -14,6 +17,7 @@ export default function PDFViewer({ fileUrl }: PDFViewerProps) {
   const [scale, setScale] = useState(1.5);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [, setLocation] = useLocation();
 
   useEffect(() => {
     const loadPDF = async () => {
@@ -95,6 +99,14 @@ export default function PDFViewer({ fileUrl }: PDFViewerProps) {
     setScale(scale / 1.2);
   };
 
+  const goBack = () => {
+    if (unitId) {
+      setLocation(`/units/${unitId}/documents`);
+    } else {
+      setLocation("/units");
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-96">
@@ -122,6 +134,10 @@ export default function PDFViewer({ fileUrl }: PDFViewerProps) {
       {/* PDF Controls */}
       <div className="bg-neutral-100 border-b border-neutral-200 p-4 flex items-center justify-between">
         <div className="flex items-center space-x-4">
+          <Button variant="outline" size="sm" onClick={goBack}>
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Back
+          </Button>
           <div className="flex items-center space-x-2">
             <Button
               variant="outline"
