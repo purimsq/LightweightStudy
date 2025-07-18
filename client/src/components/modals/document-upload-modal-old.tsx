@@ -4,9 +4,9 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card } from "@/components/ui/card";
 import { CloudUpload, X, File, CheckCircle } from "lucide-react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
-import { queryClient } from "@/lib/queryClient";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 
 interface DocumentUploadModalProps {
   isOpen: boolean;
@@ -17,7 +17,6 @@ export default function DocumentUploadModal({ isOpen, onClose }: DocumentUploadM
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [selectedUnit, setSelectedUnit] = useState<string>("");
   const [isDragging, setIsDragging] = useState(false);
-  const [isUploading, setIsUploading] = useState(false);
   const { toast } = useToast();
 
   const { data: units = [] } = useQuery({
@@ -27,7 +26,6 @@ export default function DocumentUploadModal({ isOpen, onClose }: DocumentUploadM
   const handleFileUpload = async () => {
     if (!selectedUnit || selectedFiles.length === 0) return;
 
-    setIsUploading(true);
     try {
       for (const file of selectedFiles) {
         const formData = new FormData();
@@ -57,8 +55,6 @@ export default function DocumentUploadModal({ isOpen, onClose }: DocumentUploadM
         description: error instanceof Error ? error.message : "Unknown error",
         variant: "destructive"
       });
-    } finally {
-      setIsUploading(false);
     }
   };
 
@@ -66,7 +62,6 @@ export default function DocumentUploadModal({ isOpen, onClose }: DocumentUploadM
     setSelectedFiles([]);
     setSelectedUnit("");
     setIsDragging(false);
-    setIsUploading(false);
     onClose();
   };
 
@@ -100,14 +95,6 @@ export default function DocumentUploadModal({ isOpen, onClose }: DocumentUploadM
       file.type === "application/msword"
     );
     
-    if (validFiles.length !== files.length) {
-      toast({
-        title: "Invalid file type",
-        description: "Please select only PDF or Word documents",
-        variant: "destructive",
-      });
-    }
-    
     setSelectedFiles(prev => [...prev, ...validFiles]);
   };
 
@@ -116,8 +103,7 @@ export default function DocumentUploadModal({ isOpen, onClose }: DocumentUploadM
     setIsDragging(true);
   };
 
-  const handleDragLeave = (event: React.DragEvent) => {
-    event.preventDefault();
+  const handleDragLeave = () => {
     setIsDragging(false);
   };
 
@@ -126,18 +112,26 @@ export default function DocumentUploadModal({ isOpen, onClose }: DocumentUploadM
   };
 
   const handleUpload = () => {
-    handleFileUpload();
+    if (!selectedUnit || selectedFiles.length === 0) return;
+    
+    uploadMutation.mutate({ 
+      files: selectedFiles, 
+      unitId: parseInt(selectedUnit) 
+    });
   };
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle className="text-neutral-800">Upload Documents</DialogTitle>
+          <DialogTitle className="flex items-center space-x-2">
+            <CloudUpload className="w-5 h-5" />
+            <span>Upload Documents</span>
+          </DialogTitle>
         </DialogHeader>
-        
+
         <div className="space-y-6">
-          {/* File Drop Zone */}
+          {/* Drag and Drop Area */}
           <Card
             className={`border-2 border-dashed p-8 text-center transition-colors cursor-pointer ${
               isDragging 
@@ -220,24 +214,20 @@ export default function DocumentUploadModal({ isOpen, onClose }: DocumentUploadM
               variant="outline" 
               onClick={handleClose}
               className="flex-1"
-              disabled={isUploading}
             >
               Cancel
             </Button>
             <Button
               onClick={handleUpload}
-              disabled={!selectedUnit || selectedFiles.length === 0 || isUploading}
+              disabled={!selectedUnit || selectedFiles.length === 0 || uploadMutation.isPending}
               className="flex-1 bg-primary hover:bg-primary/90"
             >
-              {isUploading ? (
-                <div className="flex items-center">
-                  <div className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full mr-2"></div>
-                  Uploading...
-                </div>
+              {uploadMutation.isPending ? (
+                "Uploading..."
               ) : (
                 <>
                   <CheckCircle className="w-4 h-4 mr-2" />
-                  Upload Documents
+                  Upload
                 </>
               )}
             </Button>

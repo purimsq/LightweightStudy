@@ -5,6 +5,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { ArrowLeft, Download, BookOpen, FileText, Eye } from "lucide-react";
 import { useState } from "react";
 import type { Document } from "@shared/schema";
+import PDFViewer from "@/components/viewers/pdf-viewer";
+import DOCXViewer from "@/components/viewers/docx-viewer";
 
 export default function DocumentViewer() {
   const [location, setLocation] = useLocation();
@@ -120,38 +122,31 @@ export default function DocumentViewer() {
                 </div>
               </div>
               
-              {/* Full Document Content - Word Processor Style */}
-              <div className="bg-white shadow-lg border border-neutral-200 rounded-lg min-h-[800px]">
-                {/* Document Paper */}
-                <div className="bg-white p-12 min-h-[800px]" style={{ 
-                  fontFamily: 'Georgia, "Times New Roman", serif',
-                  lineHeight: '1.6',
-                  fontSize: '16px'
-                }}>
-                  <div 
-                    className="text-neutral-900 whitespace-pre-wrap"
-                    style={{
-                      wordWrap: 'break-word',
-                      hyphens: 'auto',
-                      textAlign: 'justify'
-                    }}
-                    dangerouslySetInnerHTML={{
-                      __html: document.extractedText
-                        .replace(/\n\n/g, '</p><p class="mb-4">')
-                        .replace(/\n/g, '<br>')
-                        .replace(/^\s*/, '<p class="mb-4">')
-                        .replace(/\s*$/, '</p>')
-                        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-                        .replace(/\*(.*?)\*/g, '<em>$1</em>')
-                        .replace(/^#\s+(.+)$/gm, '<h1 class="text-2xl font-bold mb-4 mt-6">$1</h1>')
-                        .replace(/^##\s+(.+)$/gm, '<h2 class="text-xl font-bold mb-3 mt-5">$1</h2>')
-                        .replace(/^###\s+(.+)$/gm, '<h3 class="text-lg font-bold mb-2 mt-4">$1</h3>')
-                        .replace(/^-\s+(.+)$/gm, '<li class="ml-4">• $1</li>')
-                        .replace(/^(\d+\.)\s+(.+)$/gm, '<li class="ml-4">$1 $2</li>')
-                    }}
-                  />
+              {/* Document Viewer */}
+              {document.fileType === 'application/pdf' ? (
+                <PDFViewer fileUrl={document.filePath} />
+              ) : document.fileType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ? (
+                <DOCXViewer fileUrl={document.filePath} filename={document.filename} />
+              ) : (
+                <div className="bg-white shadow-lg border border-neutral-200 rounded-lg min-h-[800px]">
+                  <div className="bg-white p-12 min-h-[800px]" style={{ 
+                    fontFamily: 'Georgia, "Times New Roman", serif',
+                    lineHeight: '1.6',
+                    fontSize: '16px'
+                  }}>
+                    <div 
+                      className="text-neutral-900 whitespace-pre-wrap"
+                      style={{
+                        wordWrap: 'break-word',
+                        hyphens: 'auto',
+                        textAlign: 'justify'
+                      }}
+                    >
+                      {document.extractedText}
+                    </div>
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
           ) : (
             <div className="text-center py-24">

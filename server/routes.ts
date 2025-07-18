@@ -3,6 +3,45 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { z } from "zod";
 import { insertUnitSchema, insertDocumentSchema, insertNoteSchema, insertAssignmentSchema } from "@shared/schema";
+import multer from "multer";
+import path from "path";
+import fs from "fs";
+
+// Create uploads directory if it doesn't exist
+const uploadsDir = path.join(process.cwd(), 'uploads');
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir, { recursive: true });
+}
+
+// Configure multer for file uploads
+const storage_multer = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, uploadsDir);
+  },
+  filename: (req, file, cb) => {
+    // Keep original filename with timestamp to avoid conflicts
+    const timestamp = Date.now();
+    const ext = path.extname(file.originalname);
+    const name = path.basename(file.originalname, ext);
+    cb(null, `${name}_${timestamp}${ext}`);
+  }
+});
+
+const upload = multer({ 
+  storage: storage_multer,
+  fileFilter: (req, file, cb) => {
+    // Allow PDF and DOCX files
+    const allowedTypes = ['application/pdf', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
+    if (allowedTypes.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only PDF and DOCX files are allowed'));
+    }
+  },
+  limits: {
+    fileSize: 50 * 1024 * 1024 // 50MB limit
+  }
+});
 
 export async function registerRoutes(app: Express): Promise<Server> {
   
@@ -119,16 +158,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/documents", async (req, res) => {
+  app.post("/api/documents", upload.single('file'), async (req, res) => {
     try {
-      const validatedData = insertDocumentSchema.parse(req.body);
-      const document = await storage.createDocument(validatedData);
+      if (!req.file) {
+        return res.status(400).json({ message: "No file uploaded" });
+      }
+
+      const { unitId } = req.body;
+      if (!unitId) {
+        return res.status(400).json({ message: "Unit ID is required" });
+      }
+
+      const documentData = {
+        unitId: parseInt(unitId),
+        filename: req.file.originalname,
+        originalName: req.file.originalname,
+        fileType: req.file.mimetype,
+        filePath: `/uploads/${req.file.filename}`,
+        fileSize: req.file.size,
+        extractedText: `Document uploaded: ${req.file.originalname}
+File type: ${req.file.mimetype}
+Size: ${(req.file.size / 1024).toFixed(2)} KB
+
+This document has been uploaded and is ready for viewing. The content will be displayed using the appropriate viewer based on the file type.`,
+        summary: null,
+        embeddings: null,
+      };
+
+      const document = await storage.createDocument(documentData);
       res.status(201).json(document);
     } catch (error) {
-      if (error instanceof z.ZodError) {
-        return res.status(400).json({ message: "Invalid data", errors: error.errors });
-      }
-      res.status(500).json({ message: "Failed to create document", error: error instanceof Error ? error.message : "Unknown error" });
+      res.status(500).json({ message: "Failed to upload document", error: error instanceof Error ? error.message : "Unknown error" });
     }
   });
 
@@ -371,6 +431,25 @@ You must:
         error: error instanceof Error ? error.message : "Unknown error"
       });
     }
+  });
+
+  // Serve uploaded files
+  app.use('/uploads', (req, res, next) => {
+    res.header('Access-Control-Allow-Origin', '*');
+    res.header('Cross-Origin-Resource-Policy', 'cross-origin');
+    next();
+  });
+  
+  // Static file serving for uploads
+  app.get('/uploads/:filename', (req, res) => {
+    const filename = req.params.filename;
+    const filePath = path.join(uploadsDir, filename);
+    
+    if (!fs.existsSync(filePath)) {
+      return res.status(404).json({ message: 'File not found' });
+    }
+    
+    res.sendFile(filePath);
   });
 
   const httpServer = createServer(app);
