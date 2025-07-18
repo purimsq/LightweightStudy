@@ -34,7 +34,7 @@ export default function DocumentUploadModal({ isOpen, onClose }: DocumentUploadM
         formData.append('file', file);
         formData.append('unitId', selectedUnit);
 
-        const response = await fetch('/api/documents', {
+        const response = await fetch('/api/documents/upload', {
           method: 'POST',
           body: formData,
         });

@@ -158,7 +158,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/documents", upload.single('file'), async (req, res) => {
+  // File upload endpoint
+  app.post("/api/documents/upload", upload.single('file'), async (req, res) => {
     try {
       if (!req.file) {
         return res.status(400).json({ message: "No file uploaded" });
@@ -189,6 +190,20 @@ This document has been uploaded and is ready for viewing. The content will be di
       res.status(201).json(document);
     } catch (error) {
       res.status(500).json({ message: "Failed to upload document", error: error instanceof Error ? error.message : "Unknown error" });
+    }
+  });
+
+  // JSON document creation endpoint
+  app.post("/api/documents", async (req, res) => {
+    try {
+      const validatedData = insertDocumentSchema.parse(req.body);
+      const document = await storage.createDocument(validatedData);
+      res.status(201).json(document);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to create document", error: error instanceof Error ? error.message : "Unknown error" });
     }
   });
 
