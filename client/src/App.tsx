@@ -8,6 +8,7 @@ import TopBar from "@/components/layout/top-bar";
 import Dashboard from "@/pages/dashboard";
 import Units from "@/pages/units";
 import UnitDocuments from "@/pages/unit-documents";
+import DocumentViewer from "@/pages/document-viewer";
 import Assignments from "@/pages/assignments";
 import StudyPlan from "@/pages/study-plan";
 import AiChat from "@/pages/ai-chat";
@@ -46,6 +47,7 @@ function Router() {
         <Route path="/dashboard" component={Dashboard} />
         <Route path="/units" component={Units} />
         <Route path="/units/:id/documents" component={UnitDocuments} />
+        <Route path="/documents/:id" component={DocumentViewer} />
         <Route path="/assignments" component={Assignments} />
         <Route path="/study-plan" component={StudyPlan} />
         <Route path="/ai-chat" component={AiChat} />

@@ -99,6 +99,7 @@ export default function UnitDocuments() {
 }
 
 function DocumentCard({ document }: { document: Document }) {
+  const [, setLocation] = useLocation();
   const formatFileSize = (bytes: number) => {
     if (bytes === 0) return "0 Bytes";
     const k = 1024;
@@ -129,7 +130,11 @@ function DocumentCard({ document }: { document: Document }) {
             </div>
           </div>
           <div className="flex items-center space-x-2">
-            <Button variant="outline" size="sm">
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={() => setLocation(`/documents/${document.id}`)}
+            >
               <Eye className="w-4 h-4 mr-1" />
               View
             </Button>

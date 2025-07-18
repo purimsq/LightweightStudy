@@ -106,6 +106,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get("/api/documents/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const document = await storage.getDocument(id);
+      if (!document) {
+        return res.status(404).json({ message: "Document not found" });
+      }
+      res.json(document);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to get document", error: error instanceof Error ? error.message : "Unknown error" });
+    }
+  });
+
   app.post("/api/documents", async (req, res) => {
     try {
       const validatedData = insertDocumentSchema.parse(req.body);

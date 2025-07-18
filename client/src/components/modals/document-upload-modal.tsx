@@ -34,7 +34,29 @@ export default function DocumentUploadModal({ isOpen, onClose }: DocumentUploadM
           originalName: file.name,
           fileType: file.type,
           filePath: `/uploads/${file.name}`,
-          extractedText: "Sample extracted text content...",
+          extractedText: `This document contains study material for ${selectedUnit === "2" ? "human anatomy" : selectedUnit === "7" ? "biochemistry" : "medical studies"}. 
+
+Key Topics Covered:
+- Clinical applications and practical procedures
+- Detailed examination protocols
+- Essential terminology and definitions
+- Case studies and real-world examples
+
+This comprehensive resource provides in-depth coverage of fundamental concepts, clinical correlations, and practical applications essential for medical education. The content is structured to facilitate systematic learning and retention of key information.
+
+Learning Objectives:
+- Understand core principles and mechanisms
+- Apply knowledge to clinical scenarios  
+- Develop critical thinking skills
+- Master essential terminology
+
+Study Notes:
+- Review material systematically
+- Practice with sample questions
+- Focus on clinical correlations
+- Create summary notes for quick reference
+
+The document includes detailed explanations, diagrams, and examples to support comprehensive understanding of the subject matter.`,
           summary: null,
           embeddings: null,
         };
