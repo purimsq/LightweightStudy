@@ -16,21 +16,19 @@ export default function TopBar() {
 
   return (
     <div className="bg-gradient-to-br from-teal-50 to-blue-50 border-b border-neutral-200 shadow-sm">
-      <header className="max-w-6xl mx-auto px-6 py-8">
-        <div className="flex flex-col items-center relative min-h-[160px]">
+      <header className="max-w-6xl mx-auto px-6 py-4 relative">
+        <div className="text-center py-2">
           {/* Centered Motivational Quote */}
-          <div className="flex-1 text-center">
-            <blockquote className="text-2xl font-bold text-neutral-800 italic">
-              "Discipline is choosing between what you want and what you want most"
-            </blockquote>
-            <p className="text-lg text-neutral-600 mt-2">
-              When you lack motivation you can always choose discipline
-            </p>
-          </div>
-          {/* By MyLo in orange - positioned at bottom */}
-          <div className="text-xs font-medium text-orange-500 mt-16">
-            by MyLo
-          </div>
+          <blockquote className="text-xl font-bold text-neutral-800 italic">
+            "Discipline is choosing between what you want and what you want most"
+          </blockquote>
+          <p className="text-base text-neutral-600 mt-1">
+            When you lack motivation you can always choose discipline
+          </p>
+        </div>
+        {/* By MyLo in orange - positioned at bottom left */}
+        <div className="absolute bottom-2 left-6 text-xs font-medium text-orange-500">
+          by MyLo
         </div>
       </header>
     </div>
