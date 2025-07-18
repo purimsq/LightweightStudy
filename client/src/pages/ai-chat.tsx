@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Send, Bot, User, AlertCircle, CheckCircle, Lightbulb, Shield, Zap } from "lucide-react";
+import { Send, Bot, User, AlertCircle, CheckCircle, Lightbulb, Shield, Zap, Coffee } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
@@ -216,29 +216,28 @@ export default function AiChat() {
           </Card>
         )}
 
-        <div className="flex-1 grid grid-cols-1 lg:grid-cols-4 gap-6 min-h-0">
+        <div className="flex-1 grid grid-cols-1 lg:grid-cols-3 gap-4 min-h-0">
           {/* Chat Area */}
-          <div className="lg:col-span-3 flex flex-col">
-            <Card className="flex-1 flex flex-col">
-              <CardHeader className="border-b">
-                <CardTitle className="flex items-center text-lg">
-                  <Bot className="w-5 h-5 mr-2 text-accent" />
-                  StudyCompanion
+          <div className="lg:col-span-2 flex flex-col">
+            <Card className="flex-1 flex flex-col max-h-[500px]">
+              <CardHeader className="border-b py-2">
+                <CardTitle className="flex items-center text-base">
+                  <Bot className="w-4 h-4 mr-2 text-emerald-600" />
+                  StudyCompanion Chat
                 </CardTitle>
               </CardHeader>
               <CardContent className="flex-1 flex flex-col p-0">
                 {/* Messages */}
-                <ScrollArea className="flex-1 p-4">
-                  <div className="space-y-4">
+                <ScrollArea className="flex-1 p-3 max-h-[300px]">
+                  <div className="space-y-3">
                     {messages.length === 0 ? (
-                      <div className="text-center py-12">
-                        <Bot className="mx-auto h-12 w-12 text-neutral-400 mb-4" />
-                        <h3 className="text-lg font-medium text-neutral-600 mb-2">
-                          Hello! I'm your Study Companion
+                      <div className="text-center py-6">
+                        <Bot className="mx-auto h-8 w-8 text-neutral-400 mb-2" />
+                        <h3 className="text-base font-medium text-neutral-600 mb-1">
+                          Ready to help with your studies!
                         </h3>
-                        <p className="text-neutral-500 max-w-md mx-auto">
-                          I'm here to help you with your studies. I can create study plans, 
-                          generate quizzes, summarize notes, and answer questions about your materials.
+                        <p className="text-neutral-500 text-xs max-w-sm mx-auto">
+                          I have full access to your app and can help with documents, notes, quizzes, and more.
                         </p>
                       </div>
                     ) : (
@@ -285,47 +284,55 @@ export default function AiChat() {
           </div>
 
           {/* Sidebar */}
-          <div className="space-y-6">
+          <div className="space-y-4">
             {/* Quick Prompts */}
             <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">Quick Prompts</CardTitle>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base">Quick Actions</CardTitle>
               </CardHeader>
-              <CardContent>
+              <CardContent className="pt-0">
                 <QuickPrompts onPromptClick={handleSendMessage} />
+              </CardContent>
+            </Card>
+
+            {/* Break Reminder Status */}
+            <Card className="bg-emerald-50 border-emerald-200">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base flex items-center text-emerald-800">
+                  <Coffee className="w-4 h-4 mr-2" />
+                  Break Reminders
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="pt-0">
+                <div className="text-xs text-emerald-700 space-y-1">
+                  <div className="flex items-center">
+                    <CheckCircle className="w-3 h-3 mr-1" />
+                    Active & Automatic
+                  </div>
+                  <div>Every 45 min (weekdays)</div>
+                  <div>Every 90 min (weekends)</div>
+                  <div className="text-emerald-600 font-medium mt-2">
+                    ✨ Ollama will remind you!
+                  </div>
+                </div>
               </CardContent>
             </Card>
 
             {/* AI Capabilities */}
             <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">I can help with:</CardTitle>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base">Full App Access</CardTitle>
               </CardHeader>
-              <CardContent>
-                <div className="space-y-3 text-sm">
-                  <div className="flex items-start space-x-2">
-                    <div className="w-1.5 h-1.5 bg-primary rounded-full mt-2"></div>
-                    <span>Creating personalized study plans</span>
-                  </div>
-                  <div className="flex items-start space-x-2">
-                    <div className="w-1.5 h-1.5 bg-primary rounded-full mt-2"></div>
-                    <span>Generating quiz questions</span>
-                  </div>
-                  <div className="flex items-start space-x-2">
-                    <div className="w-1.5 h-1.5 bg-primary rounded-full mt-2"></div>
-                    <span>Summarizing your notes</span>
-                  </div>
-                  <div className="flex items-start space-x-2">
-                    <div className="w-1.5 h-1.5 bg-primary rounded-full mt-2"></div>
-                    <span>Explaining complex topics</span>
-                  </div>
-                  <div className="flex items-start space-x-2">
-                    <div className="w-1.5 h-1.5 bg-primary rounded-full mt-2"></div>
-                    <span>Study motivation & tips</span>
-                  </div>
-                  <div className="flex items-start space-x-2">
-                    <div className="w-1.5 h-1.5 bg-primary rounded-full mt-2"></div>
-                    <span>Finding relevant materials</span>
+              <CardContent className="pt-0">
+                <div className="space-y-2 text-xs text-neutral-600">
+                  <div>• All documents & notes</div>
+                  <div>• Quiz & summary generation</div>
+                  <div>• Study plan creation</div>
+                  <div>• Assignment management</div>
+                  <div>• Break reminders & wellness</div>
+                  <div>• Complete app control</div>
+                  <div className="text-emerald-600 font-medium mt-2">
+                    Will ask approval for changes
                   </div>
                 </div>
               </CardContent>

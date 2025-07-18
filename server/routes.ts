@@ -732,7 +732,7 @@ ${document.extractedText}`;
   // AI Chat
   app.post("/api/ai/chat", async (req, res) => {
     try {
-      const { message, sessionId } = req.body;
+      const { message, sessionId, automated = false } = req.body;
       
       // Call Ollama API
       const ollamaResponse = await fetch("http://localhost:11434/api/generate", {
@@ -770,10 +770,14 @@ BEHAVIOR:
 - Always work locally offline, never connect to internet
 - Be kind, encouraging, and use concise explanations
 - Help with study plans based on deadlines, topic size, and pace
-- Remind about breaks when study time is excessive
+- AUTOMATICALLY remind about breaks when study time is excessive (45 minutes weekdays, 90 minutes weekends)
 - Match assignments to notes using local knowledge
+- When sending automated break reminders, be caring and motivational
+- Suggest break activities like stretches, water, fresh air, or light snacks
 
-Remember: You have unlimited access to this app, but you must respect the user's control over their content.`,
+Remember: You have unlimited access to this app, but you must respect the user's control over their content.
+
+${automated ? 'NOTE: This is an automated break reminder. Be extra caring and encouraging about taking breaks for well-being.' : ''}`,
           stream: false
         }),
       });

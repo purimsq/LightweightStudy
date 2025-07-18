@@ -97,8 +97,15 @@ export function useStudySession() {
     }));
   }, [setSession]);
 
-  // Check if break reminder should be shown (every 2 hours = 120 minutes)
-  const shouldShowBreakReminder = session.studyTime >= 120 && session.studyTime % 120 === 0;
+  // Check if break reminder should be shown (every 45 minutes for regular study, 90 minutes for weekends)
+  const now = new Date();
+  const isWeekend = now.getDay() === 0 || now.getDay() === 6;
+  const breakInterval = isWeekend ? 90 : 45; // 90 minutes on weekends, 45 minutes on weekdays
+  
+  const shouldShowBreakReminder = session.studyTime > 0 && 
+    session.studyTime % breakInterval === 0 && 
+    session.studyTime >= breakInterval &&
+    session.isStudying;
 
   return {
     ...session,
