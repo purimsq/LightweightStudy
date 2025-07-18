@@ -169,17 +169,7 @@ export default function DOCXViewer({ fileUrl, filename, documentId, unitId }: DO
 
   return (
     <div className="bg-gradient-to-br from-slate-50 to-stone-100 min-h-screen relative">
-      {/* Floating Outline Button - Top Right Corner */}
-      <div className="fixed top-4 right-4 z-20">
-        <Button
-          onClick={() => setSidebarOpen(!sidebarOpen)}
-          className="bg-white/90 hover:bg-white border border-stone-200 text-stone-700 hover:text-stone-900 shadow-lg backdrop-blur-sm"
-          size="sm"
-        >
-          <Menu className="w-4 h-4 mr-2" />
-          Outline
-        </Button>
-      </div>
+      
 
       {/* Sidebar Overlay */}
       <div className={`fixed top-0 left-0 h-full bg-white border-r border-stone-200 shadow-xl transition-all duration-300 z-30 ${sidebarOpen ? 'w-80 translate-x-0' : 'w-80 -translate-x-full'}`}>
