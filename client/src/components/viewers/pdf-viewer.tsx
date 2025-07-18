@@ -20,15 +20,23 @@ export default function PDFViewer({ fileUrl, documentId, unitId }: PDFViewerProp
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [, setLocation] = useLocation();
 
-  // Keyboard navigation for PDF
+  // Keyboard navigation for PDF with throttling to prevent errors
   useEffect(() => {
+    let isNavigating = false;
+    
     const handleKeyDown = (event: KeyboardEvent) => {
+      if (isNavigating) return; // Prevent rapid navigation
+      
       if (event.key === 'ArrowLeft' && currentPage > 1) {
         event.preventDefault();
+        isNavigating = true;
         goToPrevPage();
+        setTimeout(() => { isNavigating = false; }, 200); // 200ms throttle
       } else if (event.key === 'ArrowRight' && currentPage < totalPages) {
         event.preventDefault();
+        isNavigating = true;
         goToNextPage();
+        setTimeout(() => { isNavigating = false; }, 200); // 200ms throttle
       }
     };
 

@@ -20,18 +20,44 @@ export default function DOCXViewer({ fileUrl, filename, documentId, unitId }: DO
 
   // Keyboard navigation for DOCX (smooth scrolling with arrow keys)
   useEffect(() => {
+    let scrollTimeout: NodeJS.Timeout | null = null;
+    
     const handleKeyDown = (event: KeyboardEvent) => {
+      // Only handle arrow keys when not typing in inputs or sidebar is closed
+      if ((event.target as HTMLElement)?.tagName === 'INPUT' || 
+          (event.target as HTMLElement)?.tagName === 'TEXTAREA') {
+        return;
+      }
+      
       if (event.key === 'ArrowUp') {
         event.preventDefault();
-        window.scrollBy({ top: -100, behavior: 'smooth' });
+        if (scrollTimeout) clearTimeout(scrollTimeout);
+        window.scrollBy({ top: -150, behavior: 'smooth' });
+        scrollTimeout = setTimeout(() => { scrollTimeout = null; }, 50);
       } else if (event.key === 'ArrowDown') {
         event.preventDefault();
-        window.scrollBy({ top: 100, behavior: 'smooth' });
+        if (scrollTimeout) clearTimeout(scrollTimeout);
+        window.scrollBy({ top: 150, behavior: 'smooth' });
+        scrollTimeout = setTimeout(() => { scrollTimeout = null; }, 50);
+      }
+    };
+
+    // Also handle keyup for continuous scrolling
+    const handleKeyUp = (event: KeyboardEvent) => {
+      if (scrollTimeout && (event.key === 'ArrowUp' || event.key === 'ArrowDown')) {
+        clearTimeout(scrollTimeout);
+        scrollTimeout = null;
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    window.addEventListener('keyup', handleKeyUp);
+    
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('keyup', handleKeyUp);
+      if (scrollTimeout) clearTimeout(scrollTimeout);
+    };
   }, []);
 
   useEffect(() => {
