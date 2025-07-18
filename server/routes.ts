@@ -501,7 +501,7 @@ This document has been uploaded and is ready for viewing. The content will be di
   app.post("/api/documents/:id/generate-quiz", async (req, res) => {
     try {
       const documentId = parseInt(req.params.id);
-      const { quizType = 'mcq', numberOfQuestions = 5 } = req.body;
+      const { questionTypes = ['mcq'], numberOfQuestions = 5 } = req.body;
       const document = await storage.getDocument(documentId);
       
       if (!document) {
@@ -512,87 +512,62 @@ This document has been uploaded and is ready for viewing. The content will be di
         return res.status(400).json({ message: "Document has no extracted text to create quiz from" });
       }
 
-      // Generate different prompts based on quiz type
-      let prompt = "";
-      let systemMessage = "You are an expert quiz generator. Create challenging but fair questions that test understanding of key concepts. Always respond with valid JSON only.";
+      if (!Array.isArray(questionTypes) || questionTypes.length === 0) {
+        return res.status(400).json({ message: "At least one question type must be selected" });
+      }
 
-      if (quizType === 'mcq') {
-        prompt = `Create a multiple-choice quiz with ${numberOfQuestions} questions based on the following document. Format your response as JSON with the following structure:
-{
-  "questions": [
-    {
+      // Generate prompt for custom question types
+      const questionsPerType = Math.ceil(numberOfQuestions / questionTypes.length);
+      let systemMessage = "You are an expert quiz generator. Create challenging but fair questions that test understanding of key concepts. Always respond with valid JSON only.";
+      
+      const questionTypePrompts = {
+        mcq: `{
       "id": 1,
       "type": "mcq",
       "question": "Question text here?",
       "options": ["Option A", "Option B", "Option C", "Option D"],
       "correctAnswer": 0,
       "explanation": "Explanation of the correct answer"
-    }
-  ]
-}`;
-      } else if (quizType === 'essay') {
-        prompt = `Create essay questions with ${numberOfQuestions} questions based on the following document. Format your response as JSON with the following structure:
-{
-  "questions": [
-    {
-      "id": 1,
+    }`,
+        essay: `{
+      "id": 2,
       "type": "essay",
       "question": "Detailed essay question here?",
       "sampleAnswer": "A sample comprehensive answer",
       "explanation": "What to look for in a good answer"
-    }
-  ]
-}`;
-      } else if (quizType === 'short-answer') {
-        prompt = `Create short-answer questions with ${numberOfQuestions} questions based on the following document. Format your response as JSON with the following structure:
-{
-  "questions": [
-    {
-      "id": 1,
+    }`,
+        "short-answer": `{
+      "id": 3,
       "type": "short-answer",
       "question": "Brief question here?",
       "sampleAnswer": "Expected short answer",
       "explanation": "Key points that should be included"
-    }
-  ]
-}`;
-      } else if (quizType === 'fill-blank') {
-        prompt = `Create fill-in-the-blank questions with ${numberOfQuestions} questions based on the following document. Format your response as JSON with the following structure:
-{
-  "questions": [
-    {
-      "id": 1,
+    }`,
+        "fill-blank": `{
+      "id": 4,
       "type": "fill-blank",
       "question": "The process of ____ involves ____ and results in ____.",
       "blanks": ["photosynthesis", "light energy conversion", "glucose production"],
       "explanation": "Explanation of the complete sentence"
-    }
-  ]
-}`;
-      } else if (quizType === 'mixed') {
-        prompt = `Create a mixed quiz with ${numberOfQuestions} questions using different question types (multiple choice, essay, short answer, fill-in-the-blank) based on the following document. Format your response as JSON with the following structure:
+    }`
+      };
+
+      const selectedPrompts = questionTypes.map(type => questionTypePrompts[type]).join(',\n    ');
+      
+      const prompt = `Create a custom quiz with exactly ${numberOfQuestions} questions using the following question types: ${questionTypes.join(', ')}. 
+Distribute questions roughly evenly across the selected types. Format your response as JSON with the following structure:
+
 {
   "questions": [
-    {
-      "id": 1,
-      "type": "mcq",
-      "question": "Question text here?",
-      "options": ["Option A", "Option B", "Option C", "Option D"],
-      "correctAnswer": 0,
-      "explanation": "Explanation"
-    },
-    {
-      "id": 2,
-      "type": "essay",
-      "question": "Essay question here?",
-      "sampleAnswer": "Sample answer",
-      "explanation": "What to look for"
-    }
+    ${selectedPrompts}
   ]
-}`;
-      }
+}
 
-      prompt += `
+Make sure to:
+- Use different question types as specified: ${questionTypes.join(', ')}
+- Create exactly ${numberOfQuestions} total questions
+- Ensure questions test different aspects of the document content
+- Make questions challenging but fair
 
 Document content:
 ${document.extractedText}`;
@@ -618,20 +593,26 @@ ${document.extractedText}`;
       try {
         // Parse the AI response as JSON
         const quizData = JSON.parse(aiResponse.response);
-        res.json({
+        
+        // Save the quiz to storage
+        const quiz = {
           id: Date.now(),
           documentId: documentId,
           questions: quizData.questions,
           createdAt: new Date().toISOString()
-        });
+        };
+        
+        await storage.saveQuiz(documentId, quiz);
+        res.json(quiz);
       } catch (parseError) {
         // If JSON parsing fails, create a fallback quiz
-        res.json({
+        const fallbackQuiz = {
           id: Date.now(),
           documentId: documentId,
           questions: [
             {
               id: 1,
+              type: "mcq",
               question: "Based on the document content, which topic was primarily discussed?",
               options: [
                 "The main subject of the document",
@@ -644,7 +625,10 @@ ${document.extractedText}`;
             }
           ],
           createdAt: new Date().toISOString()
-        });
+        };
+        
+        await storage.saveQuiz(documentId, fallbackQuiz);
+        res.json(fallbackQuiz);
       }
     } catch (error) {
       res.status(500).json({ 

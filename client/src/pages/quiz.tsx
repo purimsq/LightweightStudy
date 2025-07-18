@@ -40,10 +40,8 @@ export default function QuizPage({ documentId }: QuizPageProps) {
   const [userAnswers, setUserAnswers] = useState<{ [key: number]: any }>({});
   const [showResults, setShowResults] = useState(false);
   const [quizCompleted, setQuizCompleted] = useState(false);
-  const [selectedQuizType, setSelectedQuizType] = useState<string>('mcq');
+  const [selectedQuestionTypes, setSelectedQuestionTypes] = useState<string[]>(['mcq']);
   const [numberOfQuestions, setNumberOfQuestions] = useState<number>(5);
-  const [generatedQuestions, setGeneratedQuestions] = useState<Question[]>([]);
-  const [selectedQuestions, setSelectedQuestions] = useState<number[]>([]);
   const [showQuestionSelection, setShowQuestionSelection] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -65,21 +63,20 @@ export default function QuizPage({ documentId }: QuizPageProps) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 
-          quizType: selectedQuizType, 
+          questionTypes: selectedQuestionTypes, 
           numberOfQuestions: numberOfQuestions 
         }),
       });
       if (!response.ok) throw new Error("Failed to generate quiz");
       return response.json();
     },
-    onSuccess: (data) => {
-      setGeneratedQuestions(data.questions);
-      setSelectedQuestions(data.questions.map((_: any, index: number) => index));
-      setShowQuestionSelection(true);
-      toast({
-        title: "Quiz Generated!",
-        description: "Review and select the questions you want to include.",
-      });
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/documents/${documentId}/quiz`] });
+      setUserAnswers({});
+      setCurrentQuestionIndex(0);
+      setShowResults(false);
+      setQuizCompleted(false);
+      toast({ title: "Custom quiz generated successfully!" });
     },
     onError: () => {
       toast({ 
@@ -95,56 +92,23 @@ export default function QuizPage({ documentId }: QuizPageProps) {
   };
 
   const handleGenerateQuiz = () => {
-    generateQuizMutation.mutate();
-  };
-
-  const handleQuestionToggle = (questionIndex: number) => {
-    setSelectedQuestions(prev => 
-      prev.includes(questionIndex) 
-        ? prev.filter(index => index !== questionIndex)
-        : [...prev, questionIndex]
-    );
-  };
-
-  const handleCreateCustomQuiz = async () => {
-    if (selectedQuestions.length === 0) {
+    if (selectedQuestionTypes.length === 0) {
       toast({
-        title: "No questions selected",
-        description: "Please select at least one question to create your quiz.",
+        title: "No question types selected",
+        description: "Please select at least one question type.",
         variant: "destructive"
       });
       return;
     }
+    generateQuizMutation.mutate();
+  };
 
-    const selectedQuizQuestions = selectedQuestions.map(index => generatedQuestions[index]);
-    
-    try {
-      const response = await fetch(`/api/documents/${documentId}/quiz`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ questions: selectedQuizQuestions }),
-      });
-
-      if (!response.ok) throw new Error("Failed to create quiz");
-
-      queryClient.invalidateQueries({ queryKey: [`/api/documents/${documentId}/quiz`] });
-      setShowQuestionSelection(false);
-      setUserAnswers({});
-      setCurrentQuestionIndex(0);
-      setShowResults(false);
-      setQuizCompleted(false);
-      
-      toast({
-        title: "Custom Quiz Created!",
-        description: `Your personalized quiz with ${selectedQuestions.length} questions is ready.`,
-      });
-    } catch (error) {
-      toast({
-        title: "Failed to create quiz",
-        description: "Please try again.",
-        variant: "destructive"
-      });
-    }
+  const handleQuestionTypeToggle = (questionType: string) => {
+    setSelectedQuestionTypes(prev => 
+      prev.includes(questionType)
+        ? prev.filter(type => type !== questionType)
+        : [...prev, questionType]
+    );
   };
 
   const handleAnswerSelect = (questionId: number, answer: any) => {
@@ -233,50 +197,43 @@ export default function QuizPage({ documentId }: QuizPageProps) {
             </CardHeader>
             <CardContent className="space-y-6">
               {/* Quiz Configuration */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="quiz-type">Question Type</Label>
-                  <Select value={selectedQuizType} onValueChange={setSelectedQuizType}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select question type" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="mcq">
-                        <div className="flex items-center">
-                          <Brain className="w-4 h-4 mr-2" />
-                          Multiple Choice Questions
+              <div className="space-y-6">
+                {/* Question Type Selection */}
+                <div className="space-y-3">
+                  <Label className="text-base font-medium">Select Question Types</Label>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {[
+                      { type: 'mcq', label: 'Multiple Choice Questions', icon: Brain, color: 'emerald' },
+                      { type: 'essay', label: 'Essay Questions', icon: Edit3, color: 'purple' },
+                      { type: 'short-answer', label: 'Short Answer', icon: PenTool, color: 'blue' },
+                      { type: 'fill-blank', label: 'Fill in the Blanks', icon: Target, color: 'orange' }
+                    ].map(({ type, label, icon: Icon, color }) => (
+                      <div key={type} className={`border rounded-lg p-4 cursor-pointer transition-all ${
+                        selectedQuestionTypes.includes(type) 
+                          ? `border-${color}-300 bg-${color}-50` 
+                          : 'border-neutral-200 bg-neutral-50 hover:border-neutral-300'
+                      }`} onClick={() => handleQuestionTypeToggle(type)}>
+                        <div className="flex items-center space-x-3">
+                          <input
+                            type="checkbox"
+                            checked={selectedQuestionTypes.includes(type)}
+                            onChange={() => handleQuestionTypeToggle(type)}
+                            className={`w-4 h-4 text-${color}-600 border-neutral-300 rounded focus:ring-${color}-500`}
+                          />
+                          <Icon className={`w-5 h-5 text-${color}-600`} />
+                          <span className="font-medium text-neutral-800">{label}</span>
                         </div>
-                      </SelectItem>
-                      <SelectItem value="essay">
-                        <div className="flex items-center">
-                          <Edit3 className="w-4 h-4 mr-2" />
-                          Essay Questions
-                        </div>
-                      </SelectItem>
-                      <SelectItem value="short-answer">
-                        <div className="flex items-center">
-                          <PenTool className="w-4 h-4 mr-2" />
-                          Short Answer
-                        </div>
-                      </SelectItem>
-                      <SelectItem value="fill-blank">
-                        <div className="flex items-center">
-                          <Target className="w-4 h-4 mr-2" />
-                          Fill in the Blanks
-                        </div>
-                      </SelectItem>
-                      <SelectItem value="mixed">
-                        <div className="flex items-center">
-                          <Trophy className="w-4 h-4 mr-2" />
-                          Mixed (All Types)
-                        </div>
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="text-sm text-neutral-600">
+                    Selected: {selectedQuestionTypes.length > 0 ? selectedQuestionTypes.map(type => type.replace('-', ' ')).join(', ') : 'None'}
+                  </div>
                 </div>
 
+                {/* Number of Questions */}
                 <div className="space-y-2">
-                  <Label htmlFor="num-questions">Number of Questions</Label>
+                  <Label htmlFor="num-questions">Total Number of Questions</Label>
                   <Select value={numberOfQuestions.toString()} onValueChange={(value) => setNumberOfQuestions(parseInt(value))}>
                     <SelectTrigger>
                       <SelectValue placeholder="Select number" />
@@ -293,13 +250,13 @@ export default function QuizPage({ documentId }: QuizPageProps) {
 
               {/* Question Type Descriptions */}
               <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-4">
-                <h4 className="font-medium text-emerald-800 mb-2">Question Type Descriptions:</h4>
+                <h4 className="font-medium text-emerald-800 mb-2">How it works:</h4>
                 <div className="text-sm text-emerald-700 space-y-1">
                   <p><strong>Multiple Choice:</strong> Pick the best answer from 4 options</p>
                   <p><strong>Essay:</strong> Write detailed explanations and analysis</p>
                   <p><strong>Short Answer:</strong> Brief responses to specific questions</p>
                   <p><strong>Fill in Blanks:</strong> Complete sentences with missing words</p>
-                  <p><strong>Mixed:</strong> Combination of all question types for comprehensive testing</p>
+                  <p><strong>Mix & Match:</strong> Select any combination of question types for your custom quiz</p>
                 </div>
               </div>
 
@@ -314,7 +271,7 @@ export default function QuizPage({ documentId }: QuizPageProps) {
                   ) : (
                     <Brain className="w-4 h-4 mr-2" />
                   )}
-                  Generate {selectedQuizType === 'mixed' ? 'Mixed' : selectedQuizType.toUpperCase()} Quiz
+                  Generate Custom Quiz ({selectedQuestionTypes.length} Type{selectedQuestionTypes.length !== 1 ? 's' : ''})
                 </Button>
               </div>
               
@@ -323,8 +280,8 @@ export default function QuizPage({ documentId }: QuizPageProps) {
                   <div className="flex items-center space-x-3">
                     <RefreshCw className="w-5 h-5 text-emerald-600 animate-spin" />
                     <div>
-                      <p className="text-sm font-medium text-emerald-800">Generating {selectedQuizType} quiz questions...</p>
-                      <p className="text-xs text-emerald-600">AI is analyzing your document to create {numberOfQuestions} relevant questions</p>
+                      <p className="text-sm font-medium text-emerald-800">Generating custom quiz questions...</p>
+                      <p className="text-xs text-emerald-600">AI is creating {numberOfQuestions} questions with {selectedQuestionTypes.length} different type{selectedQuestionTypes.length !== 1 ? 's' : ''}</p>
                     </div>
                   </div>
                 </div>
@@ -333,116 +290,7 @@ export default function QuizPage({ documentId }: QuizPageProps) {
           </Card>
         )}
 
-        {/* Question Selection Interface */}
-        {showQuestionSelection && (
-          <Card className="mb-8">
-            <CardHeader>
-              <CardTitle className="flex items-center">
-                <Target className="w-5 h-5 mr-2 text-blue-600" />
-                Customize Your Quiz
-              </CardTitle>
-              <CardDescription>
-                Review and select which questions to include in your final quiz ({selectedQuestions.length} of {generatedQuestions.length} selected)
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="grid gap-4">
-                {generatedQuestions.map((question, index) => (
-                  <div key={index} className={`border rounded-lg p-4 transition-all ${selectedQuestions.includes(index) ? 'border-emerald-300 bg-emerald-50' : 'border-neutral-200 bg-neutral-50'}`}>
-                    <div className="flex items-start space-x-3">
-                      <input
-                        type="checkbox"
-                        checked={selectedQuestions.includes(index)}
-                        onChange={() => handleQuestionToggle(index)}
-                        className="mt-1 w-4 h-4 text-emerald-600 border-neutral-300 rounded focus:ring-emerald-500"
-                      />
-                      <div className="flex-1">
-                        <div className="flex items-center space-x-2 mb-2">
-                          {question.type === 'mcq' && <Brain className="w-4 h-4 text-emerald-600" />}
-                          {question.type === 'essay' && <Edit3 className="w-4 h-4 text-purple-600" />}
-                          {question.type === 'short-answer' && <PenTool className="w-4 h-4 text-blue-600" />}
-                          {question.type === 'fill-blank' && <Target className="w-4 h-4 text-orange-600" />}
-                          <span className="text-xs font-medium uppercase tracking-wide text-neutral-500">
-                            {question.type.replace('-', ' ')}
-                          </span>
-                        </div>
-                        
-                        <h4 className="font-medium text-neutral-800 mb-2">{question.question}</h4>
-                        
-                        {/* MCQ Preview */}
-                        {question.type === 'mcq' && question.options && (
-                          <div className="space-y-1 text-sm text-neutral-600">
-                            {question.options.map((option, optIndex) => (
-                              <div key={optIndex} className={`pl-4 ${optIndex === question.correctAnswer ? 'font-medium text-emerald-700' : ''}`}>
-                                {String.fromCharCode(65 + optIndex)}) {option}
-                                {optIndex === question.correctAnswer && <span className="text-emerald-600 ml-1">✓</span>}
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                        
-                        {/* Essay/Short Answer Preview */}
-                        {(question.type === 'essay' || question.type === 'short-answer') && question.sampleAnswer && (
-                          <div className="text-sm text-neutral-600">
-                            <strong>Sample Answer:</strong> {question.sampleAnswer.substring(0, 100)}...
-                          </div>
-                        )}
-                        
-                        {/* Fill in Blanks Preview */}
-                        {question.type === 'fill-blank' && question.blanks && (
-                          <div className="text-sm text-neutral-600">
-                            <strong>Answers:</strong> {question.blanks.join(', ')}
-                          </div>
-                        )}
-                        
-                        {question.explanation && (
-                          <div className="text-xs text-neutral-500 mt-2 italic">
-                            {question.explanation}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-              
-              <div className="flex items-center justify-between pt-4 border-t">
-                <div className="text-sm text-neutral-600">
-                  {selectedQuestions.length} question{selectedQuestions.length !== 1 ? 's' : ''} selected
-                </div>
-                <div className="flex space-x-3">
-                  <Button 
-                    variant="outline" 
-                    onClick={() => setShowQuestionSelection(false)}
-                  >
-                    Cancel
-                  </Button>
-                  <Button 
-                    onClick={() => setSelectedQuestions([])}
-                    variant="outline"
-                    disabled={selectedQuestions.length === 0}
-                  >
-                    Deselect All
-                  </Button>
-                  <Button 
-                    onClick={() => setSelectedQuestions(generatedQuestions.map((_, index) => index))}
-                    variant="outline"
-                  >
-                    Select All
-                  </Button>
-                  <Button 
-                    onClick={handleCreateCustomQuiz}
-                    disabled={selectedQuestions.length === 0}
-                    className="bg-emerald-600 hover:bg-emerald-700"
-                  >
-                    <CheckCircle className="w-4 h-4 mr-2" />
-                    Create Quiz ({selectedQuestions.length})
-                  </Button>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        )}
+
 
         {/* Quiz Content */}
         {quizLoading ? (
