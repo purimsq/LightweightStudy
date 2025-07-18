@@ -26,17 +26,6 @@ export default function TopBar() {
           </div>
         </div>
       </header>
-      {/* Date below header on the right side */}
-      <div className="px-6 py-2 bg-neutral-50 border-b border-neutral-100">
-        <div className="flex justify-end">
-          <div className="text-sm text-neutral-600">
-            <div className="text-right">
-              <div className="font-medium">Today</div>
-              <div>{format(today, "EEEE, MMMM d, yyyy")}</div>
-            </div>
-          </div>
-        </div>
-      </div>
     </div>
   );
 }
