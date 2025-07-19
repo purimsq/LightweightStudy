@@ -50,6 +50,9 @@ app.use((req, res, next) => {
 
   // Serve PDF.js worker files
   app.use('/pdf-worker', express.static(path.join(process.cwd(), 'node_modules/pdfjs-dist/build')));
+  
+  // Serve uploaded files
+  app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
 
   // importantly only setup vite in development and after
   // setting up all the other routes so the catch-all route

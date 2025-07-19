@@ -109,7 +109,7 @@ function DocumentCard({ document, onDelete }: { document: Document; onDelete: ()
             <Button
               variant="outline"
               size="sm"
-              onClick={() => setLocation(`/documents/${document.id}/view`)}
+              onClick={() => setLocation(`/documents/${document.id}`)}
               className="px-2"
             >
               <Eye className="w-4 h-4" />
