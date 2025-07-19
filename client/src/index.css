@@ -172,3 +172,14 @@
     transform: translateY(-10px);
   }
 }
+
+/* Notebook textarea styling for proper line wrapping */
+.notebook-textarea {
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
+
+.notebook-textarea::placeholder {
+  white-space: normal;
+}

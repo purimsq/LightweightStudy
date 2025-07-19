@@ -263,8 +263,10 @@ export default function NotesPage({ documentId }: NotesPageProps) {
                       onChange={(e) => handleContentChange(e.target.value, !!editingNote)}
                       onKeyDown={(e) => handleNoteKeyDown(e, !!editingNote)}
                       rows={14}
-                      className="relative z-10 border-none shadow-none focus:ring-0 bg-transparent text-base leading-7 resize-none"
-                      style={{ lineHeight: '28px' }}
+                      className="relative z-10 border-none shadow-none focus:ring-0 bg-transparent text-base leading-7 resize-none notebook-textarea"
+                      style={{ 
+                        lineHeight: '28px'
+                      }}
                     />
                   </div>
                   
