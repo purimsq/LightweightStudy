@@ -178,8 +178,6 @@
   white-space: pre-wrap;
   word-wrap: break-word;
   overflow-wrap: break-word;
-}
-
-.notebook-textarea::placeholder {
-  white-space: normal;
+  font-family: 'Inter', system-ui, sans-serif;
+  line-height: inherit;
 }

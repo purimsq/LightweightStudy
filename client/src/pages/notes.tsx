@@ -144,7 +144,7 @@ export default function NotesPage({ documentId }: NotesPageProps) {
       const beforeCursor = content.substring(0, cursorPos);
       const afterCursor = content.substring(cursorPos);
       
-      // Add new line with ~ bullet
+      // Add new line with ~ bullet and proper spacing
       const newContent = beforeCursor + '\n~ ' + afterCursor;
       
       if (isEditing && editingNote) {
