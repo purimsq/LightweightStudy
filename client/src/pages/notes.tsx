@@ -144,8 +144,23 @@ export default function NotesPage({ documentId }: NotesPageProps) {
       const beforeCursor = content.substring(0, cursorPos);
       const afterCursor = content.substring(cursorPos);
       
-      // Add new line with • bullet and proper spacing
-      const newContent = beforeCursor + '\n• ' + afterCursor;
+      // Check if current line is a header or subheader before Enter
+      const lines = beforeCursor.split('\n');
+      const currentLine = lines[lines.length - 1];
+      
+      let processedBefore = beforeCursor;
+      let newLineContent = '\n• ';
+      
+      // Process headers when Enter is pressed - keep the ## or ### in storage but format display
+      if (currentLine.startsWith('## ') && currentLine.length > 3) {
+        // For headers, don't add bullet on next line
+        newLineContent = '\n';
+      } else if (currentLine.startsWith('### ') && currentLine.length > 4) {
+        // For subheaders, don't add bullet on next line  
+        newLineContent = '\n';
+      }
+      
+      const newContent = processedBefore + newLineContent + afterCursor;
       
       if (isEditing && editingNote) {
         setEditingNote({ ...editingNote, content: newContent });
@@ -153,9 +168,10 @@ export default function NotesPage({ documentId }: NotesPageProps) {
         setNewNote({ ...newNote, content: newContent });
       }
       
-      // Set cursor position after the • 
+      // Set cursor position after the new line content
+      const cursorOffset = newLineContent.length;
       setTimeout(() => {
-        textarea.selectionStart = textarea.selectionEnd = cursorPos + 3;
+        textarea.selectionStart = textarea.selectionEnd = processedBefore.length + cursorOffset;
         textarea.focus();
       }, 0);
     }
@@ -299,13 +315,26 @@ export default function NotesPage({ documentId }: NotesPageProps) {
                       }}
                     ></div>
                     
+                    {/* Live formatted preview overlay */}
+                    <div 
+                      className="absolute inset-0 pointer-events-none z-20 text-base leading-7 overflow-hidden"
+                      style={{ 
+                        lineHeight: '28px',
+                        whiteSpace: 'pre-wrap',
+                        wordWrap: 'break-word',
+                        padding: '12px 16px' // Match textarea padding
+                      }}
+                    >
+                      {renderStyledContent(editingNote ? editingNote.content || '' : newNote.content)}
+                    </div>
+                    
                     <Textarea
                       placeholder="Start writing... Press Enter for new bullet • Use ## for headers and ### for subheaders"
                       value={editingNote ? editingNote.content || '' : newNote.content}
                       onChange={(e) => handleContentChange(e.target.value, !!editingNote)}
                       onKeyDown={(e) => handleNoteKeyDown(e, !!editingNote)}
                       rows={14}
-                      className="relative z-10 border-none shadow-none focus:ring-0 bg-transparent text-base leading-7 resize-none notebook-textarea"
+                      className="relative z-10 border-none shadow-none focus:ring-0 bg-transparent text-base leading-7 resize-none notebook-textarea text-transparent caret-gray-800"
                       style={{ 
                         lineHeight: '28px'
                       }}
