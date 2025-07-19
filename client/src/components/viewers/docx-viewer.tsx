@@ -152,7 +152,7 @@ export default function DOCXViewer({ fileUrl, filename, documentId, unitId }: DO
         <div className="text-center bg-white p-8 rounded-lg shadow-lg border border-stone-200">
           <div className="animate-spin w-10 h-10 border-4 border-blue-300 border-t-blue-600 rounded-full mx-auto mb-4"></div>
           <p className="text-stone-700 font-medium">Loading DOCX document...</p>
-          <p className="text-stone-500 text-sm mt-2">Converting document to readable format</p>
+          <p className="text-stone-500 text-sm mt-2">Large files may take a few moments to convert</p>
         </div>
       </div>
     );

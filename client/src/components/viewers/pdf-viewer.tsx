@@ -64,34 +64,70 @@ export default function PDFViewer({ fileUrl, documentId, unitId }: PDFViewerProp
         // Set worker source to local server
         pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf-worker/pdf.worker.min.mjs';
         
-        // Optimize loading with performance settings
+        // Advanced performance settings for large PDFs
         const loadingTask = pdfjsLib.getDocument({
           url: fileUrl,
           enableXfa: false, // Disable XFA for faster loading
           isEvalSupported: false, // Disable eval for security and performance
           disableFontFace: false, // Keep fonts enabled for better rendering
           useSystemFonts: true, // Use system fonts when possible
-          maxImageSize: 1024 * 1024, // Limit image size for performance
+          maxImageSize: 2048 * 2048, // Allow larger images but with limit
           verbosity: 0, // Reduce console output
+          // Advanced memory and performance settings
+          cMapUrl: undefined, // Don't load CMaps unless needed
+          cMapPacked: false,
+          nativeImageDecoderSupport: 'display', // Use native image decoder
+          useWorkerFetch: true, // Use worker for fetching
+          rangeChunkSize: 65536, // 64KB chunks for streaming
+          disableRange: false, // Enable range requests for large files
+          disableStream: false, // Enable streaming
+          disableAutoFetch: false, // Enable auto-fetching of pages
+          pdfBug: false, // Disable debugging for performance
         });
         
-        // Add progress callback for large PDFs
+        // Enhanced progress callback for large PDFs with timeout handling
         loadingTask.onProgress = (progressData: any) => {
           if (progressData.total > 0) {
             const percent = Math.round((progressData.loaded / progressData.total) * 100);
-            console.log(`PDF loading: ${percent}%`);
+            console.log(`PDF loading: ${percent}% (${(progressData.loaded / 1024 / 1024).toFixed(1)} MB / ${(progressData.total / 1024 / 1024).toFixed(1)} MB)`);
           }
         };
+
+        // Add timeout for very large files
+        const timeoutId = setTimeout(() => {
+          console.warn('PDF loading is taking longer than expected for large file');
+        }, 30000); // 30 second warning
         
         const pdfDoc = await loadingTask.promise;
+        
+        // Clear timeout on successful load
+        clearTimeout(timeoutId);
         
         setPdf(pdfDoc);
         setTotalPages(pdfDoc.numPages);
         setCurrentPage(1);
         setLoading(false);
-      } catch (err) {
+        
+        console.log(`PDF loaded successfully: ${pdfDoc.numPages} pages`);
+      } catch (err: any) {
         console.error('Error loading PDF:', err);
-        setError('Failed to load PDF file');
+        clearTimeout(timeoutId); // Clear timeout on error
+        
+        // Enhanced error handling for large PDFs
+        let errorMessage = 'Failed to load PDF file';
+        if (err.name === 'NetworkError' || err.name === 'TimeoutError') {
+          errorMessage = 'Network timeout while loading large PDF. Please try again.';
+        } else if (err.name === 'InvalidPDFException') {
+          errorMessage = 'Invalid or corrupted PDF file.';
+        } else if (err.name === 'MissingPDFException') {
+          errorMessage = 'PDF file not found.';
+        } else if (err.name === 'PasswordException') {
+          errorMessage = 'This PDF is password protected.';
+        } else if (err.message) {
+          errorMessage += `: ${err.message}`;
+        }
+        
+        setError(errorMessage);
         setLoading(false);
       }
     };
@@ -102,18 +138,31 @@ export default function PDFViewer({ fileUrl, documentId, unitId }: PDFViewerProp
   }, [fileUrl]);
 
   useEffect(() => {
+    let renderTask: any = null;
+
     const renderPage = async () => {
       if (!pdf || !canvasRef.current) return;
 
       try {
+        // Cancel any ongoing render task
+        if (renderTask) {
+          renderTask.cancel();
+        }
+
         const page = await pdf.getPage(currentPage);
         const viewport = page.getViewport({ scale });
         
         const canvas = canvasRef.current;
-        const context = canvas.getContext('2d');
+        const context = canvas.getContext('2d', { 
+          alpha: false, // Disable alpha for better performance
+          desynchronized: true, // Allow async rendering
+          willReadFrequently: false // Optimize for write-only operations
+        });
         
-        // Optimize canvas rendering
-        const devicePixelRatio = window.devicePixelRatio || 1;
+        if (!context) return;
+        
+        // Optimize canvas rendering for large PDFs
+        const devicePixelRatio = Math.min(window.devicePixelRatio || 1, 2); // Cap at 2x for performance
         const scaledViewport = page.getViewport({ scale: scale * devicePixelRatio });
         
         canvas.width = scaledViewport.width;
@@ -126,21 +175,50 @@ export default function PDFViewer({ fileUrl, documentId, unitId }: PDFViewerProp
         const renderContext = {
           canvasContext: context,
           viewport: viewport,
-          enableWebGL: true, // Enable WebGL acceleration if available
+          enableWebGL: false, // Disable WebGL for compatibility with large PDFs
           renderInteractiveForms: false, // Disable forms for faster rendering
+          intent: 'display', // Optimize for display
+          // Enhanced performance settings
+          optionalContentConfigPromise: null, // Skip optional content for speed
+          annotationMode: 0, // Disable annotations for performance
+          textLayerMode: 0, // Disable text layer for performance
+          imageLayer: false, // Disable image layer for performance
         };
         
         // Clear canvas before rendering
         context.clearRect(0, 0, canvas.width, canvas.height);
         
-        await page.render(renderContext).promise;
-      } catch (err) {
-        console.error('Error rendering page:', err);
-        setError('Failed to render PDF page');
+        // Set white background for better contrast
+        context.fillStyle = '#ffffff';
+        context.fillRect(0, 0, canvas.width, canvas.height);
+        
+        renderTask = page.render(renderContext);
+        await renderTask.promise;
+        
+        // Clean up the page object to free memory
+        page.cleanup();
+        
+        // Force garbage collection for large PDFs (if available)
+        if (window.gc && typeof window.gc === 'function') {
+          window.gc();
+        }
+        
+      } catch (err: any) {
+        if (err.name !== 'RenderingCancelledException') {
+          console.error('Error rendering page:', err);
+          setError(`Failed to render PDF page: ${err.message}`);
+        }
       }
     };
 
     renderPage();
+
+    // Cleanup function
+    return () => {
+      if (renderTask) {
+        renderTask.cancel();
+      }
+    };
   }, [pdf, currentPage, scale]);
 
   const goToPrevPage = () => {
@@ -216,7 +294,7 @@ export default function PDFViewer({ fileUrl, documentId, unitId }: PDFViewerProp
         <div className="text-center bg-white p-8 rounded-lg shadow-lg border border-stone-200">
           <div className="animate-spin w-10 h-10 border-4 border-stone-300 border-t-stone-600 rounded-full mx-auto mb-4"></div>
           <p className="text-stone-700 font-medium">Loading PDF document...</p>
-          <p className="text-stone-500 text-sm mt-2">Please wait while we prepare your document</p>
+          <p className="text-stone-500 text-sm mt-2">Large files may take a few moments to load</p>
         </div>
       </div>
     );
