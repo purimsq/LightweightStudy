@@ -144,8 +144,8 @@ export default function NotesPage({ documentId }: NotesPageProps) {
       const beforeCursor = content.substring(0, cursorPos);
       const afterCursor = content.substring(cursorPos);
       
-      // Add new line with ~ bullet and proper spacing
-      const newContent = beforeCursor + '\n~ ' + afterCursor;
+      // Add new line with • bullet and proper spacing
+      const newContent = beforeCursor + '\n• ' + afterCursor;
       
       if (isEditing && editingNote) {
         setEditingNote({ ...editingNote, content: newContent });
@@ -153,7 +153,7 @@ export default function NotesPage({ documentId }: NotesPageProps) {
         setNewNote({ ...newNote, content: newContent });
       }
       
-      // Set cursor position after the ~ 
+      // Set cursor position after the • 
       setTimeout(() => {
         textarea.selectionStart = textarea.selectionEnd = cursorPos + 3;
         textarea.focus();
@@ -161,12 +161,12 @@ export default function NotesPage({ documentId }: NotesPageProps) {
     }
   };
 
-  // Handle content change to ensure ~ bullets
+  // Handle content change to ensure • bullets
   const handleContentChange = (value: string, isEditing = false) => {
-    // Only add ~ when user starts typing (not on empty)
+    // Only add • when user starts typing (not on empty)
     let processedValue = value;
-    if (value && value.length === 1 && !value.startsWith('~')) {
-      processedValue = `~ ${value}`;
+    if (value && value.length === 1 && !value.startsWith('•') && !value.startsWith('#')) {
+      processedValue = `• ${value}`;
     }
     
     if (isEditing && editingNote) {
@@ -176,13 +176,55 @@ export default function NotesPage({ documentId }: NotesPageProps) {
     }
   };
 
-  // Clean up content before saving - remove empty ~ lines
+  // Clean up content before saving - remove empty • lines
   const cleanContent = (content: string) => {
     return content
       .split('\n')
-      .filter(line => line.trim() !== '~')
+      .filter(line => line.trim() !== '•')
       .join('\n')
       .trim();
+  };
+
+  // Render content with styled headers and bullets
+  const renderStyledContent = (content: string) => {
+    if (!content) return null;
+    
+    return content.split('\n').map((line, index) => {
+      const key = `line-${index}`;
+      
+      if (line.startsWith('## ')) {
+        // Header (##)
+        return (
+          <div key={key} className="text-blue-600 font-semibold text-lg my-2">
+            {line.substring(3)}
+          </div>
+        );
+      } else if (line.startsWith('### ')) {
+        // Subheader (###)
+        return (
+          <div key={key} className="text-indigo-600 font-medium text-base my-1.5">
+            {line.substring(4)}
+          </div>
+        );
+      } else if (line.startsWith('• ')) {
+        // Bullet point
+        return (
+          <div key={key} className="flex items-start my-0.5">
+            <span className="font-bold text-gray-700 mr-2">•</span>
+            <span className="flex-1">{line.substring(2)}</span>
+          </div>
+        );
+      } else if (line.trim()) {
+        // Regular text
+        return (
+          <div key={key} className="my-0.5">
+            {line}
+          </div>
+        );
+      }
+      
+      return <div key={key} className="my-0.5" />; // Empty line
+    });
   };
 
   return (
@@ -258,7 +300,7 @@ export default function NotesPage({ documentId }: NotesPageProps) {
                     ></div>
                     
                     <Textarea
-                      placeholder="Start writing your notes here... Press Enter to create a new sentence with ~"
+                      placeholder="Start writing... Press Enter for new bullet • Use ## for headers and ### for subheaders"
                       value={editingNote ? editingNote.content || '' : newNote.content}
                       onChange={(e) => handleContentChange(e.target.value, !!editingNote)}
                       onKeyDown={(e) => handleNoteKeyDown(e, !!editingNote)}
@@ -353,9 +395,9 @@ export default function NotesPage({ documentId }: NotesPageProps) {
                               </Button>
                             </div>
                           </div>
-                          <p className="text-xs text-neutral-600 line-clamp-2 whitespace-pre-line">
-                            {note.content}
-                          </p>
+                          <div className="text-xs text-neutral-600 line-clamp-2 overflow-hidden">
+                            {renderStyledContent(note.content)}
+                          </div>
                           <p className="text-xs text-neutral-400 mt-1">
                             {new Date(note.createdAt).toLocaleDateString()}
                           </p>
