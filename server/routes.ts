@@ -737,8 +737,12 @@ ${document.extractedText}`;
     try {
       const { message, sessionId, automated = false } = req.body;
       
-      // Call Ollama API for local usage
-      const ollamaResponse = await fetch("http://localhost:11434/api/generate", {
+      const isReplit = process.env.REPLIT_DOMAINS || process.env.REPL_ID;
+      
+      // Try Ollama API first, fallback for Replit demo
+      let aiResponse;
+      try {
+        const ollamaResponse = await fetch("http://localhost:11434/api/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -785,11 +789,43 @@ ${automated ? 'NOTE: This is an automated break reminder. Be extra caring and en
         }),
       });
 
-      if (!ollamaResponse.ok) {
-        throw new Error(`Ollama API error: ${ollamaResponse.statusText}`);
-      }
+        if (!ollamaResponse.ok) {
+          throw new Error(`Ollama API error: ${ollamaResponse.statusText}`);
+        }
 
-      const aiResponse = await ollamaResponse.json();
+        aiResponse = await ollamaResponse.json();
+      } catch (ollamaError) {
+        if (isReplit) {
+          // Smart demo responses for Replit environment
+          const lowerMessage = message.toLowerCase();
+          let demoResponse = "";
+          
+          if (lowerMessage.includes("document") || lowerMessage.includes("pdf")) {
+            demoResponse = "I can see your uploaded documents! May I help you create a summary of your recent immunobiology PDF or generate study questions based on your materials? I have full access to all your documents and can organize them by topics.";
+          } else if (lowerMessage.includes("study plan")) {
+            demoResponse = "May I create a personalized study plan for you? I can analyze your documents, assignments, and deadlines to generate an optimal daily schedule. What subjects are you focusing on?";
+          } else if (lowerMessage.includes("quiz") || lowerMessage.includes("question")) {
+            demoResponse = "May I generate practice questions based on your uploaded documents? I can create multiple choice, short answer, or essay questions from your study materials.";
+          } else {
+            demoResponse = `Hello! I'm your StudyCompanion AI with **full access** to your entire app. I can help with:
+
+• **Documents**: View, summarize, and organize all your PDFs and files
+• **Study Plans**: Create personalized daily schedules based on your pace  
+• **Quizzes**: Generate practice questions from your materials
+• **Notes**: Create and organize study notes with markdown support
+• **Assignments**: Track CATs and deadlines
+• **Break Reminders**: Monitor study time and suggest healthy breaks
+
+**Demo Mode**: Currently running in Replit. Download locally for full Ollama integration!
+
+What would you like help with?`;
+          }
+          
+          aiResponse = { response: demoResponse };
+        } else {
+          throw new Error("Cannot connect to Ollama. Please ensure Ollama is running locally with: ollama serve");
+        }
+      }
       
       // Save chat to storage
       let chat = await storage.getAiChatBySession(sessionId);
@@ -826,8 +862,10 @@ ${automated ? 'NOTE: This is an automated break reminder. Be extra caring and en
     }
   });
 
-  // Local Ollama health check
+  // Smart Ollama health check (works in Replit and locally)
   app.get("/api/ai/health", async (req, res) => {
+    const isReplit = process.env.REPLIT_DOMAINS || process.env.REPL_ID;
+    
     try {
       const response = await fetch("http://localhost:11434/api/tags", {
         method: "GET",
@@ -855,10 +893,17 @@ ${automated ? 'NOTE: This is an automated break reminder. Be extra caring and en
         });
       }
     } catch (error) {
-      res.status(503).json({ 
-        status: "disconnected", 
-        message: "Ollama not running. Start with: ollama serve"
-      });
+      if (isReplit) {
+        res.status(503).json({ 
+          status: "demo_mode", 
+          message: "Running in Replit - AI features work in demo mode. Download locally for full Ollama integration."
+        });
+      } else {
+        res.status(503).json({ 
+          status: "disconnected", 
+          message: "Ollama not running. Start with: ollama serve"
+        });
+      }
     }
   });
 

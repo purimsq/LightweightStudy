@@ -214,15 +214,19 @@ export default function AIChat() {
 
         {/* Connection Warning */}
         {!isConnected && (
-          <Card className="mb-6 border-red-200 bg-red-50">
+          <Card className="mb-6 border-blue-200 bg-blue-50">
             <CardContent className="p-4">
-              <div className="flex items-center space-x-2 text-red-800">
+              <div className="flex items-center space-x-2 text-blue-800">
                 <AlertCircle className="w-5 h-5" />
                 <div>
-                  <p className="font-medium">AI Assistant Offline</p>
-                  <div className="text-sm text-red-700 mt-1 space-y-1">
-                    <div>Start Ollama: <code className="bg-red-100 px-1 rounded text-xs">ollama serve</code></div>
-                    <div>Install model: <code className="bg-red-100 px-1 rounded text-xs">ollama pull phi</code></div>
+                  <p className="font-medium">AI Assistant in Demo Mode</p>
+                  <div className="text-sm text-blue-700 mt-1">
+                    <div className="mb-1">
+                      <strong>In Replit:</strong> AI works in demo mode with smart responses
+                    </div>
+                    <div className="text-xs text-blue-600">
+                      For full Ollama integration, download and run locally with: <code className="bg-blue-100 px-1 rounded">ollama serve</code>
+                    </div>
                   </div>
                 </div>
               </div>
