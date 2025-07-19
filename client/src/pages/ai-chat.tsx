@@ -221,7 +221,8 @@ export default function AIChat() {
                 <div>
                   <p className="font-medium">AI Assistant Unavailable</p>
                   <p className="text-sm text-orange-700 mt-1">
-                    Make sure Ollama is running with the phi model. Run: <code className="bg-orange-100 px-1 rounded">ollama pull phi</code>
+                    <strong>Windows:</strong> <code className="bg-orange-100 px-1 rounded text-xs">set OLLAMA_HOST=0.0.0.0:11434 && ollama serve</code><br/>
+                    <strong>Then:</strong> <code className="bg-orange-100 px-1 rounded text-xs">ollama pull phi</code>
                   </p>
                 </div>
               </div>
