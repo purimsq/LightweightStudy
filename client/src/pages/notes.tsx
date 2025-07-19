@@ -177,12 +177,23 @@ export default function NotesPage({ documentId }: NotesPageProps) {
     }
   };
 
-  // Handle content change to ensure • bullets
+  // Handle content change to ensure • bullets and format headers
   const handleContentChange = (value: string, isEditing = false) => {
-    // Only add • when user starts typing (not on empty)
     let processedValue = value;
+    
+    // Only add • when user starts typing (not on empty)
     if (value && value.length === 1 && !value.startsWith('•') && !value.startsWith('#')) {
       processedValue = `• ${value}`;
+    }
+    
+    // Real-time header formatting - convert space after ## or ###
+    if (value.includes('## ') || value.includes('### ')) {
+      processedValue = value.split('\n').map(line => {
+        if (line === '## ' || line === '### ') {
+          return line; // Keep as is while typing
+        }
+        return line;
+      }).join('\n');
     }
     
     if (isEditing && editingNote) {
@@ -242,6 +253,8 @@ export default function NotesPage({ documentId }: NotesPageProps) {
       return <div key={key} className="my-1" />; // Empty line
     });
   };
+
+
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-amber-50 to-orange-50">
@@ -315,26 +328,13 @@ export default function NotesPage({ documentId }: NotesPageProps) {
                       }}
                     ></div>
                     
-                    {/* Live formatted preview overlay */}
-                    <div 
-                      className="absolute inset-0 pointer-events-none z-20 text-base leading-7 overflow-hidden"
-                      style={{ 
-                        lineHeight: '28px',
-                        whiteSpace: 'pre-wrap',
-                        wordWrap: 'break-word',
-                        padding: '12px 16px' // Match textarea padding
-                      }}
-                    >
-                      {renderStyledContent(editingNote ? editingNote.content || '' : newNote.content)}
-                    </div>
-                    
                     <Textarea
                       placeholder="Start writing... Press Enter for new bullet • Use ## for headers and ### for subheaders"
                       value={editingNote ? editingNote.content || '' : newNote.content}
                       onChange={(e) => handleContentChange(e.target.value, !!editingNote)}
                       onKeyDown={(e) => handleNoteKeyDown(e, !!editingNote)}
                       rows={14}
-                      className="relative z-10 border-none shadow-none focus:ring-0 bg-transparent text-base leading-7 resize-none notebook-textarea text-transparent caret-gray-800"
+                      className="relative z-10 border-none shadow-none focus:ring-0 bg-transparent text-base leading-7 resize-none notebook-textarea"
                       style={{ 
                         lineHeight: '28px'
                       }}
