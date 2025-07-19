@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { ArrowLeft, Save, FileText, Plus, Edit3, Trash2, ChevronDown, ChevronRight, BookOpen } from "lucide-react";
+import { ArrowLeft, Save, FileText, Edit3, Trash2, ChevronDown, ChevronRight, BookOpen } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 interface Note {
@@ -53,17 +53,20 @@ export default function NotesPage({ documentId }: NotesPageProps) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/documents/${documentId}/notes`] });
       setNewNote({ title: "", content: "" });
-      toast({ title: "Note created successfully!" });
+      toast({ title: "Note saved successfully!" });
     },
+    onError: () => {
+      toast({ title: "Failed to save note", variant: "destructive" });
+    }
   });
 
   // Update note mutation
   const updateNoteMutation = useMutation({
-    mutationFn: async (note: Note) => {
-      const response = await fetch(`/api/notes/${note.id}`, {
-        method: "PATCH",
+    mutationFn: async (noteData: Note) => {
+      const response = await fetch(`/api/notes/${noteData.id}`, {
+        method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title: note.title, content: note.content }),
+        body: JSON.stringify(noteData),
       });
       if (!response.ok) throw new Error("Failed to update note");
       return response.json();
@@ -73,25 +76,26 @@ export default function NotesPage({ documentId }: NotesPageProps) {
       setEditingNote(null);
       toast({ title: "Note updated successfully!" });
     },
+    onError: () => {
+      toast({ title: "Failed to update note", variant: "destructive" });
+    }
   });
 
   // Delete note mutation
   const deleteNoteMutation = useMutation({
     mutationFn: async (noteId: number) => {
-      const response = await fetch(`/api/notes/${noteId}`, {
-        method: "DELETE",
-      });
+      const response = await fetch(`/api/notes/${noteId}`, { method: "DELETE" });
       if (!response.ok) throw new Error("Failed to delete note");
+      return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/documents/${documentId}/notes`] });
       toast({ title: "Note deleted successfully!" });
     },
+    onError: () => {
+      toast({ title: "Failed to delete note", variant: "destructive" });
+    }
   });
-
-  const goBack = () => {
-    setLocation(`/documents/${documentId}`);
-  };
 
   const handleCreateNote = () => {
     const cleanedContent = cleanContent(newNote.content);
@@ -100,7 +104,7 @@ export default function NotesPage({ documentId }: NotesPageProps) {
       return;
     }
     createNoteMutation.mutate({ 
-      title: newNote.title.toUpperCase(), 
+      title: newNote.title.toUpperCase(),
       content: cleanedContent 
     });
   };
@@ -125,75 +129,22 @@ export default function NotesPage({ documentId }: NotesPageProps) {
     }
   };
 
-  // Format content with ~ bullets for display
-  const formatContentForDisplay = (content: string) => {
-    if (!content) return "";
-    return content.split('\n')
-      .filter(line => line.trim())
-      .map(line => line.startsWith('~ ') ? line : `~ ${line}`)
-      .join('\n');
+  // Clean up content before saving - remove empty • lines
+  const cleanContent = (content: string) => {
+    return content
+      .split('\n')
+      .filter(line => line.trim() !== '•')
+      .join('\n')
+      .trim();
   };
 
-  // Handle special Enter key behavior for notes
-  const handleNoteKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>, isEditing = false) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      const textarea = e.currentTarget;
-      const cursorPos = textarea.selectionStart;
-      const content = textarea.value;
-      const beforeCursor = content.substring(0, cursorPos);
-      const afterCursor = content.substring(cursorPos);
-      
-      // Check if current line is a header or subheader before Enter
-      const lines = beforeCursor.split('\n');
-      const currentLine = lines[lines.length - 1];
-      
-      let processedBefore = beforeCursor;
-      let newLineContent = '\n• ';
-      
-      // Process headers when Enter is pressed - keep the ## or ### in storage but format display
-      if (currentLine.startsWith('## ') && currentLine.length > 3) {
-        // For headers, don't add bullet on next line
-        newLineContent = '\n';
-      } else if (currentLine.startsWith('### ') && currentLine.length > 4) {
-        // For subheaders, don't add bullet on next line  
-        newLineContent = '\n';
-      }
-      
-      const newContent = processedBefore + newLineContent + afterCursor;
-      
-      if (isEditing && editingNote) {
-        setEditingNote({ ...editingNote, content: newContent });
-      } else {
-        setNewNote({ ...newNote, content: newContent });
-      }
-      
-      // Set cursor position after the new line content
-      const cursorOffset = newLineContent.length;
-      setTimeout(() => {
-        textarea.selectionStart = textarea.selectionEnd = processedBefore.length + cursorOffset;
-        textarea.focus();
-      }, 0);
-    }
-  };
-
-  // Handle content change to ensure • bullets and format headers
+  // Handle content change to ensure • bullets
   const handleContentChange = (value: string, isEditing = false) => {
     let processedValue = value;
     
     // Only add • when user starts typing (not on empty)
     if (value && value.length === 1 && !value.startsWith('•') && !value.startsWith('#')) {
       processedValue = `• ${value}`;
-    }
-    
-    // Real-time header formatting - convert space after ## or ###
-    if (value.includes('## ') || value.includes('### ')) {
-      processedValue = value.split('\n').map(line => {
-        if (line === '## ' || line === '### ') {
-          return line; // Keep as is while typing
-        }
-        return line;
-      }).join('\n');
     }
     
     if (isEditing && editingNote) {
@@ -203,13 +154,41 @@ export default function NotesPage({ documentId }: NotesPageProps) {
     }
   };
 
-  // Clean up content before saving - remove empty • lines
-  const cleanContent = (content: string) => {
-    return content
-      .split('\n')
-      .filter(line => line.trim() !== '•')
-      .join('\n')
-      .trim();
+  // Handle Enter key for bullet points
+  const handleNoteKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>, isEditing = false) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      const textarea = e.currentTarget;
+      const cursorPos = textarea.selectionStart;
+      const content = textarea.value;
+      const beforeCursor = content.substring(0, cursorPos);
+      const afterCursor = content.substring(cursorPos);
+      
+      // Check if current line is a header or subheader
+      const lines = beforeCursor.split('\n');
+      const currentLine = lines[lines.length - 1];
+      
+      let newLineContent = '\n• ';
+      
+      // For headers and subheaders, don't add bullet on next line
+      if (currentLine.startsWith('## ') || currentLine.startsWith('### ')) {
+        newLineContent = '\n';
+      }
+      
+      const newContent = beforeCursor + newLineContent + afterCursor;
+      
+      if (isEditing && editingNote) {
+        setEditingNote({ ...editingNote, content: newContent });
+      } else {
+        setNewNote({ ...newNote, content: newContent });
+      }
+      
+      // Set cursor position after the new content
+      setTimeout(() => {
+        textarea.selectionStart = textarea.selectionEnd = beforeCursor.length + newLineContent.length;
+        textarea.focus();
+      }, 0);
+    }
   };
 
   // Render content with styled headers and bullets
@@ -220,41 +199,39 @@ export default function NotesPage({ documentId }: NotesPageProps) {
       const key = `line-${index}`;
       
       if (line.startsWith('## ')) {
-        // Header (##) - Remove ## and style
         return (
-          <div key={key} className="text-blue-600 font-bold text-xl my-3 leading-tight">
+          <div key={key} className="text-blue-600 font-bold text-base my-1 leading-tight">
             {line.substring(3).trim()}
           </div>
         );
       } else if (line.startsWith('### ')) {
-        // Subheader (###) - Remove ### and style
         return (
-          <div key={key} className="text-indigo-600 font-semibold text-lg my-2 leading-tight">
+          <div key={key} className="text-indigo-600 font-semibold text-sm my-1 leading-tight">
             {line.substring(4).trim()}
           </div>
         );
       } else if (line.startsWith('• ')) {
-        // Bullet point
         return (
-          <div key={key} className="flex items-start my-1">
-            <span className="font-bold text-gray-700 mr-2 mt-0.5">•</span>
-            <span className="flex-1">{line.substring(2)}</span>
+          <div key={key} className="flex items-start my-0.5">
+            <span className="font-bold text-gray-700 mr-1 text-xs">•</span>
+            <span className="flex-1 text-xs">{line.substring(2)}</span>
           </div>
         );
       } else if (line.trim()) {
-        // Regular text
         return (
-          <div key={key} className="my-1">
+          <div key={key} className="my-0.5 text-xs">
             {line}
           </div>
         );
       }
       
-      return <div key={key} className="my-1" />; // Empty line
+      return <div key={key} className="my-0.5" />; // Empty line
     });
   };
 
-
+  const goBack = () => {
+    setLocation('/units');
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-amber-50 to-orange-50">
