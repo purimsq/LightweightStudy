@@ -39,8 +39,10 @@ const upload = multer({
     }
   },
   limits: {
-    fileSize: 200 * 1024 * 1024, // 200MB limit for large academic PDFs
-    fieldSize: 200 * 1024 * 1024 // 200MB field size limit
+    fileSize: 500 * 1024 * 1024, // 500MB limit for extremely large academic textbooks
+    fieldSize: 500 * 1024 * 1024, // 500MB field size limit
+    files: 1, // Allow only 1 file at a time for better processing
+    parts: 10000 // Increase parts limit for complex uploads
   }
 });
 

@@ -4,9 +4,19 @@ import { setupVite, serveStatic, log } from "./vite";
 import path from "path";
 
 const app = express();
-// Increase payload limits for large PDF uploads and processing
-app.use(express.json({ limit: '100mb' }));
-app.use(express.urlencoded({ extended: false, limit: '100mb' }));
+// Extreme payload limits for very large academic PDFs (textbooks)
+app.use(express.json({ limit: '500mb' }));
+app.use(express.urlencoded({ extended: false, limit: '500mb' }));
+
+// Set timeout for large file requests
+app.use((req, res, next) => {
+  // Increase timeout for PDF routes
+  if (req.url.includes('/uploads/') || req.url.includes('/documents/')) {
+    req.setTimeout(300000); // 5 minutes for large PDFs
+    res.setTimeout(300000);
+  }
+  next();
+});
 
 app.use((req, res, next) => {
   const start = Date.now();

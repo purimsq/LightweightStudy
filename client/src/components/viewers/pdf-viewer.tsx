@@ -64,25 +64,29 @@ export default function PDFViewer({ fileUrl, documentId, unitId }: PDFViewerProp
         // Set worker source to local server
         pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf-worker/pdf.worker.min.mjs';
         
-        // Advanced performance settings for large PDFs
+        // Extreme performance settings for very large PDFs (1000+ pages)
         const loadingTask = pdfjsLib.getDocument({
           url: fileUrl,
           enableXfa: false, // Disable XFA for faster loading
           isEvalSupported: false, // Disable eval for security and performance
-          disableFontFace: false, // Keep fonts enabled for better rendering
+          disableFontFace: true, // Disable font loading for extreme performance
           useSystemFonts: true, // Use system fonts when possible
-          maxImageSize: 2048 * 2048, // Allow larger images but with limit
+          maxImageSize: 1024 * 1024, // Reduce image size for very large PDFs
           verbosity: 0, // Reduce console output
-          // Advanced memory and performance settings
+          // Extreme memory and performance settings for large academic PDFs
           cMapUrl: undefined, // Don't load CMaps unless needed
           cMapPacked: false,
           nativeImageDecoderSupport: 'display', // Use native image decoder
           useWorkerFetch: true, // Use worker for fetching
-          rangeChunkSize: 65536, // 64KB chunks for streaming
+          rangeChunkSize: 32768, // Smaller 32KB chunks for better streaming
           disableRange: false, // Enable range requests for large files
           disableStream: false, // Enable streaming
-          disableAutoFetch: false, // Enable auto-fetching of pages
+          disableAutoFetch: true, // Disable auto-fetching for memory conservation
           pdfBug: false, // Disable debugging for performance
+          stopAtErrors: false, // Continue loading even with minor errors
+          // Additional settings for extreme cases
+          fontExtraProperties: false, // Disable extra font properties
+          ignoreErrors: true, // Ignore non-critical errors
         });
         
         // Enhanced progress callback for large PDFs with timeout handling
@@ -93,10 +97,10 @@ export default function PDFViewer({ fileUrl, documentId, unitId }: PDFViewerProp
           }
         };
 
-        // Add timeout for very large files
+        // Add timeout for extremely large files (textbooks with 1000+ pages)
         const timeoutId = setTimeout(() => {
-          console.warn('PDF loading is taking longer than expected for large file');
-        }, 30000); // 30 second warning
+          console.warn('PDF loading is taking longer than expected - this appears to be a very large file');
+        }, 60000); // 60 second warning for extreme files
         
         const pdfDoc = await loadingTask.promise;
         
@@ -109,6 +113,11 @@ export default function PDFViewer({ fileUrl, documentId, unitId }: PDFViewerProp
         setLoading(false);
         
         console.log(`PDF loaded successfully: ${pdfDoc.numPages} pages`);
+        
+        // Log performance info for large PDFs
+        if (pdfDoc.numPages > 500) {
+          console.log('Large PDF detected - using optimized rendering mode');
+        }
       } catch (err: any) {
         console.error('Error loading PDF:', err);
         clearTimeout(timeoutId); // Clear timeout on error
@@ -161,8 +170,8 @@ export default function PDFViewer({ fileUrl, documentId, unitId }: PDFViewerProp
         
         if (!context) return;
         
-        // Optimize canvas rendering for large PDFs
-        const devicePixelRatio = Math.min(window.devicePixelRatio || 1, 2); // Cap at 2x for performance
+        // Optimize canvas rendering for extremely large PDFs
+        const devicePixelRatio = Math.min(window.devicePixelRatio || 1, 1.5); // Cap at 1.5x for extreme files
         const scaledViewport = page.getViewport({ scale: scale * devicePixelRatio });
         
         canvas.width = scaledViewport.width;
@@ -294,7 +303,8 @@ export default function PDFViewer({ fileUrl, documentId, unitId }: PDFViewerProp
         <div className="text-center bg-white p-8 rounded-lg shadow-lg border border-stone-200">
           <div className="animate-spin w-10 h-10 border-4 border-stone-300 border-t-stone-600 rounded-full mx-auto mb-4"></div>
           <p className="text-stone-700 font-medium">Loading PDF document...</p>
-          <p className="text-stone-500 text-sm mt-2">Large files may take a few moments to load</p>
+          <p className="text-stone-500 text-sm mt-2">Large academic PDFs may take up to 2 minutes to load</p>
+          <p className="text-xs text-stone-400 mt-1">Progress will be shown in browser console</p>
         </div>
       </div>
     );
