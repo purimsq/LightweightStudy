@@ -737,10 +737,8 @@ ${document.extractedText}`;
     try {
       const { message, sessionId, automated = false } = req.body;
       
-      // Try Ollama API first, fallback to demo mode
-      let aiResponse;
-      try {
-        const ollamaResponse = await fetch("http://localhost:11434/api/generate", {
+      // Call Ollama API for local usage
+      const ollamaResponse = await fetch("http://localhost:11434/api/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -787,41 +785,11 @@ ${automated ? 'NOTE: This is an automated break reminder. Be extra caring and en
         }),
       });
 
-        if (!ollamaResponse.ok) {
-          throw new Error(`Ollama API error: ${ollamaResponse.statusText}`);
-        }
-
-        aiResponse = await ollamaResponse.json();
-      } catch (ollamaError) {
-        // Demo mode fallback when Ollama is not accessible
-        console.log("Using demo mode - Ollama not accessible from Replit");
-        
-        const lowerMessage = message.toLowerCase();
-        let demoResponse = "";
-        
-        if (lowerMessage.includes("document") || lowerMessage.includes("pdf")) {
-          demoResponse = "I can see your uploaded documents! May I help you create a summary of your recent immunobiology PDF or generate study questions based on your anatomy materials? I have full access to all your documents and can organize them by topics.";
-        } else if (lowerMessage.includes("study plan")) {
-          demoResponse = "May I create a personalized study plan for you? I can analyze your documents, assignments, and deadlines to generate an optimal daily schedule. What subjects are you focusing on, and when are your upcoming exams?";
-        } else if (lowerMessage.includes("quiz") || lowerMessage.includes("question")) {
-          demoResponse = "May I generate practice questions based on your uploaded documents? I can create multiple choice, short answer, or essay questions from your study materials. Which document would you like me to focus on?";
-        } else {
-          demoResponse = `Hello! I'm your StudyCompanion AI with **full access** to your entire app. I can help with:
-
-• **Documents**: View, summarize, and organize all your PDFs and files
-• **Study Plans**: Create personalized daily schedules based on your pace  
-• **Quizzes**: Generate practice questions from your materials
-• **Notes**: Create and organize study notes with markdown support
-• **Assignments**: Track CATs and deadlines
-• **Break Reminders**: Monitor study time and suggest healthy breaks
-
-**Important**: I always ask "May I [action]?" before making changes.
-
-What would you like help with? Try asking about your documents or creating a study plan!`;
-        }
-        
-        aiResponse = { response: demoResponse };
+      if (!ollamaResponse.ok) {
+        throw new Error(`Ollama API error: ${ollamaResponse.statusText}`);
       }
+
+      const aiResponse = await ollamaResponse.json();
       
       // Save chat to storage
       let chat = await storage.getAiChatBySession(sessionId);
@@ -858,50 +826,40 @@ What would you like help with? Try asking about your documents or creating a stu
     }
   });
 
-  // Enhanced Health check for Ollama with multiple connection attempts
+  // Local Ollama health check
   app.get("/api/ai/health", async (req, res) => {
-    const ollamaPorts = [11434, 11435, 8080, 3000]; // Try multiple common ports
-    const ollamaHosts = ['localhost', '127.0.0.1']; // Try different hosts
-    
-    for (const host of ollamaHosts) {
-      for (const port of ollamaPorts) {
-        try {
-          const response = await fetch(`http://${host}:${port}/api/tags`, {
-            method: "GET",
-            headers: { "Content-Type": "application/json" },
-            signal: AbortSignal.timeout(3000) // 3 second timeout
-          });
-          
-          if (response.ok) {
-            const models = await response.json();
-            const hasPhiModel = models.models?.some((model: any) => model.name.includes("phi"));
-            const availableModels = models.models?.map((m: any) => m.name) || [];
-            
-            return res.json({ 
-              status: "connected", 
-              host: `${host}:${port}`,
-              hasPhiModel,
-              availableModels,
-              message: hasPhiModel 
-                ? "Ollama is ready with phi model" 
-                : `Ollama connected. Available models: ${availableModels.join(', ')}. Consider pulling phi model.`
-            });
-          }
-        } catch (error) {
-          // Continue to next host/port combination
-          continue;
-        }
+    try {
+      const response = await fetch("http://localhost:11434/api/tags", {
+        method: "GET",
+        headers: { "Content-Type": "application/json" },
+        signal: AbortSignal.timeout(2000)
+      });
+      
+      if (response.ok) {
+        const models = await response.json();
+        const hasPhiModel = models.models?.some((model: any) => model.name.includes("phi"));
+        const availableModels = models.models?.map((m: any) => m.name) || [];
+        
+        res.json({ 
+          status: "connected", 
+          hasPhiModel,
+          availableModels,
+          message: hasPhiModel 
+            ? "AI Assistant ready with phi model" 
+            : `Available models: ${availableModels.join(', ')}. Run 'ollama pull phi' for best results.`
+        });
+      } else {
+        res.status(503).json({ 
+          status: "error", 
+          message: "Ollama responding but not properly configured" 
+        });
       }
+    } catch (error) {
+      res.status(503).json({ 
+        status: "disconnected", 
+        message: "Ollama not running. Start with: ollama serve"
+      });
     }
-    
-    // If we get here, no connection worked
-    res.status(503).json({ 
-      status: "disconnected", 
-      message: "Cannot connect to Ollama on any common port. Please ensure Ollama is running and accessible.",
-      testedHosts: ollamaHosts,
-      testedPorts: ollamaPorts,
-      instructions: "Try: 1) Start Ollama service, 2) Check if running on different port, 3) Install phi model with 'ollama pull phi'"
-    });
   });
 
   // Serve uploaded files
