@@ -64,7 +64,25 @@ export default function PDFViewer({ fileUrl, documentId, unitId }: PDFViewerProp
         // Set worker source to local server
         pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf-worker/pdf.worker.min.mjs';
         
-        const loadingTask = pdfjsLib.getDocument(fileUrl);
+        // Optimize loading with performance settings
+        const loadingTask = pdfjsLib.getDocument({
+          url: fileUrl,
+          enableXfa: false, // Disable XFA for faster loading
+          isEvalSupported: false, // Disable eval for security and performance
+          disableFontFace: false, // Keep fonts enabled for better rendering
+          useSystemFonts: true, // Use system fonts when possible
+          maxImageSize: 1024 * 1024, // Limit image size for performance
+          verbosity: 0, // Reduce console output
+        });
+        
+        // Add progress callback for large PDFs
+        loadingTask.onProgress = (progressData: any) => {
+          if (progressData.total > 0) {
+            const percent = Math.round((progressData.loaded / progressData.total) * 100);
+            console.log(`PDF loading: ${percent}%`);
+          }
+        };
+        
         const pdfDoc = await loadingTask.promise;
         
         setPdf(pdfDoc);
@@ -94,13 +112,26 @@ export default function PDFViewer({ fileUrl, documentId, unitId }: PDFViewerProp
         const canvas = canvasRef.current;
         const context = canvas.getContext('2d');
         
-        canvas.height = viewport.height;
-        canvas.width = viewport.width;
+        // Optimize canvas rendering
+        const devicePixelRatio = window.devicePixelRatio || 1;
+        const scaledViewport = page.getViewport({ scale: scale * devicePixelRatio });
+        
+        canvas.width = scaledViewport.width;
+        canvas.height = scaledViewport.height;
+        canvas.style.width = viewport.width + 'px';
+        canvas.style.height = viewport.height + 'px';
+        
+        context.scale(devicePixelRatio, devicePixelRatio);
         
         const renderContext = {
           canvasContext: context,
           viewport: viewport,
+          enableWebGL: true, // Enable WebGL acceleration if available
+          renderInteractiveForms: false, // Disable forms for faster rendering
         };
+        
+        // Clear canvas before rendering
+        context.clearRect(0, 0, canvas.width, canvas.height);
         
         await page.render(renderContext).promise;
       } catch (err) {

@@ -51,8 +51,11 @@ export default function DOCXViewer({ fileUrl, filename, documentId, unitId }: DO
         setLoading(true);
         setError(null);
 
-        // Fetch the DOCX file
-        const response = await fetch(fileUrl);
+        // Fetch the DOCX file with caching
+        const response = await fetch(fileUrl, {
+          cache: 'force-cache', // Enable caching for faster subsequent loads
+          priority: 'high', // High priority for document loading
+        });
         if (!response.ok) {
           throw new Error('Failed to fetch DOCX file');
         }
@@ -62,14 +65,33 @@ export default function DOCXViewer({ fileUrl, filename, documentId, unitId }: DO
         // Import mammoth dynamically
         const mammoth = await import('mammoth');
         
-        // Convert DOCX to HTML
-        const result = await mammoth.convertToHtml({ arrayBuffer });
+        // Convert DOCX to HTML with optimized settings
+        const result = await mammoth.convertToHtml({ 
+          arrayBuffer,
+          options: {
+            convertImage: mammoth.images.imgElement(function(image: any) {
+              // Optimize image handling - convert to base64 for faster loading
+              return image.read("base64").then(function(imageBuffer: any) {
+                return {
+                  src: "data:" + image.contentType + ";base64," + imageBuffer
+                };
+              });
+            }),
+            // Optimize paragraph spacing
+            styleMap: [
+              "p[style-name='Normal'] => p:fresh",
+              "p[style-name='Heading 1'] => h1:fresh",
+              "p[style-name='Heading 2'] => h2:fresh",
+              "p[style-name='Heading 3'] => h3:fresh",
+            ]
+          }
+        });
         
         if (result.messages && result.messages.length > 0) {
           console.warn('DOCX conversion warnings:', result.messages);
         }
         
-        // Extract headings for outline
+        // Extract headings for outline - more efficient processing
         const tempDiv = document.createElement('div');
         tempDiv.innerHTML = result.value;
         const headings = tempDiv.querySelectorAll('h1, h2, h3, h4, h5, h6');
