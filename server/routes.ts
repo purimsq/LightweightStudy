@@ -826,28 +826,50 @@ ${automated ? 'NOTE: This is an automated break reminder. Be extra caring and en
     }
   });
 
-  // Health check for Ollama
+  // Enhanced Health check for Ollama with multiple connection attempts
   app.get("/api/ai/health", async (req, res) => {
-    try {
-      const response = await fetch("http://localhost:11434/api/tags");
-      if (response.ok) {
-        const models = await response.json();
-        const hasPhiModel = models.models?.some((model: any) => model.name.includes("phi"));
-        res.json({ 
-          status: "connected", 
-          hasPhiModel,
-          message: hasPhiModel ? "Ollama is ready" : "Ollama connected but phi model not found"
-        });
-      } else {
-        res.status(503).json({ status: "error", message: "Ollama not responding" });
+    const ollamaPorts = [11434, 11435, 8080, 3000]; // Try multiple common ports
+    const ollamaHosts = ['localhost', '127.0.0.1']; // Try different hosts
+    
+    for (const host of ollamaHosts) {
+      for (const port of ollamaPorts) {
+        try {
+          const response = await fetch(`http://${host}:${port}/api/tags`, {
+            method: "GET",
+            headers: { "Content-Type": "application/json" },
+            signal: AbortSignal.timeout(3000) // 3 second timeout
+          });
+          
+          if (response.ok) {
+            const models = await response.json();
+            const hasPhiModel = models.models?.some((model: any) => model.name.includes("phi"));
+            const availableModels = models.models?.map((m: any) => m.name) || [];
+            
+            return res.json({ 
+              status: "connected", 
+              host: `${host}:${port}`,
+              hasPhiModel,
+              availableModels,
+              message: hasPhiModel 
+                ? "Ollama is ready with phi model" 
+                : `Ollama connected. Available models: ${availableModels.join(', ')}. Consider pulling phi model.`
+            });
+          }
+        } catch (error) {
+          // Continue to next host/port combination
+          continue;
+        }
       }
-    } catch (error) {
-      res.status(503).json({ 
-        status: "disconnected", 
-        message: "Cannot connect to Ollama. Make sure it's running on localhost:11434",
-        error: error instanceof Error ? error.message : "Unknown error"
-      });
     }
+    
+    // If we get here, no connection worked
+    res.status(503).json({ 
+      status: "disconnected", 
+      message: "Cannot connect to Ollama on any common port. Please ensure Ollama is running and accessible.",
+      testedHosts: ollamaHosts,
+      testedPorts: ollamaPorts,
+      instructions: "Try: 1) Start Ollama service, 2) Check if running on different port, 3) Install phi model with 'ollama pull phi'"
+    });
   });
 
   // Serve uploaded files
