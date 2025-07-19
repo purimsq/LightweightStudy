@@ -193,37 +193,37 @@ export default function NotesPage({ documentId }: NotesPageProps) {
       const key = `line-${index}`;
       
       if (line.startsWith('## ')) {
-        // Header (##)
+        // Header (##) - Remove ## and style
         return (
-          <div key={key} className="text-blue-600 font-semibold text-lg my-2">
-            {line.substring(3)}
+          <div key={key} className="text-blue-600 font-bold text-xl my-3 leading-tight">
+            {line.substring(3).trim()}
           </div>
         );
       } else if (line.startsWith('### ')) {
-        // Subheader (###)
+        // Subheader (###) - Remove ### and style
         return (
-          <div key={key} className="text-indigo-600 font-medium text-base my-1.5">
-            {line.substring(4)}
+          <div key={key} className="text-indigo-600 font-semibold text-lg my-2 leading-tight">
+            {line.substring(4).trim()}
           </div>
         );
       } else if (line.startsWith('• ')) {
         // Bullet point
         return (
-          <div key={key} className="flex items-start my-0.5">
-            <span className="font-bold text-gray-700 mr-2">•</span>
+          <div key={key} className="flex items-start my-1">
+            <span className="font-bold text-gray-700 mr-2 mt-0.5">•</span>
             <span className="flex-1">{line.substring(2)}</span>
           </div>
         );
       } else if (line.trim()) {
         // Regular text
         return (
-          <div key={key} className="my-0.5">
+          <div key={key} className="my-1">
             {line}
           </div>
         );
       }
       
-      return <div key={key} className="my-0.5" />; // Empty line
+      return <div key={key} className="my-1" />; // Empty line
     });
   };
 
