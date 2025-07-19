@@ -5,7 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { ArrowLeft, Save, FileText, Edit3, Trash2, ChevronDown, ChevronRight, BookOpen } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { ArrowLeft, Save, FileText, Edit3, Trash2, ChevronDown, ChevronRight, BookOpen, AlertTriangle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 interface Note {
@@ -21,11 +22,64 @@ interface NotesPageProps {
   documentId: string;
 }
 
+function DeleteConfirmDialog({ 
+  isOpen, 
+  onOpenChange, 
+  onConfirm, 
+  title, 
+  description,
+  itemName,
+  isDeleting 
+}: {
+  isOpen: boolean;
+  onOpenChange: (open: boolean) => void;
+  onConfirm: () => void;
+  title: string;
+  description: string;
+  itemName: string;
+  isDeleting: boolean;
+}) {
+  return (
+    <Dialog open={isOpen} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <div className="flex items-center space-x-2">
+            <AlertTriangle className="h-5 w-5 text-red-500" />
+            <DialogTitle className="text-red-600">{title}</DialogTitle>
+          </div>
+          <DialogDescription className="pt-2">
+            {description}
+            <br />
+            <span className="font-semibold text-neutral-800">"{itemName}"</span>
+          </DialogDescription>
+        </DialogHeader>
+        <DialogFooter className="flex-row justify-end space-x-2">
+          <Button 
+            variant="outline" 
+            onClick={() => onOpenChange(false)}
+            disabled={isDeleting}
+          >
+            Cancel
+          </Button>
+          <Button 
+            variant="destructive" 
+            onClick={onConfirm}
+            disabled={isDeleting}
+          >
+            {isDeleting ? "Deleting..." : "Delete"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 export default function NotesPage({ documentId }: NotesPageProps) {
   const [location, setLocation] = useLocation();
   const [newNote, setNewNote] = useState({ title: "", content: "" });
   const [editingNote, setEditingNote] = useState<Note | null>(null);
   const [isNotesOpen, setIsNotesOpen] = useState(false);
+  const [deleteDialogNote, setDeleteDialogNote] = useState<Note | null>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -123,10 +177,8 @@ export default function NotesPage({ documentId }: NotesPageProps) {
     });
   };
 
-  const handleDeleteNote = (noteId: number) => {
-    if (confirm("Are you sure you want to delete this note?")) {
-      deleteNoteMutation.mutate(noteId);
-    }
+  const handleDeleteNote = (note: Note) => {
+    setDeleteDialogNote(note);
   };
 
   // Clean up content before saving - remove empty • lines
@@ -394,7 +446,7 @@ export default function NotesPage({ documentId }: NotesPageProps) {
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                onClick={() => handleDeleteNote(note.id)}
+                                onClick={() => handleDeleteNote(note)}
                                 className="h-6 w-6 p-0 text-red-500 hover:text-red-600"
                               >
                                 <Trash2 className="w-2.5 h-2.5" />
@@ -417,6 +469,21 @@ export default function NotesPage({ documentId }: NotesPageProps) {
           </div>
         </div>
       </div>
+      
+      <DeleteConfirmDialog
+        isOpen={deleteDialogNote !== null}
+        onOpenChange={(open) => !open && setDeleteDialogNote(null)}
+        onConfirm={() => {
+          if (deleteDialogNote) {
+            deleteNoteMutation.mutate(deleteDialogNote.id);
+            setDeleteDialogNote(null);
+          }
+        }}
+        title="Delete Note"
+        description="This will permanently delete this note. This action cannot be undone."
+        itemName={deleteDialogNote?.title || ""}
+        isDeleting={deleteNoteMutation.isPending}
+      />
     </div>
   );
 }

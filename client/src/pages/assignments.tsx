@@ -2,12 +2,12 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Calendar, CheckCircle, Clock, AlertCircle, FileText } from "lucide-react";
+import { Plus, Calendar, CheckCircle, Clock, AlertCircle, FileText, Trash2, AlertTriangle } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import type { Assignment, InsertAssignment } from "@shared/schema";
@@ -147,7 +147,60 @@ function CreateAssignmentDialog() {
   );
 }
 
+function DeleteConfirmDialog({ 
+  isOpen, 
+  onOpenChange, 
+  onConfirm, 
+  title, 
+  description,
+  itemName,
+  isDeleting 
+}: {
+  isOpen: boolean;
+  onOpenChange: (open: boolean) => void;
+  onConfirm: () => void;
+  title: string;
+  description: string;
+  itemName: string;
+  isDeleting: boolean;
+}) {
+  return (
+    <Dialog open={isOpen} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <div className="flex items-center space-x-2">
+            <AlertTriangle className="h-5 w-5 text-red-500" />
+            <DialogTitle className="text-red-600">{title}</DialogTitle>
+          </div>
+          <DialogDescription className="pt-2">
+            {description}
+            <br />
+            <span className="font-semibold text-neutral-800">"{itemName}"</span>
+          </DialogDescription>
+        </DialogHeader>
+        <DialogFooter className="flex-row justify-end space-x-2">
+          <Button 
+            variant="outline" 
+            onClick={() => onOpenChange(false)}
+            disabled={isDeleting}
+          >
+            Cancel
+          </Button>
+          <Button 
+            variant="destructive" 
+            onClick={onConfirm}
+            disabled={isDeleting}
+          >
+            {isDeleting ? "Deleting..." : "Delete"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 function AssignmentCard({ assignment }: { assignment: Assignment }) {
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const { toast } = useToast();
   
   const updateStatusMutation = useMutation({
@@ -168,6 +221,27 @@ function AssignmentCard({ assignment }: { assignment: Assignment }) {
         variant: "destructive" 
       });
     },
+  });
+
+  const deleteAssignmentMutation = useMutation({
+    mutationFn: async (assignmentId: number) => {
+      const response = await apiRequest("DELETE", `/api/assignments/${assignmentId}`);
+      if (!response.ok) throw new Error("Failed to delete assignment");
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/assignments"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/users/current"] });
+      setShowDeleteDialog(false);
+      toast({ title: "Assignment deleted successfully!" });
+    },
+    onError: (error) => {
+      toast({ 
+        title: "Error deleting assignment", 
+        description: error.message,
+        variant: "destructive" 
+      });
+    }
   });
 
   const getStatusIcon = (status: string) => {
@@ -219,6 +293,14 @@ function AssignmentCard({ assignment }: { assignment: Assignment }) {
               </p>
             )}
           </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowDeleteDialog(true)}
+            className="ml-2 text-red-600 hover:text-red-700 hover:border-red-300"
+          >
+            <Trash2 className="w-4 h-4" />
+          </Button>
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -253,6 +335,16 @@ function AssignmentCard({ assignment }: { assignment: Assignment }) {
             </SelectContent>
           </Select>
         </div>
+        
+        <DeleteConfirmDialog
+          isOpen={showDeleteDialog}
+          onOpenChange={setShowDeleteDialog}
+          onConfirm={() => deleteAssignmentMutation.mutate(assignment.id)}
+          title="Delete Assignment"
+          description="This will permanently delete this assignment. This action cannot be undone."
+          itemName={assignment.title}
+          isDeleting={deleteAssignmentMutation.isPending}
+        />
       </CardContent>
     </Card>
   );

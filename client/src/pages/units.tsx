@@ -2,12 +2,12 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Progress } from "@/components/ui/progress";
-import { Plus, FolderOpen, BookOpen, FileText } from "lucide-react";
+import { Plus, FolderOpen, BookOpen, FileText, Trash2, AlertTriangle } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
@@ -166,8 +166,62 @@ function CreateUnitDialog() {
   );
 }
 
+function DeleteConfirmDialog({ 
+  isOpen, 
+  onOpenChange, 
+  onConfirm, 
+  title, 
+  description,
+  itemName,
+  isDeleting 
+}: {
+  isOpen: boolean;
+  onOpenChange: (open: boolean) => void;
+  onConfirm: () => void;
+  title: string;
+  description: string;
+  itemName: string;
+  isDeleting: boolean;
+}) {
+  return (
+    <Dialog open={isOpen} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <div className="flex items-center space-x-2">
+            <AlertTriangle className="h-5 w-5 text-red-500" />
+            <DialogTitle className="text-red-600">{title}</DialogTitle>
+          </div>
+          <DialogDescription className="pt-2">
+            {description}
+            <br />
+            <span className="font-semibold text-neutral-800">"{itemName}"</span>
+          </DialogDescription>
+        </DialogHeader>
+        <DialogFooter className="flex-row justify-end space-x-2">
+          <Button 
+            variant="outline" 
+            onClick={() => onOpenChange(false)}
+            disabled={isDeleting}
+          >
+            Cancel
+          </Button>
+          <Button 
+            variant="destructive" 
+            onClick={onConfirm}
+            disabled={isDeleting}
+          >
+            {isDeleting ? "Deleting..." : "Delete"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 function UnitCard({ unit }: { unit: Unit }) {
   const [, setLocation] = useLocation();
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const { toast } = useToast();
   
   // Use a more specific query key and fetch all documents to filter locally
   const { data: allDocuments = [] } = useQuery({
@@ -175,6 +229,27 @@ function UnitCard({ unit }: { unit: Unit }) {
   });
   
   const documents = allDocuments.filter((doc: any) => doc.unitId === unit.id);
+
+  const deleteUnitMutation = useMutation({
+    mutationFn: async (unitId: number) => {
+      const response = await apiRequest("DELETE", `/api/units/${unitId}`);
+      if (!response.ok) throw new Error("Failed to delete unit");
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/units"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/documents"] });
+      setShowDeleteDialog(false);
+      toast({ title: "Unit deleted successfully!" });
+    },
+    onError: (error) => {
+      toast({ 
+        title: "Error deleting unit", 
+        description: error.message,
+        variant: "destructive" 
+      });
+    }
+  });
 
   const progressPercentage = unit.totalTopics > 0 
     ? Math.round((unit.completedTopics / unit.totalTopics) * 100) 
@@ -210,15 +285,35 @@ function UnitCard({ unit }: { unit: Unit }) {
             <FileText className="w-4 h-4 mr-1" />
             {documents.length} documents
           </div>
-          <Button 
-            variant="outline" 
-            size="sm"
-            onClick={() => setLocation(`/units/${unit.id}/documents`)}
-          >
-            <FolderOpen className="w-4 h-4 mr-1" />
-            Open
-          </Button>
+          <div className="flex space-x-2">
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={() => setLocation(`/units/${unit.id}/documents`)}
+            >
+              <FolderOpen className="w-4 h-4 mr-1" />
+              Open
+            </Button>
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={() => setShowDeleteDialog(true)}
+              className="text-red-600 hover:text-red-700 hover:border-red-300"
+            >
+              <Trash2 className="w-4 h-4" />
+            </Button>
+          </div>
         </div>
+        
+        <DeleteConfirmDialog
+          isOpen={showDeleteDialog}
+          onOpenChange={setShowDeleteDialog}
+          onConfirm={() => deleteUnitMutation.mutate(unit.id)}
+          title="Delete Unit"
+          description="This will permanently delete this unit and ALL its contents including documents, notes, and assignments. This action cannot be undone."
+          itemName={unit.name}
+          isDeleting={deleteUnitMutation.isPending}
+        />
       </CardContent>
     </Card>
   );
