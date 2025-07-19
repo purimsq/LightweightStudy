@@ -39,6 +39,7 @@ export const documents = pgTable("documents", {
 export const notes = pgTable("notes", {
   id: serial("id").primaryKey(),
   documentId: integer("document_id").references(() => documents.id),
+  title: text("title").notNull().default("Untitled Note"),
   content: text("content").notNull(),
   isMarkdown: boolean("is_markdown").notNull().default(false),
   createdAt: timestamp("created_at").defaultNow().notNull(),

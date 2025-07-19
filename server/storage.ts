@@ -244,6 +244,7 @@ export class MemStorage implements IStorage {
       updatedAt: new Date(),
       documentId: insertNote.documentId ?? null,
       isMarkdown: insertNote.isMarkdown ?? false,
+      title: insertNote.title ?? "Untitled Note",
     };
     this.notes.set(id, note);
     return note;
