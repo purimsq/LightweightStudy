@@ -98,10 +98,10 @@ function DocumentCard({ document, onDelete }: { document: Document; onDelete: ()
             </div>
             <div className="flex-1 min-w-0">
               <CardTitle className="text-base text-neutral-800 truncate">
-                {document.title}
+                {document.filename}
               </CardTitle>
               <p className="text-sm text-neutral-600 mt-1">
-                {document.type.toUpperCase()} • {new Date(document.createdAt).toLocaleDateString()}
+                {document.fileType.includes('pdf') ? 'PDF' : 'DOCX'} • {new Date(document.uploadedAt).toLocaleDateString()}
               </p>
             </div>
           </div>
@@ -132,7 +132,7 @@ function DocumentCard({ document, onDelete }: { document: Document; onDelete: ()
         onConfirm={() => deleteDocumentMutation.mutate(document.id)}
         title="Delete Document"
         description="This will permanently delete this document and all its notes. This action cannot be undone."
-        itemName={document.title}
+        itemName={document.filename}
         isDeleting={deleteDocumentMutation.isPending}
       />
     </Card>

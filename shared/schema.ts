@@ -30,6 +30,7 @@ export const documents = pgTable("documents", {
   originalName: text("original_name").notNull(),
   fileType: text("file_type").notNull(),
   filePath: text("file_path").notNull(),
+  fileSize: integer("file_size").notNull().default(0),
   extractedText: text("extracted_text"),
   summary: text("summary"),
   embeddings: json("embeddings"),
