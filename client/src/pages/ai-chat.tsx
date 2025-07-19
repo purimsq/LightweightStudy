@@ -220,10 +220,15 @@ export default function AIChat() {
                 <AlertCircle className="w-5 h-5" />
                 <div>
                   <p className="font-medium">AI Assistant Unavailable</p>
-                  <p className="text-sm text-orange-700 mt-1">
-                    <strong>Windows:</strong> <code className="bg-orange-100 px-1 rounded text-xs">set OLLAMA_HOST=0.0.0.0:11434 && ollama serve</code><br/>
-                    <strong>Then:</strong> <code className="bg-orange-100 px-1 rounded text-xs">ollama pull phi</code>
-                  </p>
+                  <div className="text-sm text-orange-700 mt-1 space-y-2">
+                    <div><strong>Status:</strong> Testing connection to your computer...</div>
+                    <div><strong>Step 1:</strong> <code className="bg-orange-100 px-1 rounded text-xs">set OLLAMA_HOST=0.0.0.0:11434 && ollama serve</code></div>
+                    <div><strong>Step 2:</strong> <code className="bg-orange-100 px-1 rounded text-xs">ollama pull phi</code></div>
+                    <div className="text-xs text-orange-600">
+                      <strong>Note:</strong> If still not connecting, the Replit environment might not be able to reach your local machine. 
+                      This is normal due to network restrictions.
+                    </div>
+                  </div>
                 </div>
               </div>
             </CardContent>
