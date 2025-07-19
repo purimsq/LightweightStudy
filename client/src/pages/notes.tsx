@@ -282,7 +282,7 @@ export default function NotesPage({ documentId }: NotesPageProps) {
   };
 
   const goBack = () => {
-    setLocation('/units');
+    setLocation(`/documents/${documentId}`);
   };
 
   return (
