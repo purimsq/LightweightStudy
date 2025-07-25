@@ -7,6 +7,7 @@ import { useState } from "react";
 import type { Document } from "@shared/schema";
 import PDFViewer from "@/components/viewers/pdf-viewer";
 import DOCXViewer from "@/components/viewers/docx-viewer";
+import EditableDocument from "@/components/viewers/editable-document";
 
 export default function DocumentViewer() {
   const [location, setLocation] = useLocation();
@@ -166,24 +167,14 @@ export default function DocumentViewer() {
                   unitId={document.unitId}
                 />
               ) : (
-                <div className="bg-white shadow-lg border border-neutral-200 rounded-lg min-h-[800px]">
-                  <div className="bg-white p-12 min-h-[800px]" style={{ 
-                    fontFamily: 'Georgia, "Times New Roman", serif',
-                    lineHeight: '1.6',
-                    fontSize: '16px'
-                  }}>
-                    <div 
-                      className="text-neutral-900 whitespace-pre-wrap"
-                      style={{
-                        wordWrap: 'break-word',
-                        hyphens: 'auto',
-                        textAlign: 'justify'
-                      }}
-                    >
-                      {document.extractedText}
-                    </div>
-                  </div>
-                </div>
+                <EditableDocument
+                  documentId={documentId.toString()}
+                  initialContent={document.extractedText || ""}
+                  filename={document.filename}
+                  unitId={document.unitId}
+                  fileType={document.fileType}
+                  filePath={document.filePath}
+                />
               )}
             </div>
           ) : (

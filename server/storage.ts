@@ -1,12 +1,13 @@
 import { 
-  users, units, documents, notes, assignments, studyPlans, aiChats,
+  users, units, documents, notes, assignments, studyPlans, aiChats, unitProgress,
   type User, type InsertUser,
   type Unit, type InsertUnit,
   type Document, type InsertDocument,
   type Note, type InsertNote,
   type Assignment, type InsertAssignment,
   type StudyPlan, type InsertStudyPlan,
-  type AiChat, type InsertAiChat
+  type AiChat, type InsertAiChat,
+  type UnitProgress, type InsertUnitProgress
 } from "@shared/schema";
 
 export interface IStorage {
@@ -60,6 +61,13 @@ export interface IStorage {
   // Quiz
   getQuiz(documentId: number): Promise<any>;
   saveQuiz(documentId: number, quiz: any): Promise<any>;
+
+  // Unit Progress
+  getUnitProgress(): Promise<UnitProgress[]>;
+  getUnitProgressByUnit(unitId: number): Promise<UnitProgress | undefined>;
+  createUnitProgress(progress: InsertUnitProgress): Promise<UnitProgress>;
+  updateUnitProgress(id: number, progress: Partial<InsertUnitProgress>): Promise<UnitProgress>;
+  deleteUnitProgress(unitId: number): Promise<boolean>;
 }
 
 export class MemStorage implements IStorage {
@@ -70,6 +78,7 @@ export class MemStorage implements IStorage {
   private assignments: Map<number, Assignment> = new Map();
   private studyPlans: Map<number, StudyPlan> = new Map();
   private aiChats: Map<number, AiChat> = new Map();
+  private unitProgress: Map<number, UnitProgress> = new Map();
   private quizzes: Map<number, any> = new Map(); // documentId -> quiz
   private currentId: number = 1;
 
@@ -83,7 +92,7 @@ export class MemStorage implements IStorage {
     });
 
     // Initialize with sample units
-    this.createUnit({
+    const anatomyUnit = this.createUnit({
       name: "Anatomy",
       description: "Human body systems and structures",
       color: "green",
@@ -92,7 +101,7 @@ export class MemStorage implements IStorage {
       completedTopics: 3,
     });
 
-    this.createUnit({
+    const immunologyUnit = this.createUnit({
       name: "Immunology", 
       description: "Immune system and defense mechanisms",
       color: "yellow",
@@ -101,7 +110,7 @@ export class MemStorage implements IStorage {
       completedTopics: 1,
     });
 
-    this.createUnit({
+    const physiologyUnit = this.createUnit({
       name: "Physiology",
       description: "Body functions and processes", 
       color: "blue",
@@ -109,6 +118,28 @@ export class MemStorage implements IStorage {
       totalTopics: 5,
       completedTopics: 2,
     });
+
+    // Create progress bars for initial units
+    anatomyUnit.then(unit => this.createUnitProgress({
+      unitId: unit.id,
+      progressPercentage: 60,
+      weeklyImprovement: 15,
+      trend: "up"
+    }));
+
+    immunologyUnit.then(unit => this.createUnitProgress({
+      unitId: unit.id,
+      progressPercentage: 20,
+      weeklyImprovement: -5,
+      trend: "down"
+    }));
+
+    physiologyUnit.then(unit => this.createUnitProgress({
+      unitId: unit.id,
+      progressPercentage: 40,
+      weeklyImprovement: 10,
+      trend: "up"
+    }));
   }
 
   private getNextId(): number {
@@ -169,6 +200,15 @@ export class MemStorage implements IStorage {
       createdAt: new Date(),
     };
     this.units.set(id, unit);
+    
+    // Automatically create a progress bar for the new unit
+    await this.createUnitProgress({
+      unitId: id,
+      progressPercentage: 0,
+      weeklyImprovement: 0,
+      trend: "stable"
+    });
+    
     return unit;
   }
 
@@ -182,6 +222,8 @@ export class MemStorage implements IStorage {
   }
 
   async deleteUnit(id: number): Promise<boolean> {
+    // Also delete the associated progress bar
+    await this.deleteUnitProgress(id);
     return this.units.delete(id);
   }
 
@@ -208,6 +250,7 @@ export class MemStorage implements IStorage {
       extractedText: insertDocument.extractedText ?? null,
       summary: insertDocument.summary ?? null,
       embeddings: insertDocument.embeddings ?? null,
+      fileSize: insertDocument.fileSize ?? 0,
     };
     this.documents.set(id, document);
     return document;
@@ -281,8 +324,16 @@ export class MemStorage implements IStorage {
       type: insertAssignment.type ?? "assignment",
       status: insertAssignment.status ?? "pending",
       description: insertAssignment.description ?? null,
+      unitId: insertAssignment.unitId ?? null,
       questions: insertAssignment.questions ?? null,
       relatedDocuments: insertAssignment.relatedDocuments ?? null,
+      attachedFilePath: insertAssignment.attachedFilePath ?? null,
+      attachedFileName: insertAssignment.attachedFileName ?? null,
+      attachedFileType: insertAssignment.attachedFileType ?? null,
+      totalMarks: insertAssignment.totalMarks ?? null,
+      userGrade: insertAssignment.userGrade ?? null,
+      progressContribution: insertAssignment.progressContribution ?? null,
+      ollamaResult: insertAssignment.ollamaResult ?? null,
     };
     this.assignments.set(id, assignment);
     return assignment;
@@ -375,6 +426,48 @@ export class MemStorage implements IStorage {
   async saveQuiz(documentId: number, quiz: any): Promise<any> {
     this.quizzes.set(documentId, quiz);
     return quiz;
+  }
+
+  // Unit Progress
+  async getUnitProgress(): Promise<UnitProgress[]> {
+    return Array.from(this.unitProgress.values());
+  }
+
+  async getUnitProgressByUnit(unitId: number): Promise<UnitProgress | undefined> {
+    return Array.from(this.unitProgress.values()).find(progress => progress.unitId === unitId);
+  }
+
+  async createUnitProgress(insertProgress: InsertUnitProgress): Promise<UnitProgress> {
+    const id = this.getNextId();
+    const progress: UnitProgress = {
+      ...insertProgress,
+      id,
+      lastUpdated: new Date(),
+      createdAt: new Date(),
+    };
+    this.unitProgress.set(id, progress);
+    return progress;
+  }
+
+  async updateUnitProgress(id: number, updateProgress: Partial<InsertUnitProgress>): Promise<UnitProgress> {
+    const existing = this.unitProgress.get(id);
+    if (!existing) throw new Error("Unit progress not found");
+    
+    const updated: UnitProgress = { 
+      ...existing, 
+      ...updateProgress,
+      lastUpdated: new Date()
+    };
+    this.unitProgress.set(id, updated);
+    return updated;
+  }
+
+  async deleteUnitProgress(unitId: number): Promise<boolean> {
+    const progress = Array.from(this.unitProgress.values()).find(p => p.unitId === unitId);
+    if (progress) {
+      return this.unitProgress.delete(progress.id);
+    }
+    return false;
   }
 }
 

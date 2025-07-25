@@ -61,32 +61,30 @@ export default function PDFViewer({ fileUrl, documentId, unitId }: PDFViewerProp
         // Import pdf.js dynamically
         const pdfjsLib = await import('pdfjs-dist');
         
-        // Set worker source to local server
-        pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf-worker/pdf.worker.min.mjs';
+        // Set worker source with better error handling
+        if (!pdfjsLib.GlobalWorkerOptions.workerSrc) {
+          try {
+            // Try using the installed worker first
+            pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
+              'pdfjs-dist/build/pdf.worker.min.js',
+              import.meta.url
+            ).toString();
+          } catch (error) {
+            // Fallback to CDN worker
+            pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
+          }
+        }
         
-        // Extreme performance settings for very large PDFs (1000+ pages)
+        // Enhanced PDF loading configuration with better error handling
         const loadingTask = pdfjsLib.getDocument({
           url: fileUrl,
-          enableXfa: false, // Disable XFA for faster loading
-          isEvalSupported: false, // Disable eval for security and performance
-          disableFontFace: true, // Disable font loading for extreme performance
-          useSystemFonts: true, // Use system fonts when possible
-          maxImageSize: 1024 * 1024, // Reduce image size for very large PDFs
-          verbosity: 0, // Reduce console output
-          // Extreme memory and performance settings for large academic PDFs
-          cMapUrl: undefined, // Don't load CMaps unless needed
-          cMapPacked: false,
-          nativeImageDecoderSupport: 'display', // Use native image decoder
-          useWorkerFetch: true, // Use worker for fetching
-          rangeChunkSize: 32768, // Smaller 32KB chunks for better streaming
-          disableRange: false, // Enable range requests for large files
-          disableStream: false, // Enable streaming
-          disableAutoFetch: true, // Disable auto-fetching for memory conservation
-          pdfBug: false, // Disable debugging for performance
-          stopAtErrors: false, // Continue loading even with minor errors
-          // Additional settings for extreme cases
-          fontExtraProperties: false, // Disable extra font properties
-          ignoreErrors: true, // Ignore non-critical errors
+          enableXfa: false,
+          verbosity: 0,
+          maxImageSize: 1024 * 1024,
+          rangeChunkSize: 32768,
+          disableAutoFetch: false,
+          disableStream: false,
+          stopAtErrors: false
         });
         
         // Enhanced progress callback for large PDFs with timeout handling
@@ -97,15 +95,7 @@ export default function PDFViewer({ fileUrl, documentId, unitId }: PDFViewerProp
           }
         };
 
-        // Add timeout for extremely large files (textbooks with 1000+ pages)
-        const timeoutId = setTimeout(() => {
-          console.warn('PDF loading is taking longer than expected - this appears to be a very large file');
-        }, 60000); // 60 second warning for extreme files
-        
         const pdfDoc = await loadingTask.promise;
-        
-        // Clear timeout on successful load
-        clearTimeout(timeoutId);
         
         setPdf(pdfDoc);
         setTotalPages(pdfDoc.numPages);
@@ -120,7 +110,6 @@ export default function PDFViewer({ fileUrl, documentId, unitId }: PDFViewerProp
         }
       } catch (err: any) {
         console.error('Error loading PDF:', err);
-        clearTimeout(timeoutId); // Clear timeout on error
         
         // Enhanced error handling for large PDFs
         let errorMessage = 'Failed to load PDF file';
@@ -184,14 +173,11 @@ export default function PDFViewer({ fileUrl, documentId, unitId }: PDFViewerProp
         const renderContext = {
           canvasContext: context,
           viewport: viewport,
-          enableWebGL: false, // Disable WebGL for compatibility with large PDFs
+          enableWebGL: false, // Disable WebGL for compatibility
           renderInteractiveForms: false, // Disable forms for faster rendering
           intent: 'display', // Optimize for display
-          // Enhanced performance settings
-          optionalContentConfigPromise: null, // Skip optional content for speed
           annotationMode: 0, // Disable annotations for performance
           textLayerMode: 0, // Disable text layer for performance
-          imageLayer: false, // Disable image layer for performance
         };
         
         // Clear canvas before rendering
@@ -251,11 +237,8 @@ export default function PDFViewer({ fileUrl, documentId, unitId }: PDFViewerProp
   };
 
   const goBack = () => {
-    if (unitId) {
-      setLocation(`/units/${unitId}/documents`);
-    } else {
-      setLocation("/units");
-    }
+    // Go back to assignments page instead of units
+    setLocation("/assignments");
   };
 
   // Generate outline based on page numbers for PDF

@@ -13,8 +13,11 @@ import Notes from "@/pages/notes";
 import Summary from "@/pages/summary";
 import Quiz from "@/pages/quiz";
 import Assignments from "@/pages/assignments";
+import AssignmentViewer from "@/pages/assignment-viewer";
 import StudyPlan from "@/pages/study-plan";
 import AiChat from "@/pages/ai-chat";
+import Progress from "@/pages/progress";
+import Music from "@/pages/music";
 import FloatingActionButton from "@/components/ui/floating-action-button";
 import DocumentUploadModal from "@/components/modals/document-upload-modal";
 import BreakReminder from "@/components/modals/break-reminder";
@@ -44,28 +47,38 @@ function AppLayout({ children }: { children: React.ReactNode }) {
 
 function Router() {
   return (
-    <AppLayout>
-      <Switch>
-        <Route path="/" component={Dashboard} />
-        <Route path="/dashboard" component={Dashboard} />
-        <Route path="/units" component={Units} />
-        <Route path="/units/:id/documents" component={UnitDocuments} />
-        <Route path="/documents/:id" component={DocumentViewer} />
-        <Route path="/documents/:id/notes">
-          {params => <Notes documentId={params.id} />}
-        </Route>
-        <Route path="/documents/:id/summary">
-          {params => <Summary documentId={params.id} />}
-        </Route>
-        <Route path="/documents/:id/quiz">
-          {params => <Quiz documentId={params.id} />}
-        </Route>
-        <Route path="/assignments" component={Assignments} />
-        <Route path="/study-plan" component={StudyPlan} />
-        <Route path="/ai-chat" component={AiChat} />
-        <Route component={() => <div className="p-6">Page not found</div>} />
-      </Switch>
-    </AppLayout>
+    <Switch>
+      {/* Full-screen music page without layout */}
+      <Route path="/music" component={Music} />
+      
+      {/* All other pages with normal layout */}
+      <Route>
+        <AppLayout>
+          <Switch>
+            <Route path="/" component={Dashboard} />
+            <Route path="/dashboard" component={Dashboard} />
+            <Route path="/units" component={Units} />
+            <Route path="/units/:id/documents" component={UnitDocuments} />
+            <Route path="/documents/:id" component={DocumentViewer} />
+            <Route path="/documents/:id/notes">
+              {params => <Notes documentId={params.id} />}
+            </Route>
+            <Route path="/documents/:id/summary">
+              {params => <Summary documentId={params.id} />}
+            </Route>
+            <Route path="/documents/:id/quiz">
+              {params => <Quiz documentId={params.id} />}
+            </Route>
+            <Route path="/assignments" component={Assignments} />
+            <Route path="/assignments/:id/view" component={AssignmentViewer} />
+            <Route path="/study-plan" component={StudyPlan} />
+            <Route path="/ai-chat" component={AiChat} />
+            <Route path="/progress" component={Progress} />
+            <Route component={() => <div className="p-6">Page not found</div>} />
+          </Switch>
+        </AppLayout>
+      </Route>
+    </Switch>
   );
 }
 

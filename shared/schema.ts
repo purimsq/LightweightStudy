@@ -49,13 +49,22 @@ export const notes = pgTable("notes", {
 
 export const assignments = pgTable("assignments", {
   id: serial("id").primaryKey(),
+  unitId: integer("unit_id").references(() => units.id),
   title: text("title").notNull(),
   description: text("description"),
-  type: text("type").notNull().default("assignment"), // assignment or cat
+  type: text("type").notNull().default("assignment"), // assignment, cat, exam, quiz
   deadline: timestamp("deadline").notNull(),
   status: text("status").notNull().default("pending"), // pending, in_progress, completed
   questions: json("questions"),
   relatedDocuments: json("related_documents"),
+  attachedFilePath: text("attached_file_path"), // PDF/DOCX file for the assignment
+  attachedFileName: text("attached_file_name"),
+  attachedFileType: text("attached_file_type"),
+  extractedText: text("extracted_text"), // For editing assignment documents
+  userGrade: integer("user_grade"), // Grade Mitchell achieved
+  totalMarks: integer("total_marks"), // Total possible marks
+  ollamaResult: json("ollama_result"), // Ollama's answer checking result
+  progressContribution: integer("progress_contribution"), // Calculated progress points
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -76,6 +85,16 @@ export const aiChats = pgTable("ai_chats", {
   sessionId: text("session_id").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const unitProgress = pgTable("unit_progress", {
+  id: serial("id").primaryKey(),
+  unitId: integer("unit_id").references(() => units.id).notNull(),
+  progressPercentage: integer("progress_percentage").notNull().default(0),
+  weeklyImprovement: integer("weekly_improvement").notNull().default(0),
+  trend: text("trend").notNull().default("stable"), // up, down, stable
+  lastUpdated: timestamp("last_updated").defaultNow().notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
 // Insert schemas
@@ -116,6 +135,12 @@ export const insertAiChatSchema = createInsertSchema(aiChats).omit({
   updatedAt: true,
 });
 
+export const insertUnitProgressSchema = createInsertSchema(unitProgress).omit({
+  id: true,
+  createdAt: true,
+  lastUpdated: true,
+});
+
 // Types
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
@@ -137,3 +162,6 @@ export type InsertStudyPlan = z.infer<typeof insertStudyPlanSchema>;
 
 export type AiChat = typeof aiChats.$inferSelect;
 export type InsertAiChat = z.infer<typeof insertAiChatSchema>;
+
+export type UnitProgress = typeof unitProgress.$inferSelect;
+export type InsertUnitProgress = z.infer<typeof insertUnitProgressSchema>;

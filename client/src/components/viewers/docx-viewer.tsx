@@ -67,24 +67,23 @@ export default function DOCXViewer({ fileUrl, filename, documentId, unitId }: DO
         
         // Convert DOCX to HTML with optimized settings
         const result = await mammoth.convertToHtml({ 
-          arrayBuffer,
-          options: {
-            convertImage: mammoth.images.imgElement(function(image: any) {
-              // Optimize image handling - convert to base64 for faster loading
-              return image.read("base64").then(function(imageBuffer: any) {
-                return {
-                  src: "data:" + image.contentType + ";base64," + imageBuffer
-                };
-              });
-            }),
-            // Optimize paragraph spacing
-            styleMap: [
-              "p[style-name='Normal'] => p:fresh",
-              "p[style-name='Heading 1'] => h1:fresh",
-              "p[style-name='Heading 2'] => h2:fresh",
-              "p[style-name='Heading 3'] => h3:fresh",
-            ]
-          }
+          arrayBuffer
+        }, {
+          convertImage: mammoth.images.imgElement(function(image: any) {
+            // Optimize image handling - convert to base64 for faster loading
+            return image.read("base64").then(function(imageBuffer: any) {
+              return {
+                src: "data:" + image.contentType + ";base64," + imageBuffer
+              };
+            });
+          }),
+          // Optimize paragraph spacing
+          styleMap: [
+            "p[style-name='Normal'] => p:fresh",
+            "p[style-name='Heading 1'] => h1:fresh",
+            "p[style-name='Heading 2'] => h2:fresh",
+            "p[style-name='Heading 3'] => h3:fresh",
+          ]
         });
         
         if (result.messages && result.messages.length > 0) {
@@ -131,11 +130,8 @@ export default function DOCXViewer({ fileUrl, filename, documentId, unitId }: DO
   };
 
   const goBack = () => {
-    if (unitId) {
-      setLocation(`/units/${unitId}/documents`);
-    } else {
-      setLocation("/units");
-    }
+    // Go back to assignments page instead of units
+    setLocation("/assignments");
   };
 
   const scrollToHeading = (id: string) => {
@@ -275,15 +271,16 @@ export default function DOCXViewer({ fileUrl, filename, documentId, unitId }: DO
         </div>
 
         {/* DOCX Content */}
-        <div className="p-6 flex-1">
+        <div className="p-6 flex-1 overflow-auto">
           <div className="max-w-4xl mx-auto">
             <div className="bg-white shadow-2xl rounded-lg border border-stone-200 overflow-hidden">
               <div 
-                className="p-12 min-h-[800px] bg-white"
+                className="p-12 min-h-[800px] bg-white overflow-auto"
                 style={{ 
                   fontFamily: 'Georgia, "Times New Roman", serif',
                   lineHeight: '1.8',
-                  fontSize: '16px'
+                  fontSize: '16px',
+                  maxHeight: 'calc(100vh - 200px)'
                 }}
               >
                 <div 
