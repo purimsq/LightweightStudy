@@ -1,23 +1,29 @@
 import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
-import { ChevronLeft, ChevronRight, ZoomIn, ZoomOut, ArrowLeft, Menu, BookOpen, FileText } from "lucide-react";
+import { ChevronLeft, ChevronRight, ZoomIn, ZoomOut, ArrowLeft, Menu, BookOpen, FileText, Edit, X, RefreshCw } from "lucide-react";
 import { useLocation } from "wouter";
 
 interface PDFViewerProps {
   fileUrl: string;
   documentId?: string;
   unitId?: number;
+  isEditing?: boolean;
+  onContentChange?: (content: string) => void;
 }
 
-export default function PDFViewer({ fileUrl, documentId, unitId }: PDFViewerProps) {
+export default function PDFViewer({ fileUrl, documentId, unitId, isEditing, onContentChange }: PDFViewerProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [pdf, setPdf] = useState<any>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(0);
   const [scale, setScale] = useState(1.5);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false); // Start with false since we're using iframe by default
   const [error, setError] = useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [extractedText, setExtractedText] = useState<string>("");
+  const [showTextOverlay, setShowTextOverlay] = useState(false);
+  const [extractingText, setExtractingText] = useState(false);
+  const [useAdvancedViewer, setUseAdvancedViewer] = useState(false); // Start with iframe, allow switching to PDF.js
   const [, setLocation] = useLocation();
 
   // Keyboard navigation for PDF with throttling to prevent errors
@@ -55,6 +61,7 @@ export default function PDFViewer({ fileUrl, documentId, unitId }: PDFViewerProp
   useEffect(() => {
     const loadPDF = async () => {
       try {
+        console.log('Starting PDF load for:', fileUrl);
         setLoading(true);
         setError(null);
         
@@ -63,28 +70,19 @@ export default function PDFViewer({ fileUrl, documentId, unitId }: PDFViewerProp
         
         // Set worker source with better error handling
         if (!pdfjsLib.GlobalWorkerOptions.workerSrc) {
-          try {
-            // Try using the installed worker first
-            pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
-              'pdfjs-dist/build/pdf.worker.min.js',
-              import.meta.url
-            ).toString();
-          } catch (error) {
-            // Fallback to CDN worker
-            pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
-          }
+          // Use CDN worker for better compatibility
+          pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
         }
         
-        // Enhanced PDF loading configuration with better error handling
+        // Convert relative URL to absolute URL if needed
+        const absoluteUrl = fileUrl.startsWith('http') ? fileUrl : `${window.location.origin}${fileUrl}`;
+        console.log('Loading PDF from:', absoluteUrl);
+        
+        // Simplified PDF loading configuration for better reliability
         const loadingTask = pdfjsLib.getDocument({
-          url: fileUrl,
+          url: absoluteUrl,
           enableXfa: false,
-          verbosity: 0,
-          maxImageSize: 1024 * 1024,
-          rangeChunkSize: 32768,
-          disableAutoFetch: false,
-          disableStream: false,
-          stopAtErrors: false
+          verbosity: 0
         });
         
         // Enhanced progress callback for large PDFs with timeout handling
@@ -125,15 +123,17 @@ export default function PDFViewer({ fileUrl, documentId, unitId }: PDFViewerProp
           errorMessage += `: ${err.message}`;
         }
         
+        console.error('PDF.js failed:', errorMessage);
         setError(errorMessage);
+        setUseAdvancedViewer(false); // Fall back to iframe
         setLoading(false);
       }
     };
 
-    if (fileUrl) {
+    if (fileUrl && useAdvancedViewer) {
       loadPDF();
     }
-  }, [fileUrl]);
+  }, [fileUrl, useAdvancedViewer]);
 
   useEffect(() => {
     let renderTask: any = null;
@@ -193,11 +193,6 @@ export default function PDFViewer({ fileUrl, documentId, unitId }: PDFViewerProp
         // Clean up the page object to free memory
         page.cleanup();
         
-        // Force garbage collection for large PDFs (if available)
-        if (window.gc && typeof window.gc === 'function') {
-          window.gc();
-        }
-        
       } catch (err: any) {
         if (err.name !== 'RenderingCancelledException') {
           console.error('Error rendering page:', err);
@@ -237,8 +232,12 @@ export default function PDFViewer({ fileUrl, documentId, unitId }: PDFViewerProp
   };
 
   const goBack = () => {
-    // Go back to assignments page instead of units
-    setLocation("/assignments");
+    // Go back to the appropriate page based on context
+    if (unitId) {
+      setLocation(`/units/${unitId}/documents`);
+    } else {
+      setLocation("/assignments");
+    }
   };
 
   // Generate outline based on page numbers for PDF
@@ -280,6 +279,50 @@ export default function PDFViewer({ fileUrl, documentId, unitId }: PDFViewerProp
     setSidebarOpen(false);
   };
 
+  const extractTextFromPDF = async () => {
+    if (!pdf) return;
+    
+    try {
+      setExtractingText(true);
+      let fullText = "";
+      
+      // Limit to first 50 pages for performance
+      const maxPages = Math.min(totalPages, 50);
+      
+      for (let pageNum = 1; pageNum <= maxPages; pageNum++) {
+        try {
+          const page = await pdf.getPage(pageNum);
+          const textContent = await page.getTextContent();
+          const pageText = textContent.items
+            .map((item: any) => item.str)
+            .join(' ');
+          fullText += pageText + '\n\n';
+          
+          // Clean up page to free memory
+          page.cleanup();
+        } catch (pageError) {
+          console.warn(`Error extracting text from page ${pageNum}:`, pageError);
+          fullText += `[Error extracting text from page ${pageNum}]\n\n`;
+        }
+      }
+      
+      if (totalPages > maxPages) {
+        fullText += `\n[Text extraction limited to first ${maxPages} pages for performance]`;
+      }
+      
+      setExtractedText(fullText);
+      setShowTextOverlay(true);
+      if (onContentChange) {
+        onContentChange(fullText);
+      }
+      setExtractingText(false);
+    } catch (error) {
+      console.error('Error extracting text from PDF:', error);
+      setError('Failed to extract text from PDF');
+      setExtractingText(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="bg-gradient-to-br from-slate-50 to-stone-100 min-h-screen flex items-center justify-center">
@@ -302,14 +345,60 @@ export default function PDFViewer({ fileUrl, documentId, unitId }: PDFViewerProp
           </div>
           <p className="text-red-600 font-medium mb-4">{error}</p>
           <p className="text-stone-500 text-sm">Make sure the PDF file is valid and accessible.</p>
-          <Button 
-            variant="outline" 
-            onClick={goBack}
-            className="mt-4 bg-white hover:bg-stone-50 border-stone-200"
-          >
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Go Back
-          </Button>
+          <div className="flex space-x-3 mt-4">
+            <Button 
+              variant="outline" 
+              onClick={goBack}
+              className="bg-white hover:bg-stone-50 border-stone-200"
+            >
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              Go Back
+            </Button>
+            <Button 
+              variant="outline" 
+              onClick={() => {
+                setError(null);
+                setLoading(true);
+                // Reload the PDF
+                const loadPDF = async () => {
+                  try {
+                    setLoading(true);
+                    setError(null);
+                    
+                    const pdfjsLib = await import('pdfjs-dist');
+                    
+                    if (!pdfjsLib.GlobalWorkerOptions.workerSrc) {
+                      pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
+                    }
+                    
+                    // Convert relative URL to absolute URL if needed
+                    const absoluteUrl = fileUrl.startsWith('http') ? fileUrl : `${window.location.origin}${fileUrl}`;
+                    
+                    const loadingTask = pdfjsLib.getDocument({
+                      url: absoluteUrl,
+                      enableXfa: false,
+                      verbosity: 0
+                    });
+                    
+                    const pdfDoc = await loadingTask.promise;
+                    setPdf(pdfDoc);
+                    setTotalPages(pdfDoc.numPages);
+                    setCurrentPage(1);
+                    setLoading(false);
+                  } catch (err: any) {
+                    console.error('Error retrying PDF load:', err);
+                    setError('Failed to load PDF file. Please try again.');
+                    setLoading(false);
+                  }
+                };
+                loadPDF();
+              }}
+              className="bg-blue-50 hover:bg-blue-100 border-blue-300 text-blue-700 hover:text-blue-800"
+            >
+              <RefreshCw className="w-4 h-4 mr-2" />
+              Retry
+            </Button>
+          </div>
         </div>
       </div>
     );
@@ -378,65 +467,152 @@ export default function PDFViewer({ fileUrl, documentId, unitId }: PDFViewerProp
                 <Menu className="w-4 h-4 mr-2" />
                 Outline
               </Button>
-              <div className="flex items-center space-x-3 bg-stone-100 rounded-lg px-3 py-2">
+              {!useAdvancedViewer && (
                 <Button
-                  variant="ghost"
+                  variant="outline"
                   size="sm"
-                  onClick={goToPrevPage}
-                  disabled={currentPage <= 1}
-                  className="h-8 w-8 p-0 hover:bg-stone-200 disabled:opacity-50"
+                  onClick={() => {
+                    setUseAdvancedViewer(true);
+                    setError(null);
+                  }}
+                  className="bg-blue-50 hover:bg-blue-100 border-blue-300 text-blue-700 hover:text-blue-800"
                 >
-                  <ChevronLeft className="w-4 h-4" />
+                  <BookOpen className="w-4 h-4 mr-2" />
+                  Advanced Viewer
                 </Button>
-                <span className="text-sm font-medium text-stone-700 min-w-[80px] text-center">
-                  Page {currentPage} of {totalPages}
-                </span>
+              )}
+              {isEditing && (
                 <Button
-                  variant="ghost"
+                  variant="outline"
                   size="sm"
-                  onClick={goToNextPage}
-                  disabled={currentPage >= totalPages}
-                  className="h-8 w-8 p-0 hover:bg-stone-200 disabled:opacity-50"
+                  onClick={extractTextFromPDF}
+                  disabled={extractingText}
+                  className="bg-yellow-50 hover:bg-yellow-100 border-yellow-300 text-yellow-700 hover:text-yellow-800"
                 >
-                  <ChevronRight className="w-4 h-4" />
+                  <Edit className="w-4 h-4 mr-2" />
+                  {extractingText ? "Extracting..." : "Extract & Edit Text"}
                 </Button>
-              </div>
+              )}
+              {useAdvancedViewer && (
+                <div className="flex items-center space-x-3 bg-stone-100 rounded-lg px-3 py-2">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={goToPrevPage}
+                    disabled={currentPage <= 1}
+                    className="h-8 w-8 p-0 hover:bg-stone-200 disabled:opacity-50"
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                  </Button>
+                  <span className="text-sm font-medium text-stone-700 min-w-[80px] text-center">
+                    Page {currentPage} of {totalPages}
+                  </span>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={goToNextPage}
+                    disabled={currentPage >= totalPages}
+                    className="h-8 w-8 p-0 hover:bg-stone-200 disabled:opacity-50"
+                  >
+                    <ChevronRight className="w-4 h-4" />
+                  </Button>
+                </div>
+              )}
             </div>
             
-            <div className="flex items-center space-x-3 bg-stone-100 rounded-lg px-3 py-2">
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                onClick={zoomOut}
-                className="h-8 w-8 p-0 hover:bg-stone-200"
-              >
-                <ZoomOut className="w-4 h-4" />
-              </Button>
-              <span className="text-sm font-medium text-stone-700 min-w-[60px] text-center">
-                {Math.round(scale * 100)}%
-              </span>
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                onClick={zoomIn}
-                className="h-8 w-8 p-0 hover:bg-stone-200"
-              >
-                <ZoomIn className="w-4 h-4" />
-              </Button>
-            </div>
+            {useAdvancedViewer && (
+              <div className="flex items-center space-x-3 bg-stone-100 rounded-lg px-3 py-2">
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  onClick={zoomOut}
+                  className="h-8 w-8 p-0 hover:bg-stone-200"
+                >
+                  <ZoomOut className="w-4 h-4" />
+                </Button>
+                <span className="text-sm font-medium text-stone-700 min-w-[60px] text-center">
+                  {Math.round(scale * 100)}%
+                </span>
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  onClick={zoomIn}
+                  className="h-8 w-8 p-0 hover:bg-stone-200"
+                >
+                  <ZoomIn className="w-4 h-4" />
+                </Button>
+              </div>
+            )}
           </div>
         </div>
 
-        {/* PDF Canvas */}
+        {/* PDF Canvas or iframe */}
         <div className="p-6 flex justify-center flex-1">
-          <div className="bg-white shadow-2xl rounded-lg border border-stone-200 overflow-hidden">
-            <canvas
-              ref={canvasRef}
-              className="max-w-full"
-              style={{ display: 'block' }}
-            />
-          </div>
+          {useAdvancedViewer ? (
+            <div className="bg-white shadow-2xl rounded-lg border border-stone-200 overflow-hidden">
+              <canvas
+                ref={canvasRef}
+                className="max-w-full"
+                style={{ display: 'block' }}
+              />
+            </div>
+          ) : (
+            <div className="bg-white shadow-2xl rounded-lg border border-stone-200 overflow-hidden w-full max-w-4xl">
+              <div className="p-4 border-b border-gray-200 bg-gray-50">
+                <div className="flex items-center space-x-2">
+                  <FileText className="w-5 h-5 text-blue-600" />
+                  <span className="text-sm font-medium text-gray-700">PDF Viewer</span>
+                </div>
+              </div>
+              <iframe
+                src={fileUrl}
+                className="w-full h-[600px]"
+                title="PDF Document"
+                style={{ border: 'none' }}
+              />
+            </div>
+          )}
         </div>
+
+        {/* Text Overlay for Editing */}
+        {showTextOverlay && isEditing && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-6">
+            <div className="bg-white rounded-lg shadow-2xl w-full max-w-4xl h-[80vh] flex flex-col">
+              <div className="p-4 border-b border-gray-200 flex items-center justify-between">
+                <h3 className="text-lg font-semibold text-gray-900">Edit PDF Text</h3>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowTextOverlay(false)}
+                >
+                  <X className="w-4 h-4 mr-2" />
+                  Close
+                </Button>
+              </div>
+              <div className="flex-1 p-4 overflow-auto">
+                <div
+                  className="w-full h-full p-4 border border-gray-300 rounded-lg bg-yellow-50 focus:outline-none focus:ring-2 focus:ring-yellow-400"
+                  contentEditable={true}
+                  onInput={(e) => {
+                    const newContent = e.currentTarget.innerHTML;
+                    setExtractedText(newContent);
+                    if (onContentChange) {
+                      onContentChange(newContent);
+                    }
+                  }}
+                  suppressContentEditableWarning={true}
+                  dangerouslySetInnerHTML={{ __html: extractedText }}
+                  style={{
+                    minHeight: '400px',
+                    fontFamily: 'Georgia, "Times New Roman", serif',
+                    lineHeight: '1.6',
+                    fontSize: '14px'
+                  }}
+                />
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

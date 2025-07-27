@@ -8,9 +8,11 @@ interface DOCXViewerProps {
   filename: string;
   documentId?: string;
   unitId?: number;
+  isEditing?: boolean;
+  onContentChange?: (content: string) => void;
 }
 
-export default function DOCXViewer({ fileUrl, filename, documentId, unitId }: DOCXViewerProps) {
+export default function DOCXViewer({ fileUrl, filename, documentId, unitId, isEditing, onContentChange }: DOCXViewerProps) {
   const [htmlContent, setHtmlContent] = useState<string>("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -51,54 +53,35 @@ export default function DOCXViewer({ fileUrl, filename, documentId, unitId }: DO
         setLoading(true);
         setError(null);
 
-        // Fetch the DOCX file with caching
-        const response = await fetch(fileUrl, {
-          cache: 'force-cache', // Enable caching for faster subsequent loads
-          priority: 'high', // High priority for document loading
+        // Use the server's document extraction endpoint for DOCX files
+        const filename = fileUrl.split('/').pop(); // Extract filename from URL
+        const response = await fetch(`/api/documents/${encodeURIComponent(filename || '')}/extract`, {
+          cache: 'force-cache',
+          priority: 'high',
         });
+        
         if (!response.ok) {
-          throw new Error('Failed to fetch DOCX file');
+          throw new Error('Failed to extract DOCX content');
         }
         
-        const arrayBuffer = await response.arrayBuffer();
+        const data = await response.json();
         
-        // Import mammoth dynamically
-        const mammoth = await import('mammoth');
-        
-        // Convert DOCX to HTML with optimized settings
-        const result = await mammoth.convertToHtml({ 
-          arrayBuffer
-        }, {
-          convertImage: mammoth.images.imgElement(function(image: any) {
-            // Optimize image handling - convert to base64 for faster loading
-            return image.read("base64").then(function(imageBuffer: any) {
-              return {
-                src: "data:" + image.contentType + ";base64," + imageBuffer
-              };
-            });
-          }),
-          // Optimize paragraph spacing
-          styleMap: [
-            "p[style-name='Normal'] => p:fresh",
-            "p[style-name='Heading 1'] => h1:fresh",
-            "p[style-name='Heading 2'] => h2:fresh",
-            "p[style-name='Heading 3'] => h3:fresh",
-          ]
-        });
-        
-        if (result.messages && result.messages.length > 0) {
-          console.warn('DOCX conversion warnings:', result.messages);
+        if (!data.success) {
+          throw new Error(data.error || 'Failed to extract DOCX content');
         }
         
-        // Extract headings for outline - more efficient processing
+        // Use the extracted HTML content from the server
+        const htmlContent = data.content;
+        
+        // Extract headings for outline
         const tempDiv = document.createElement('div');
-        tempDiv.innerHTML = result.value;
+        tempDiv.innerHTML = htmlContent;
         const headings = tempDiv.querySelectorAll('h1, h2, h3, h4, h5, h6');
         
         const extractedOutline = Array.from(headings).map((heading, index) => {
           const level = parseInt(heading.tagName.substring(1)) - 1;
           const id = `heading-${index}`;
-          heading.id = id; // Add ID for scrolling
+          heading.id = id;
           
           return {
             title: heading.textContent?.slice(0, 50) + (heading.textContent && heading.textContent.length > 50 ? '...' : '') || `Heading ${index + 1}`,
@@ -108,7 +91,7 @@ export default function DOCXViewer({ fileUrl, filename, documentId, unitId }: DO
         });
         
         setOutline(extractedOutline);
-        setHtmlContent(tempDiv.innerHTML);
+        setHtmlContent(htmlContent);
         setLoading(false);
       } catch (err) {
         console.error('Error loading DOCX:', err);
@@ -130,8 +113,12 @@ export default function DOCXViewer({ fileUrl, filename, documentId, unitId }: DO
   };
 
   const goBack = () => {
-    // Go back to assignments page instead of units
-    setLocation("/assignments");
+    // Go back to the appropriate page based on context
+    if (unitId) {
+      setLocation(`/units/${unitId}/documents`);
+    } else {
+      setLocation("/assignments");
+    }
   };
 
   const scrollToHeading = (id: string) => {
@@ -284,11 +271,25 @@ export default function DOCXViewer({ fileUrl, filename, documentId, unitId }: DO
                 }}
               >
                 <div 
-                  className="prose prose-lg max-w-none prose-stone"
+                  className={`prose prose-lg max-w-none prose-stone ${
+                    isEditing 
+                      ? 'bg-yellow-50 border-yellow-300 cursor-text focus:outline-none focus:ring-2 focus:ring-yellow-400 editing-mode' 
+                      : ''
+                  }`}
+                  contentEditable={isEditing}
+                  onInput={(e) => onContentChange && onContentChange(e.currentTarget.innerHTML)}
+                  suppressContentEditableWarning={true}
                   dangerouslySetInnerHTML={{ __html: htmlContent }}
                   style={{
                     color: '#374151',
-                    wordWrap: 'break-word'
+                    wordWrap: 'break-word',
+                    ...(isEditing && {
+                      backgroundColor: '#fefce8',
+                      border: '2px solid #fde047',
+                      borderRadius: '8px',
+                      padding: '16px',
+                      minHeight: '400px'
+                    })
                   }}
                 />
               </div>

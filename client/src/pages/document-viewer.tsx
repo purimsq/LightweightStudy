@@ -132,7 +132,7 @@ export default function DocumentViewer() {
       {/* Document Content */}
       <div className="pt-20 px-8 pb-8 bg-neutral-50 min-h-screen">
         <div className="max-w-5xl mx-auto">
-          {document.extractedText ? (
+          {document.extractedText || document.fileType === 'application/pdf' || document.fileType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ? (
             <div className="bg-white">
               {/* Document Toolbar */}
               <div className="bg-white border border-neutral-200 rounded-t-lg p-4 flex items-center justify-between">
@@ -141,53 +141,74 @@ export default function DocumentViewer() {
                     <span className="w-2 h-2 bg-green-500 rounded-full"></span>
                     <span>Document loaded</span>
                   </div>
-                  <div className="text-sm text-neutral-500">
-                    {document.extractedText.split(' ').length} words • {document.extractedText.length} characters
-                  </div>
+                  {document.extractedText && (
+                    <div className="text-sm text-neutral-500">
+                      {document.extractedText.split(' ').length} words • {document.extractedText.length} characters
+                    </div>
+                  )}
                 </div>
                 <div className="flex items-center space-x-3">
                   <div className="text-xs text-neutral-500">
-                    Font: Georgia • Size: 16px • Zoom: 100%
+                    {document.fileType === 'application/pdf' ? 'PDF Viewer' : 
+                     document.fileType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ? 'DOCX Viewer' : 
+                     'Text Editor'}
                   </div>
                 </div>
               </div>
               
               {/* Document Viewer */}
               {document.fileType === 'application/pdf' ? (
-                <PDFViewer 
-                  fileUrl={document.filePath} 
-                  documentId={documentId.toString()}
-                  unitId={document.unitId}
-                />
+                <div className="border border-neutral-200 rounded-b-lg overflow-hidden">
+                  <PDFViewer 
+                    fileUrl={document.filePath} 
+                    documentId={documentId.toString()}
+                    unitId={document.unitId}
+                  />
+                </div>
               ) : document.fileType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ? (
-                <DOCXViewer 
-                  fileUrl={document.filePath} 
-                  filename={document.filename}
-                  documentId={documentId.toString()}
-                  unitId={document.unitId}
-                />
+                <div className="border border-neutral-200 rounded-b-lg overflow-hidden">
+                  <DOCXViewer 
+                    fileUrl={document.filePath} 
+                    filename={document.filename}
+                    documentId={documentId.toString()}
+                    unitId={document.unitId}
+                  />
+                </div>
               ) : (
-                <EditableDocument
-                  documentId={documentId.toString()}
-                  initialContent={document.extractedText || ""}
-                  filename={document.filename}
-                  unitId={document.unitId}
-                  fileType={document.fileType}
-                  filePath={document.filePath}
-                />
+                <div className="border border-neutral-200 rounded-b-lg overflow-hidden">
+                  <EditableDocument
+                    documentId={documentId.toString()}
+                    initialContent={document.extractedText || ""}
+                    filename={document.filename}
+                    unitId={document.unitId}
+                    fileType={document.fileType}
+                    filePath={document.filePath}
+                  />
+                </div>
               )}
             </div>
           ) : (
             <div className="text-center py-24">
               <FileText className="w-24 h-24 text-neutral-400 mx-auto mb-6" />
-              <h2 className="text-2xl font-bold text-neutral-800 mb-2">No text content available</h2>
+              <h2 className="text-2xl font-bold text-neutral-800 mb-2">Document Ready for Viewing</h2>
               <p className="text-neutral-600 mb-4">
-                This document hasn't been processed for text extraction yet.
+                {document.fileType === 'application/pdf' ? 
+                  'PDF documents are displayed using the built-in PDF viewer with zoom, navigation, and outline features.' :
+                  document.fileType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ?
+                  'DOCX documents are converted to HTML for easy reading with automatic heading detection and navigation.' :
+                  'This document is ready for viewing and editing.'
+                }
               </p>
-              <Button onClick={handleDownload}>
-                <Download className="w-4 h-4 mr-2" />
-                Download Original File
-              </Button>
+              <div className="flex items-center justify-center space-x-4">
+                <Button onClick={handleDownload}>
+                  <Download className="w-4 h-4 mr-2" />
+                  Download Original File
+                </Button>
+                <Button variant="outline" onClick={() => setLocation(`/documents/${documentId}/notes`)}>
+                  <BookOpen className="w-4 h-4 mr-2" />
+                  Add Notes
+                </Button>
+              </div>
             </div>
           )}
         </div>

@@ -28,11 +28,12 @@ Would you like me to:
 - Save your current progress?
 - Help you plan what to study after your break?`;
 
-      return apiRequest("POST", "/api/ai/chat", {
+      const response = await apiRequest("POST", "/api/ai/chat", {
         message: message,
         sessionId: sessionId,
         automated: true
       });
+      return response.json();
     },
   });
 

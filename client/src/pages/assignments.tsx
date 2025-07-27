@@ -10,6 +10,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/hooks/use-toast";
 import { FileText, Plus, Trash2, Edit, X, Award, Clock, CheckCircle, AlertCircle, Upload, Calendar } from "lucide-react";
 import type { Assignment, Unit } from "@shared/schema";
+import PDFViewer from "@/components/viewers/pdf-viewer";
+import DOCXViewer from "@/components/viewers/docx-viewer";
+import EditableDocument from "@/components/viewers/editable-document";
 
 export default function AssignmentsPage() {
   const [showCreateDialog, setShowCreateDialog] = useState(false);
@@ -393,23 +396,26 @@ function AssignmentEditor({ assignment, isOpen, onOpenChange }: {
                       
                       if (fileExtension === 'pdf') {
                         return (
-                          <div className="w-full h-[600px] border rounded-lg overflow-hidden">
-                            <iframe
-                              src={assignment.attachedFilePath}
-                              className="w-full h-full"
-                              title="PDF Document"
-                              style={{ border: 'none' }}
+                          <div className="w-full h-full">
+                            <PDFViewer 
+                              fileUrl={assignment.attachedFilePath} 
+                              documentId={assignment.id.toString()}
+                              unitId={assignment.unitId}
+                              isEditing={isEditing}
+                              onContentChange={setEditedContent}
                             />
                           </div>
                         );
                       } else if (fileExtension === 'docx') {
                         return (
-                          <div className="w-full h-[600px] border rounded-lg overflow-hidden">
-                            <iframe
-                              src={assignment.attachedFilePath}
-                              className="w-full h-full"
-                              title="DOCX Document"
-                              style={{ border: 'none' }}
+                          <div className="w-full h-full">
+                            <DOCXViewer 
+                              fileUrl={assignment.attachedFilePath} 
+                              filename={assignment.title}
+                              documentId={assignment.id.toString()}
+                              unitId={assignment.unitId}
+                              isEditing={isEditing}
+                              onContentChange={setEditedContent}
                             />
                           </div>
                         );
