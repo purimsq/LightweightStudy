@@ -399,6 +399,7 @@ function AssignmentEditor({ assignment, isOpen, onOpenChange }: {
                           <div className="w-full h-full">
                             <PDFViewer 
                               fileUrl={assignment.attachedFilePath} 
+                              filename={assignment.title}
                               documentId={assignment.id.toString()}
                               unitId={assignment.unitId}
                               isEditing={isEditing}

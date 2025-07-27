@@ -54,8 +54,8 @@ export default function DOCXViewer({ fileUrl, filename, documentId, unitId, isEd
         setError(null);
 
         // Use the server's document extraction endpoint for DOCX files
-        const filename = fileUrl.split('/').pop(); // Extract filename from URL
-        const response = await fetch(`/api/documents/${encodeURIComponent(filename || '')}/extract`, {
+        const extractedFilename = fileUrl.split('/').pop(); // Extract filename from URL
+        const response = await fetch(`/api/documents/${encodeURIComponent(extractedFilename || '')}/extract`, {
           cache: 'force-cache',
           priority: 'high',
         });

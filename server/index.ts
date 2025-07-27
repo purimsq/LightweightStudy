@@ -89,8 +89,8 @@ app.use((req, res, next) => {
   }
 
   // Serve the app on the port specified in the environment variable PORT
-  // Default to 4000 for development to avoid port conflicts
-  const port = parseInt(process.env.PORT || '4000', 10);
+// Default to 3000 for development to avoid port conflicts
+const port = parseInt(process.env.PORT || '3000', 10);
   server.listen({
     port,
     host: "localhost",
