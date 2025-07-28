@@ -840,6 +840,63 @@ Please provide a progress calculation and suggested grade based on the assignmen
     }
   });
 
+  // Assignment completion toggle with marks
+  app.patch("/api/assignments/:id/toggle-completion", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const { userGrade, totalMarks } = req.body;
+      
+      const assignment = await storage.getAssignment(id);
+      if (!assignment) {
+        return res.status(404).json({ message: "Assignment not found" });
+      }
+
+      // Toggle completion status
+      const newStatus = assignment.status === "completed" ? "pending" : "completed";
+      
+      // Update assignment with new status and marks if provided
+      const updateData: any = { status: newStatus };
+      
+      if (newStatus === "completed" && userGrade !== undefined && totalMarks !== undefined) {
+        updateData.userGrade = parseInt(userGrade);
+        updateData.totalMarks = parseInt(totalMarks);
+        
+        // Calculate progress contribution (percentage of total marks)
+        const progressContribution = Math.round((parseInt(userGrade) / parseInt(totalMarks)) * 100);
+        updateData.progressContribution = progressContribution;
+      } else if (newStatus === "pending") {
+        // Reset marks when marking as incomplete
+        updateData.userGrade = null;
+        updateData.totalMarks = null;
+        updateData.progressContribution = null;
+      }
+
+      const updatedAssignment = await storage.updateAssignment(id, updateData);
+
+      // Update unit progress if assignment is completed and has a unit
+      if (newStatus === "completed" && assignment.unitId && userGrade !== undefined && totalMarks !== undefined) {
+        const unitProgress = await storage.getUnitProgressByUnit(assignment.unitId);
+        if (unitProgress) {
+          // Calculate new progress percentage based on assignment marks
+          const assignmentProgress = Math.round((parseInt(userGrade) / parseInt(totalMarks)) * 100);
+          
+          // For now, we'll add the assignment progress to the existing progress
+          // In a more sophisticated system, you might want to weight this differently
+          const newProgressPercentage = Math.min(100, unitProgress.progressPercentage + assignmentProgress);
+          
+          await storage.updateUnitProgress(unitProgress.id, {
+            progressPercentage: newProgressPercentage
+          });
+        }
+      }
+
+      res.json(updatedAssignment);
+    } catch (error) {
+      console.error("Error toggling assignment completion:", error);
+      res.status(500).json({ message: "Failed to toggle assignment completion" });
+    }
+  });
+
   // Add document to existing assignment
   app.post("/api/assignments/add-document", upload.single('file'), async (req, res) => {
     try {
