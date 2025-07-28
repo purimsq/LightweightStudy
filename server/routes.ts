@@ -445,28 +445,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/documents", async (req, res) => {
     try {
       const unitId = req.query.unitId ? parseInt(req.query.unitId as string) : undefined;
+      
       let documents;
       if (unitId) {
         documents = await storage.getDocumentsByUnit(unitId);
       } else {
         documents = await storage.getDocuments();
       }
+      
       res.json(documents);
     } catch (error) {
-      res.status(500).json({ message: "Failed to get documents", error: error instanceof Error ? error.message : "Unknown error" });
+      console.error(`❌ Error getting documents:`, error);
+      res.status(500).json({ message: "Failed to get documents" });
     }
   });
 
   app.get("/api/documents/:id", async (req, res) => {
     try {
       const id = parseInt(req.params.id);
+      
       const document = await storage.getDocument(id);
       if (!document) {
         return res.status(404).json({ message: "Document not found" });
       }
+      
       res.json(document);
     } catch (error) {
-      res.status(500).json({ message: "Failed to get document", error: error instanceof Error ? error.message : "Unknown error" });
+      console.error(`❌ Error getting document ${req.params.id}:`, error);
+      res.status(500).json({ message: "Failed to get document" });
     }
   });
 
@@ -496,6 +502,7 @@ Size: ${(req.file.size / 1024).toFixed(2)} KB
 This document has been uploaded and is ready for viewing. The content will be displayed using the appropriate viewer based on the file type.`,
         summary: null,
         embeddings: null,
+        isCompleted: false,
       };
 
       const document = await storage.createDocument(documentData);
@@ -534,6 +541,45 @@ This document has been uploaded and is ready for viewing. The content will be di
       res.json(document);
     } catch (error) {
       res.status(500).json({ message: "Failed to update document", error: error instanceof Error ? error.message : "Unknown error" });
+    }
+  });
+
+  app.patch("/api/documents/:id/toggle-completion", async (req, res) => {
+    try {
+      console.log(`🔄 PATCH /api/documents/:id/toggle-completion called`);
+      console.log(`📝 Request params:`, req.params);
+      console.log(`📝 Request headers:`, req.headers);
+      
+      const id = parseInt(req.params.id);
+      console.log(`🔄 Toggle completion request for document ${id}`);
+      
+      if (isNaN(id)) {
+        console.error(`❌ Invalid document ID: ${req.params.id}`);
+        return res.status(400).json({ message: "Invalid document ID" });
+      }
+      
+      const document = await storage.getDocument(id);
+      if (!document) {
+        console.error(`❌ Document not found: ${id}`);
+        return res.status(404).json({ message: "Document not found" });
+      }
+      
+      console.log(`📄 Found document:`, { id: document.id, filename: document.filename, isCompleted: document.isCompleted });
+      
+      // Simple toggle logic
+      const newCompletion = !(document.isCompleted ?? false);
+      
+      const updatedDocument = await storage.updateDocument(id, {
+        isCompleted: newCompletion
+      });
+      
+      console.log(`✅ Document ${id} completion toggled: ${document.isCompleted ?? false} → ${newCompletion}`);
+      console.log(`📤 Sending response:`, updatedDocument);
+      
+      res.json(updatedDocument);
+    } catch (error) {
+      console.error("❌ Error toggling document completion:", error);
+      res.status(500).json({ message: "Failed to toggle document completion" });
     }
   });
 

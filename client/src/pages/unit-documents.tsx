@@ -4,7 +4,7 @@ import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
-import { ArrowLeft, FileText, Download, Eye, Trash2, AlertTriangle } from "lucide-react";
+import { ArrowLeft, FileText, Download, Eye, Trash2, AlertTriangle, CheckCircle } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import type { Document, Unit } from "@shared/schema";
@@ -66,6 +66,51 @@ function DocumentCard({ document, onDelete }: { document: Document; onDelete: ()
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const { toast } = useToast();
 
+  const handleToggleCompletion = async (documentId: number) => {
+    try {
+      console.log(`🔄 Toggling completion for document ${documentId}`);
+      
+      // Use relative URL since client and server are on the same port
+      const response = await fetch(`/api/documents/${documentId}/toggle-completion`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      console.log(`📡 Response status: ${response.status}`);
+      console.log(`📡 Response headers:`, Object.fromEntries(response.headers.entries()));
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error(`❌ Server error response:`, errorText);
+        throw new Error(`HTTP error! status: ${response.status} - ${errorText}`);
+      }
+      
+      const result = await response.json();
+      console.log(`✅ Toggle completion response:`, result);
+      
+      // Refresh the data
+      queryClient.invalidateQueries({ queryKey: ["/api/documents"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/units"] });
+      
+      // Show success message
+      const isCompleted = result?.isCompleted ?? false;
+      toast({ 
+        title: isCompleted ? "Document marked as complete" : "Document marked as incomplete",
+        description: `Updated ${result?.filename || 'document'}`
+      });
+      
+    } catch (error) {
+      console.error(`❌ Toggle completion error:`, error);
+      toast({ 
+        title: "Error updating completion status", 
+        description: error instanceof Error ? error.message : "Unknown error occurred",
+        variant: "destructive" 
+      });
+    }
+  };
+
   const deleteDocumentMutation = useMutation({
     mutationFn: async (documentId: number) => {
       const response = await apiRequest("DELETE", `/api/documents/${documentId}`);
@@ -89,23 +134,40 @@ function DocumentCard({ document, onDelete }: { document: Document; onDelete: ()
   });
 
   return (
-    <Card className="unit-card hover:shadow-md transition-shadow">
+    <Card className={`unit-card hover:shadow-md transition-shadow ${(document.isCompleted ?? false) ? 'border-green-200 bg-green-50/30' : ''}`}>
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between">
           <div className="flex items-center space-x-3 flex-1">
-            <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-              <FileText className="w-5 h-5 text-blue-600" />
+            <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${(document.isCompleted ?? false) ? 'bg-green-100' : 'bg-blue-100'}`}>
+              <FileText className={`w-5 h-5 ${(document.isCompleted ?? false) ? 'text-green-600' : 'text-blue-600'}`} />
             </div>
             <div className="flex-1 min-w-0">
-              <CardTitle className="text-base text-neutral-800 truncate">
+              <CardTitle className={`text-base truncate ${(document.isCompleted ?? false) ? 'text-green-800' : 'text-neutral-800'}`}>
                 {document.filename}
+                {(document.isCompleted ?? false) && (
+                  <span className="ml-2 text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full">
+                    ✓ Completed
+                  </span>
+                )}
               </CardTitle>
               <p className="text-sm text-neutral-600 mt-1">
                 {document.fileType.includes('pdf') ? 'PDF' : 'DOCX'} • {new Date(document.uploadedAt).toLocaleDateString()}
               </p>
             </div>
           </div>
-          <div className="flex space-x-1 ml-2">
+                      <div className="flex space-x-1 ml-2">
+              <Button
+                variant={(document.isCompleted ?? false) ? "default" : "outline"}
+                size="sm"
+                onClick={() => {
+                  console.log(`🔄 Clicking toggle for document ${document.id}, current state:`, document.isCompleted);
+                  handleToggleCompletion(document.id);
+                }}
+                className={`px-2 transition-all duration-200 ${(document.isCompleted ?? false) ? 'bg-green-500 hover:bg-green-600 border-green-500 shadow-md' : 'border-green-300 hover:border-green-400 hover:bg-green-50'}`}
+                title={(document.isCompleted ?? false) ? "Mark as incomplete" : "Mark as complete"}
+              >
+                <CheckCircle className={`w-4 h-4 ${(document.isCompleted ?? false) ? 'text-white' : 'text-green-500'}`} />
+              </Button>
             <Button
               variant="outline"
               size="sm"

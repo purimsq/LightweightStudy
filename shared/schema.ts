@@ -34,6 +34,7 @@ export const documents = pgTable("documents", {
   extractedText: text("extracted_text"),
   summary: text("summary"),
   embeddings: json("embeddings"),
+  isCompleted: boolean("is_completed").notNull().default(false),
   uploadedAt: timestamp("uploaded_at").defaultNow().notNull(),
 });
 

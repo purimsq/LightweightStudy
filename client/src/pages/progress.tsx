@@ -16,6 +16,8 @@ interface ProgressData {
     unit: Unit;
     progress: UnitProgress;
     chartData: Array<{ month: string; value: number }>;
+    documentCount: number;
+    completedDocuments: number;
   }>;
   assignments: Array<{
     assignment: Assignment;
@@ -43,7 +45,7 @@ function TrendIcon({ trend }: { trend: 'up' | 'down' | 'stable' }) {
 }
 
 function UnitChart({ unitData }: { unitData: ProgressData['units'][0] }) {
-  const { unit, progress, chartData } = unitData;
+  const { unit, progress, chartData, documentCount, completedDocuments } = unitData;
   
   return (
     <div className="bg-white rounded-lg p-4 border border-gray-100">
@@ -53,7 +55,7 @@ function UnitChart({ unitData }: { unitData: ProgressData['units'][0] }) {
           <h4 className="font-medium text-sm text-gray-800">{unit.name}</h4>
         </div>
         <Badge variant="outline" className="text-xs">
-          {unit.completedTopics}/{unit.totalTopics} topics
+          {completedDocuments} of {documentCount} documents
         </Badge>
       </div>
       
@@ -138,6 +140,13 @@ export default function ProgressPage() {
     queryKey: ["/api/assignments"],
   });
 
+  const { data: documents = [] } = useQuery({
+    queryKey: ["/api/documents"],
+    refetchOnMount: true,
+    refetchOnWindowFocus: true,
+    staleTime: 0,
+  });
+
   // Refetch data when component mounts to ensure we have the latest data
   React.useEffect(() => {
     refetchUnits();
@@ -148,11 +157,17 @@ export default function ProgressPage() {
   const progressData: ProgressData = useMemo(() => {
     console.log('🔍 Debug - Units:', units);
     console.log('🔍 Debug - Unit Progress:', unitProgress);
+    console.log('🔍 Debug - Documents:', documents);
     
-    // Combine units with their progress
+    // Combine units with their progress and document counts
     const unitsWithProgress = units.map(unit => {
       const progress = unitProgress.find(p => p.unitId === unit.id);
+      const unitDocuments = documents.filter(doc => doc.unitId === unit.id);
+      const documentCount = unitDocuments.length;
+      const completedDocuments = unitDocuments.filter(doc => doc.isCompleted ?? false).length;
+      
       console.log(`🔍 Unit ${unit.id} (${unit.name}) - Progress found:`, !!progress, progress);
+      console.log(`🔍 Unit ${unit.id} (${unit.name}) - Documents: ${completedDocuments}/${documentCount}`, unitDocuments.map(d => ({ filename: d.filename, isCompleted: d.isCompleted ?? false })));
       
       if (!progress) {
         console.log(`❌ No progress found for unit ${unit.id} (${unit.name})`);
@@ -175,7 +190,13 @@ export default function ProgressPage() {
           { month: "May", value: 0 },
         ];
 
-        return { unit, progress: defaultProgress, chartData };
+        return { 
+          unit: { ...unit, totalTopics: documentCount, completedTopics: completedDocuments }, 
+          progress: defaultProgress, 
+          chartData,
+          documentCount,
+          completedDocuments
+        };
       }
 
       // Generate chart data based on progress
@@ -187,7 +208,13 @@ export default function ProgressPage() {
         { month: "May", value: Math.min(100, progress.progressPercentage + 5) },
       ];
 
-      return { unit, progress, chartData };
+      return { 
+        unit: { ...unit, totalTopics: documentCount, completedTopics: completedDocuments }, 
+        progress, 
+        chartData,
+        documentCount,
+        completedDocuments
+      };
     }).filter(Boolean) as ProgressData['units'];
     
     console.log('🔍 Final units with progress:', unitsWithProgress);
@@ -210,9 +237,12 @@ export default function ProgressPage() {
 
     // Calculate overall stats
     const totalUnits = units.length;
-    const completedUnits = units.filter(unit => 
-      unit.completedTopics === unit.totalTopics && unit.totalTopics > 0
-    ).length;
+    const unitsWithDocumentCounts = units.map(unit => {
+      const unitDocuments = documents.filter(doc => doc.unitId === unit.id);
+      const completedDocuments = unitDocuments.filter(doc => doc.isCompleted ?? false).length;
+      return { ...unit, documentCount: unitDocuments.length, completedDocuments };
+    });
+    const completedUnits = unitsWithDocumentCounts.filter(unit => unit.completedDocuments > 0).length;
     const totalAssignments = assignments.length;
     const completedAssignments = assignments.filter(a => a.status === 'completed').length;
     const averageProgress = unitProgress.length > 0 
@@ -235,7 +265,7 @@ export default function ProgressPage() {
       },
       studyCalendar: generateCalendarData()
     };
-  }, [units, unitProgress, assignments]);
+  }, [units, unitProgress, assignments, documents]);
 
   if (!units.length) {
     return (

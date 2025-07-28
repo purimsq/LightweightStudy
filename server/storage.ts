@@ -158,6 +158,29 @@ export class MemStorage implements IStorage {
         console.error(`Failed to create progress for unit ${unit.id}:`, error);
       }
     });
+
+    // Migrate existing documents to include isCompleted field
+    this.migrateDocuments();
+  }
+
+  private migrateDocuments() {
+    console.log("🔧 Migrating existing documents to include isCompleted field...");
+    let migratedCount = 0;
+    
+    for (const [id, document] of this.documents.entries()) {
+      if (!('isCompleted' in document)) {
+        const updatedDocument = { ...document, isCompleted: false };
+        this.documents.set(id, updatedDocument);
+        migratedCount++;
+        console.log(`🔧 Migrated document ${id}: ${document.filename}`);
+      }
+    }
+    
+    if (migratedCount > 0) {
+      console.log(`✅ Successfully migrated ${migratedCount} documents`);
+    } else {
+      console.log("✅ No documents needed migration");
+    }
   }
 
   private getNextId(): number {
@@ -247,15 +270,29 @@ export class MemStorage implements IStorage {
 
   // Documents
   async getDocuments(): Promise<Document[]> {
-    return Array.from(this.documents.values());
+    const docs = Array.from(this.documents.values());
+    return docs.map(doc => ({
+      ...doc,
+      isCompleted: doc.isCompleted ?? false
+    }));
   }
 
   async getDocumentsByUnit(unitId: number): Promise<Document[]> {
-    return Array.from(this.documents.values()).filter(doc => doc.unitId === unitId);
+    const docs = Array.from(this.documents.values()).filter(doc => doc.unitId === unitId);
+    return docs.map(doc => ({
+      ...doc,
+      isCompleted: doc.isCompleted ?? false
+    }));
   }
 
   async getDocument(id: number): Promise<Document | undefined> {
-    return this.documents.get(id);
+    const doc = this.documents.get(id);
+    if (!doc) return undefined;
+    
+    return {
+      ...doc,
+      isCompleted: doc.isCompleted ?? false
+    };
   }
 
   async createDocument(insertDocument: InsertDocument): Promise<Document> {
@@ -269,17 +306,23 @@ export class MemStorage implements IStorage {
       summary: insertDocument.summary ?? null,
       embeddings: insertDocument.embeddings ?? null,
       fileSize: insertDocument.fileSize ?? 0,
+      isCompleted: insertDocument.isCompleted ?? false,
     };
     this.documents.set(id, document);
+    console.log(`🔍 Storage: createDocument() called, created document:`, { id, filename: document.filename, unitId: document.unitId, isCompleted: document.isCompleted });
+    console.log(`🔍 Storage: Total documents now: ${this.documents.size}`);
     return document;
   }
 
   async updateDocument(id: number, updateDocument: Partial<InsertDocument>): Promise<Document> {
     const existing = this.documents.get(id);
-    if (!existing) throw new Error("Document not found");
+    if (!existing) {
+      throw new Error("Document not found");
+    }
     
     const updated: Document = { ...existing, ...updateDocument };
     this.documents.set(id, updated);
+    
     return updated;
   }
 

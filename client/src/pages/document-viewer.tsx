@@ -68,6 +68,8 @@ export default function DocumentViewer() {
     link.click();
   };
 
+
+
   const goBack = () => {
     if (document?.unitId) {
       setLocation(`/units/${document.unitId}/documents`);
@@ -141,6 +143,7 @@ export default function DocumentViewer() {
                     <span className="w-2 h-2 bg-green-500 rounded-full"></span>
                     <span>Document loaded</span>
                   </div>
+
                   {document.extractedText && (
                     <div className="text-sm text-neutral-500">
                       {document.extractedText.split(' ').length} words • {document.extractedText.length} characters
