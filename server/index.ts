@@ -96,5 +96,37 @@ const port = parseInt(process.env.PORT || '3000', 10);
     host: "localhost",
   }, () => {
     log(`serving on port ${port}`);
+    
+    // Open browser automatically in development
+    if (app.get("env") === "development") {
+      const url = `http://localhost:${port}`;
+      log(`🌐 Opening browser to ${url}`);
+      
+      // Use different methods to open browser based on platform
+      import('child_process').then(({ exec }) => {
+        const platform = process.platform;
+        
+        let command;
+        if (platform === 'win32') {
+          command = `start ${url}`;
+        } else if (platform === 'darwin') {
+          command = `open ${url}`;
+        } else {
+          command = `xdg-open ${url}`;
+        }
+        
+        exec(command, (error: any) => {
+          if (error) {
+            log(`❌ Failed to open browser: ${error.message}`);
+            log(`📱 Please open your browser and navigate to: ${url}`);
+          } else {
+            log(`✅ Browser opened successfully`);
+          }
+        });
+      }).catch((error) => {
+        log(`❌ Failed to import child_process: ${error.message}`);
+        log(`📱 Please open your browser and navigate to: ${url}`);
+      });
+    }
   });
 })();

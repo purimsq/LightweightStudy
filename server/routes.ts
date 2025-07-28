@@ -387,6 +387,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const validatedData = insertUnitSchema.parse(req.body);
       const unit = await storage.createUnit(validatedData);
+      
+      console.log(`✅ Created unit: ${unit.name} (ID: ${unit.id})`);
+      
+      // Automatically create unit progress for the new unit
+      try {
+        const unitProgress = await storage.createUnitProgress({
+          unitId: unit.id,
+          progressPercentage: 0,
+          weeklyImprovement: 0,
+          trend: "stable"
+        });
+        console.log(`✅ Created unit progress for unit ${unit.id}: ${unitProgress.id}`);
+      } catch (progressError) {
+        console.error(`❌ Failed to create unit progress for unit ${unit.id}:`, progressError);
+        // Don't fail the unit creation if progress creation fails
+      }
+      
       res.status(201).json(unit);
     } catch (error) {
       if (error instanceof z.ZodError) {
@@ -414,6 +431,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!deleted) {
         return res.status(404).json({ message: "Unit not found" });
       }
+      
+      // Clean up unit progress when unit is deleted
+      await storage.deleteUnitProgress(id);
+      
       res.json({ message: "Unit deleted successfully" });
     } catch (error) {
       res.status(500).json({ message: "Failed to delete unit", error: error instanceof Error ? error.message : "Unknown error" });
@@ -1826,6 +1847,72 @@ What would you like help with?`;
       res.json(progress);
     } catch (error) {
       res.status(500).json({ message: "Failed to update unit progress", error: error instanceof Error ? error.message : "Unknown error" });
+    }
+  });
+
+  // Create unit progress for a unit (useful for fixing missing progress)
+  app.post("/api/unit-progress", async (req, res) => {
+    try {
+      const { unitId } = req.body;
+      if (!unitId) {
+        return res.status(400).json({ message: "Unit ID is required" });
+      }
+
+      // Check if progress already exists
+      const existingProgress = await storage.getUnitProgressByUnit(unitId);
+      if (existingProgress) {
+        return res.status(400).json({ message: "Unit progress already exists for this unit" });
+      }
+
+      const progress = await storage.createUnitProgress({
+        unitId: parseInt(unitId),
+        progressPercentage: 0,
+        weeklyImprovement: 0,
+        trend: "stable"
+      });
+
+      console.log(`✅ Created missing unit progress for unit ${unitId}: ${progress.id}`);
+      res.status(201).json(progress);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to create unit progress", error: error instanceof Error ? error.message : "Unknown error" });
+    }
+  });
+
+  // Fix all missing unit progress entries
+  app.post("/api/unit-progress/fix-missing", async (req, res) => {
+    try {
+      const units = await storage.getUnits();
+      const unitProgress = await storage.getUnitProgress();
+      
+      const missingProgress = units.filter(unit => 
+        !unitProgress.find(progress => progress.unitId === unit.id)
+      );
+      
+      const createdProgress = [];
+      
+      for (const unit of missingProgress) {
+        try {
+          const progress = await storage.createUnitProgress({
+            unitId: unit.id,
+            progressPercentage: 0,
+            weeklyImprovement: 0,
+            trend: "stable"
+          });
+          createdProgress.push(progress);
+          console.log(`✅ Created missing unit progress for unit ${unit.id} (${unit.name}): ${progress.id}`);
+        } catch (error) {
+          console.error(`❌ Failed to create progress for unit ${unit.id}:`, error);
+        }
+      }
+      
+      res.json({ 
+        message: `Fixed ${createdProgress.length} missing unit progress entries`,
+        created: createdProgress,
+        totalUnits: units.length,
+        totalProgress: unitProgress.length + createdProgress.length
+      });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fix missing unit progress", error: error instanceof Error ? error.message : "Unknown error" });
     }
   });
 

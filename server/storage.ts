@@ -120,26 +120,44 @@ export class MemStorage implements IStorage {
     });
 
     // Create progress bars for initial units
-    anatomyUnit.then(unit => this.createUnitProgress({
-      unitId: unit.id,
-      progressPercentage: 60,
-      weeklyImprovement: 15,
-      trend: "up"
-    }));
+    anatomyUnit.then(async unit => {
+      try {
+        await this.createUnitProgress({
+          unitId: unit.id,
+          progressPercentage: 60,
+          weeklyImprovement: 15,
+          trend: "up"
+        });
+      } catch (error) {
+        console.error(`Failed to create progress for unit ${unit.id}:`, error);
+      }
+    });
 
-    immunologyUnit.then(unit => this.createUnitProgress({
-      unitId: unit.id,
-      progressPercentage: 20,
-      weeklyImprovement: -5,
-      trend: "down"
-    }));
+    immunologyUnit.then(async unit => {
+      try {
+        await this.createUnitProgress({
+          unitId: unit.id,
+          progressPercentage: 20,
+          weeklyImprovement: -5,
+          trend: "down"
+        });
+      } catch (error) {
+        console.error(`Failed to create progress for unit ${unit.id}:`, error);
+      }
+    });
 
-    physiologyUnit.then(unit => this.createUnitProgress({
-      unitId: unit.id,
-      progressPercentage: 40,
-      weeklyImprovement: 10,
-      trend: "up"
-    }));
+    physiologyUnit.then(async unit => {
+      try {
+        await this.createUnitProgress({
+          unitId: unit.id,
+          progressPercentage: 40,
+          weeklyImprovement: 10,
+          trend: "up"
+        });
+      } catch (error) {
+        console.error(`Failed to create progress for unit ${unit.id}:`, error);
+      }
+    });
   }
 
   private getNextId(): number {

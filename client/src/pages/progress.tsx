@@ -3,142 +3,101 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, TrendingUp, TrendingDown, Minus, Calendar, X, BarChart3, Info, CheckCircle2, Circle } from "lucide-react";
+import { ArrowLeft, TrendingUp, TrendingDown, Minus, Calendar, X, BarChart3, Info, CheckCircle2, Circle, BookOpen, Clock, Target } from "lucide-react";
 import { useLocation } from "wouter";
-import { useState } from "react";
+import { useState, useMemo, useEffect } from "react";
+import * as React from "react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, ResponsiveContainer, PieChart, Pie, Cell, BarChart, Bar, Tooltip, Legend, AreaChart, Area } from "recharts";
-import { format, subDays, startOfWeek, addDays } from "date-fns";
-import type { UnitProgress, Unit } from "@shared/schema";
+import { format, subDays, startOfWeek, addDays, differenceInDays } from "date-fns";
+import type { UnitProgress, Unit, Assignment } from "@shared/schema";
 
 interface ProgressData {
-  subjects: Array<{
-    name: string;
-    currentWeek: number;
-    trend: 'up' | 'down' | 'stable';
+  units: Array<{
+    unit: Unit;
+    progress: UnitProgress;
     chartData: Array<{ month: string; value: number }>;
   }>;
-  assessments: Array<{
-    subject: string;
-    zScore: number;
-    classAvg: number;
-    classRank: string;
-    trend: 'up' | 'down' | 'stable';
-  }>;
-  cognitiveLoad: {
-    reading: number;
-    clinical: number;
-    other: number;
-  };
   assignments: Array<{
-    name: string;
-    completion: number;
-    timeSpent: string;
-    trend: 'up' | 'down';
+    assignment: Assignment;
+    daysUntilDeadline: number;
+    completionPercentage: number;
   }>;
-  weeklyImprovement: number;
-  overallProgress: number;
-  finalGradeProjection: number;
-  notes: Array<{
-    task: string;
-    completed: boolean;
-  }>;
+  overallStats: {
+    totalUnits: number;
+    completedUnits: number;
+    totalAssignments: number;
+    completedAssignments: number;
+    averageProgress: number;
+    weeklyImprovement: number;
+  };
   studyCalendar: Array<{
     date: string;
     intensity: number; // 0-4
   }>;
 }
 
-// Data matching the image exactly
-const progressData: ProgressData = {
-  subjects: [
-    {
-      name: "Anatomy",
-      currentWeek: 3,
-      trend: "up",
-      chartData: [
-        { month: "Feb", value: 20 },
-        { month: "Mar", value: 35 },
-        { month: "Apr", value: 45 },
-        { month: "May", value: 65 },
-        { month: "Jul", value: 78 }
-      ]
-    },
-    {
-      name: "Physiology", 
-      currentWeek: -4,
-      trend: "down",
-      chartData: [
-        { month: "Jan", value: 25 },
-        { month: "Feb", value: 40 },
-        { month: "Apr", value: 55 },
-        { month: "Mar", value: 45 },
-        { month: "Jul", value: 60 }
-      ]
-    },
-    {
-      name: "Pharmacology",
-      currentWeek: -2,
-      trend: "down", 
-      chartData: [
-        { month: "Apr", value: 30 },
-        { month: "Lot", value: 45 },
-        { month: "A7", value: 50 }
-      ]
-    },
-    {
-      name: "Pathology",
-      currentWeek: 5,
-      trend: "up",
-      chartData: [
-        { month: "May", value: 35 },
-        { month: "Mar", value: 45 },
-        { month: "Apr", value: 60 },
-        { month: "May", value: 70 },
-        { month: "Jun", value: 75 }
-      ]
-    },
-    {
-      name: "Biochem", 
-      currentWeek: 0,
-      trend: "stable",
-      chartData: [
-        { month: "Apr", value: 40 },
-        { month: "Ob", value: 45 },
-        { month: "Abc", value: 50 },
-        { month: "May", value: 52 },
-        { month: "Dec", value: 55 }
-      ]
-    }
-  ],
-  assessments: [
-    { subject: "Anatomy", zScore: 48, classAvg: 78, classRank: "8th", trend: "up" },
-    { subject: "Respiratory Jelal Exam", zScore: 46, classAvg: 43, classRank: "3rd", trend: "up" },
-    { subject: "Cardio Exam", zScore: 46, classAvg: 25, classRank: "8th", trend: "up" },
-    { subject: "Pathology Exam", zScore: 52, classAvg: 29, classRank: "8th", trend: "up" },
-    { subject: "Microbio Exam", zScore: 56, classAvg: 30, classRank: "8th", trend: "up" },
-    { subject: "Biochem", zScore: 46, classAvg: 36, classRank: "6th", trend: "up" }
-  ],
-  cognitiveLoad: {
-    reading: 40,
-    clinical: 35,
-    other: 25
-  },
-  assignments: [
-    { name: "Mucito Load", completion: 52, timeSpent: "min Sc", trend: "up" },
-    { name: "Clinical Rounds", completion: 28, timeSpent: "6hr", trend: "up" },
-    { name: "Pathology", completion: 25, timeSpent: "4 min", trend: "up" },
-    { name: "Microbio", completion: 66, timeSpent: "", trend: "up" }
-  ],
-  weeklyImprovement: 4,
-  overallProgress: 76,
-  finalGradeProjection: 78,
-  notes: [
-    { task: "Revise Neuroanatomy", completed: true },
-    { task: "Submit Patho lab notes", completed: false },
-    { task: "Review antibiotics", completed: false }
-  ],
-  studyCalendar: generateCalendarData()
-};
+function TrendIcon({ trend }: { trend: 'up' | 'down' | 'stable' }) {
+  if (trend === 'up') return <TrendingUp className="w-3 h-3 text-emerald-500" />;
+  if (trend === 'down') return <TrendingDown className="w-3 h-3 text-red-500" />;
+  return <Minus className="w-3 h-3 text-gray-400" />;
+}
+
+function UnitChart({ unitData }: { unitData: ProgressData['units'][0] }) {
+  const { unit, progress, chartData } = unitData;
+  
+  return (
+    <div className="bg-white rounded-lg p-4 border border-gray-100">
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center space-x-2">
+          <div className={`w-3 h-3 rounded-full bg-${unit.color}-500`}></div>
+          <h4 className="font-medium text-sm text-gray-800">{unit.name}</h4>
+        </div>
+        <Badge variant="outline" className="text-xs">
+          {unit.completedTopics}/{unit.totalTopics} topics
+        </Badge>
+      </div>
+      
+      <div className="h-16 mb-3">
+        <ResponsiveContainer width="100%" height="100%">
+          <AreaChart data={chartData}>
+            <defs>
+              <linearGradient id={`gradient-${unit.id}`} x1="0" y1="0" x2="0" y2="1">
+                <stop 
+                  offset="5%" 
+                  stopColor={progress.trend === 'up' ? '#10b981' : progress.trend === 'down' ? '#ef4444' : '#6b7280'} 
+                  stopOpacity={0.2}
+                />
+                <stop 
+                  offset="95%" 
+                  stopColor={progress.trend === 'up' ? '#10b981' : progress.trend === 'down' ? '#ef4444' : '#6b7280'} 
+                  stopOpacity={0}
+                />
+              </linearGradient>
+            </defs>
+            <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{fontSize: 9}} />
+            <YAxis hide />
+            <Area 
+              type="monotone" 
+              dataKey="value" 
+              stroke={progress.trend === 'up' ? '#10b981' : progress.trend === 'down' ? '#ef4444' : '#6b7280'}
+              strokeWidth={1.5}
+              fill={`url(#gradient-${unit.id})`}
+            />
+          </AreaChart>
+        </ResponsiveContainer>
+      </div>
+
+      <div className="text-center">
+        <div className="text-lg font-semibold text-gray-800">
+          {progress.progressPercentage}%
+        </div>
+        <div className="text-xs text-gray-600">
+          {progress.weeklyImprovement > 0 ? '+' : ''}{progress.weeklyImprovement} this week
+        </div>
+      </div>
+    </div>
+  );
+}
 
 function generateCalendarData() {
   const data = [];
@@ -157,78 +116,168 @@ function generateCalendarData() {
   return data;
 }
 
-const COGNITIVE_COLORS = ['#10b981', '#f59e0b', '#ef4444'];
-
-function TrendIcon({ trend }: { trend: 'up' | 'down' | 'stable' }) {
-  if (trend === 'up') return <TrendingUp className="w-3 h-3 text-emerald-500" />;
-  if (trend === 'down') return <TrendingDown className="w-3 h-3 text-red-500" />;
-  return <Minus className="w-3 h-3 text-gray-400" />;
-}
-
-function SubjectChart({ subject }: { subject: ProgressData['subjects'][0] }) {
-  return (
-    <div className="bg-white rounded-lg p-4 border border-gray-100">
-      <div className="flex items-center justify-between mb-3">
-        <h4 className="font-medium text-sm text-gray-800">{subject.name}</h4>
-      </div>
-      
-      <div className="h-16 mb-3">
-        <ResponsiveContainer width="100%" height="100%">
-          <AreaChart data={subject.chartData}>
-            <defs>
-              <linearGradient id={`gradient-${subject.name}`} x1="0" y1="0" x2="0" y2="1">
-                <stop 
-                  offset="5%" 
-                  stopColor={subject.trend === 'up' ? '#10b981' : subject.trend === 'down' ? '#ef4444' : '#6b7280'} 
-                  stopOpacity={0.2}
-                />
-                <stop 
-                  offset="95%" 
-                  stopColor={subject.trend === 'up' ? '#10b981' : subject.trend === 'down' ? '#ef4444' : '#6b7280'} 
-                  stopOpacity={0}
-                />
-              </linearGradient>
-            </defs>
-            <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{fontSize: 9}} />
-            <YAxis hide />
-            <Area 
-              type="monotone" 
-              dataKey="value" 
-              stroke={subject.trend === 'up' ? '#10b981' : subject.trend === 'down' ? '#ef4444' : '#6b7280'}
-              strokeWidth={1.5}
-              fill={`url(#gradient-${subject.name})`}
-            />
-          </AreaChart>
-        </ResponsiveContainer>
-      </div>
-
-      <div className="text-center">
-        <div className="text-lg font-semibold text-gray-800">
-          {subject.currentWeek > 0 ? '+' : ''}{subject.currentWeek} this week
-        </div>
-      </div>
-    </div>
-  );
-}
-
 export default function ProgressPage() {
   const [, setLocation] = useLocation();
 
-  const data = progressData;
-
-  // Query for units to integrate with real data if needed
-  const { data: units } = useQuery({
+  // Fetch real data
+  const { data: units = [], refetch: refetchUnits } = useQuery({
     queryKey: ["/api/units"],
+    refetchOnMount: true,
+    refetchOnWindowFocus: true,
+    staleTime: 0,
   });
 
-  const { data: unitProgress } = useQuery({
+  const { data: unitProgress = [], refetch: refetchUnitProgress } = useQuery({
     queryKey: ["/api/unit-progress"],
+    refetchOnMount: true,
+    refetchOnWindowFocus: true,
+    staleTime: 0,
   });
+
+  const { data: assignments = [] } = useQuery({
+    queryKey: ["/api/assignments"],
+  });
+
+  // Refetch data when component mounts to ensure we have the latest data
+  React.useEffect(() => {
+    refetchUnits();
+    refetchUnitProgress();
+  }, [refetchUnits, refetchUnitProgress]);
+
+  // Process and combine the data
+  const progressData: ProgressData = useMemo(() => {
+    console.log('🔍 Debug - Units:', units);
+    console.log('🔍 Debug - Unit Progress:', unitProgress);
+    
+    // Combine units with their progress
+    const unitsWithProgress = units.map(unit => {
+      const progress = unitProgress.find(p => p.unitId === unit.id);
+      console.log(`🔍 Unit ${unit.id} (${unit.name}) - Progress found:`, !!progress, progress);
+      
+      if (!progress) {
+        console.log(`❌ No progress found for unit ${unit.id} (${unit.name})`);
+        // Create a default progress entry for units without progress
+        const defaultProgress = {
+          id: 0,
+          unitId: unit.id,
+          progressPercentage: 0,
+          weeklyImprovement: 0,
+          trend: "stable" as const,
+          lastUpdated: new Date(),
+          createdAt: new Date()
+        };
+        
+        const chartData = [
+          { month: "Jan", value: 0 },
+          { month: "Feb", value: 0 },
+          { month: "Mar", value: 0 },
+          { month: "Apr", value: 0 },
+          { month: "May", value: 0 },
+        ];
+
+        return { unit, progress: defaultProgress, chartData };
+      }
+
+      // Generate chart data based on progress
+      const chartData = [
+        { month: "Jan", value: Math.max(0, progress.progressPercentage - 30) },
+        { month: "Feb", value: Math.max(0, progress.progressPercentage - 20) },
+        { month: "Mar", value: Math.max(0, progress.progressPercentage - 10) },
+        { month: "Apr", value: progress.progressPercentage },
+        { month: "May", value: Math.min(100, progress.progressPercentage + 5) },
+      ];
+
+      return { unit, progress, chartData };
+    }).filter(Boolean) as ProgressData['units'];
+    
+    console.log('🔍 Final units with progress:', unitsWithProgress);
+    console.log('🔍 Total units found:', units.length);
+    console.log('🔍 Units with progress:', unitsWithProgress.length);
+    console.log('🔍 Unit names:', unitsWithProgress.map(u => u.unit.name));
+
+    // Process assignments
+    const processedAssignments = assignments.map(assignment => {
+      const daysUntilDeadline = differenceInDays(new Date(assignment.deadline), new Date());
+      const completionPercentage = assignment.status === 'completed' ? 100 : 
+                                  assignment.status === 'in_progress' ? 50 : 0;
+      
+      return {
+        assignment,
+        daysUntilDeadline,
+        completionPercentage
+      };
+    });
+
+    // Calculate overall stats
+    const totalUnits = units.length;
+    const completedUnits = units.filter(unit => 
+      unit.completedTopics === unit.totalTopics && unit.totalTopics > 0
+    ).length;
+    const totalAssignments = assignments.length;
+    const completedAssignments = assignments.filter(a => a.status === 'completed').length;
+    const averageProgress = unitProgress.length > 0 
+      ? unitProgress.reduce((sum, p) => sum + p.progressPercentage, 0) / unitProgress.length 
+      : 0;
+    const weeklyImprovement = unitProgress.length > 0
+      ? unitProgress.reduce((sum, p) => sum + p.weeklyImprovement, 0) / unitProgress.length
+      : 0;
+
+    return {
+      units: unitsWithProgress,
+      assignments: processedAssignments,
+      overallStats: {
+        totalUnits,
+        completedUnits,
+        totalAssignments,
+        completedAssignments,
+        averageProgress: Math.round(averageProgress),
+        weeklyImprovement: Math.round(weeklyImprovement)
+      },
+      studyCalendar: generateCalendarData()
+    };
+  }, [units, unitProgress, assignments]);
+
+  if (!units.length) {
+    return (
+      <div className="min-h-screen bg-gray-50 p-6">
+        <div className="max-w-7xl mx-auto">
+          <div className="flex items-center space-x-4 mb-6">
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={() => setLocation("/")}
+              className="text-gray-600 hover:text-gray-900"
+            >
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              Back to Dashboard
+            </Button>
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900">Progress</h1>
+              <p className="text-gray-600">Track your learning journey</p>
+            </div>
+          </div>
+          
+          <Card>
+            <CardContent className="p-8 text-center">
+              <BookOpen className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-gray-900 mb-2">No Units Created Yet</h3>
+              <p className="text-gray-600 mb-4">
+                Create your first unit to start tracking your progress.
+              </p>
+              <Button onClick={() => setLocation("/units")}>
+                Create Your First Unit
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">
       <div className="max-w-7xl mx-auto space-y-6">
-        {/* Header matching the image */}
+        {/* Header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-4">
             <Button 
@@ -241,9 +290,20 @@ export default function ProgressPage() {
               Back to Dashboard
             </Button>
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">Mitch's Progress</h1>
-              <p className="text-gray-600">Clinical Med 1.2</p>
+              <h1 className="text-3xl font-bold text-gray-900">Progress Overview</h1>
+              <p className="text-gray-600">Track your learning journey across all units</p>
             </div>
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={() => {
+                refetchUnits();
+                refetchUnitProgress();
+              }}
+              className="ml-4"
+            >
+              🔄 Refresh
+            </Button>
           </div>
           
           <div className="flex items-center space-x-4">
@@ -252,83 +312,87 @@ export default function ProgressPage() {
               <div className="w-16 h-2 bg-gray-200 rounded-full">
                 <div 
                   className="h-2 bg-blue-500 rounded-full" 
-                  style={{ width: `${data.overallProgress}%` }}
+                  style={{ width: `${progressData.overallStats.averageProgress}%` }}
                 />
               </div>
-              <span className="text-sm font-medium">{data.overallProgress}%</span>
+              <span className="text-sm font-medium">{progressData.overallStats.averageProgress}%</span>
             </div>
-            <div className="w-10 h-10 rounded-full bg-pink-200 flex items-center justify-center">
-              <span className="text-lg">👩</span>
+            <div className="w-10 h-10 rounded-full bg-blue-200 flex items-center justify-center">
+              <span className="text-lg">📚</span>
             </div>
           </div>
         </div>
 
-        {/* Subject Charts Grid - matching the image layout */}
-        <div className="grid grid-cols-5 gap-4">
-          {data.subjects.map((subject, index) => (
-            <SubjectChart key={`subject-${index}`} subject={subject} />
-          ))}
-        </div>
+        {/* Unit Charts Grid */}
+        {progressData.units.length > 0 && (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+            {progressData.units.map((unitData) => (
+              <UnitChart key={unitData.unit.id} unitData={unitData} />
+            ))}
+          </div>
+        )}
 
         {/* Main Content Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Left Column - Assessments */}
+          {/* Left Column - Unit Stats */}
           <div className="lg:col-span-1">
             <Card>
               <CardHeader>
-                <CardTitle className="text-lg font-semibold">Assessments</CardTitle>
+                <CardTitle className="text-lg font-semibold">Unit Statistics</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="space-y-1">
-                  <div className="grid grid-cols-4 gap-2 text-xs text-gray-500 mb-2">
-                    <div></div>
-                    <div className="text-center">Z-Score</div>
-                    <div className="text-center">Class Avg</div>
-                    <div className="text-center">Trend</div>
-                  </div>
-                  {data.assessments.map((assessment, index) => (
-                    <div key={`assessment-${index}`} className="grid grid-cols-4 gap-2 py-1 text-sm">
-                      <div className="font-medium text-gray-800">{assessment.subject}</div>
-                      <div className="text-center">{assessment.zScore}%</div>
-                      <div className="text-center">{assessment.classAvg}%</div>
-                      <div className="flex justify-center">
-                        <TrendIcon trend={assessment.trend} />
-                      </div>
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-2">
+                      <BookOpen className="w-4 h-4 text-blue-500" />
+                      <span className="text-sm">Total Units</span>
                     </div>
-                  ))}
+                    <span className="font-medium">{progressData.overallStats.totalUnits}</span>
+                  </div>
+                  
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-2">
+                      <CheckCircle2 className="w-4 h-4 text-green-500" />
+                      <span className="text-sm">Completed Units</span>
+                    </div>
+                    <span className="font-medium">{progressData.overallStats.completedUnits}</span>
+                  </div>
+                  
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-2">
+                      <Target className="w-4 h-4 text-purple-500" />
+                      <span className="text-sm">Average Progress</span>
+                    </div>
+                    <span className="font-medium">{progressData.overallStats.averageProgress}%</span>
+                  </div>
+                  
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-2">
+                      <TrendingUp className="w-4 h-4 text-orange-500" />
+                      <span className="text-sm">Weekly Improvement</span>
+                    </div>
+                    <span className="font-medium">
+                      {progressData.overallStats.weeklyImprovement > 0 ? '+' : ''}
+                      {progressData.overallStats.weeklyImprovement}%
+                    </span>
+                  </div>
                 </div>
               </CardContent>
             </Card>
 
-            {/* Cognitive Load Breakdown */}
+            {/* Progress Distribution */}
             <Card className="mt-6">
               <CardHeader>
-                <CardTitle className="text-lg font-semibold">Cognitive Load Breakdown</CardTitle>
+                <CardTitle className="text-lg font-semibold">Progress Distribution</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-2">
-                      <div className="w-3 h-3 bg-emerald-500 rounded"></div>
-                      <span className="text-sm">Reading Load</span>
-                    </div>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-2">
-                      <div className="w-3 h-3 bg-orange-500 rounded"></div>
-                      <span className="text-sm">Clinical Rounds</span>
-                    </div>
-                  </div>
-                </div>
-                
-                <div className="h-32 mt-4">
+                <div className="h-32">
                   <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
                       <Pie
                         data={[
-                          { name: 'Reading', value: data.cognitiveLoad.reading },
-                          { name: 'Clinical', value: data.cognitiveLoad.clinical },
-                          { name: 'Other', value: data.cognitiveLoad.other }
+                          { name: 'Completed', value: progressData.overallStats.completedUnits },
+                          { name: 'In Progress', value: progressData.overallStats.totalUnits - progressData.overallStats.completedUnits }
                         ]}
                         cx="50%"
                         cy="50%"
@@ -336,12 +400,21 @@ export default function ProgressPage() {
                         fill="#8884d8"
                         dataKey="value"
                       >
-                        {COGNITIVE_COLORS.map((color, index) => (
-                          <Cell key={`cell-${index}`} fill={color} />
-                        ))}
+                        <Cell fill="#10b981" />
+                        <Cell fill="#3b82f6" />
                       </Pie>
                     </PieChart>
                   </ResponsiveContainer>
+                </div>
+                <div className="flex justify-center space-x-4 mt-2">
+                  <div className="flex items-center space-x-1">
+                    <div className="w-3 h-3 bg-green-500 rounded"></div>
+                    <span className="text-xs">Completed</span>
+                  </div>
+                  <div className="flex items-center space-x-1">
+                    <div className="w-3 h-3 bg-blue-500 rounded"></div>
+                    <span className="text-xs">In Progress</span>
+                  </div>
                 </div>
               </CardContent>
             </Card>
@@ -354,40 +427,55 @@ export default function ProgressPage() {
                 <CardTitle className="text-lg font-semibold">Assignments</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="space-y-4">
-                  {data.assignments.map((assignment, index) => (
-                    <div key={`assignment-${index}`} className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <span className="font-medium text-sm">{assignment.name}</span>
-                        <div className="flex items-center space-x-2">
-                          <span className="text-xs text-gray-600">{assignment.completion}%</span>
-                          <span className="text-xs text-gray-600">{assignment.timeSpent}</span>
-                          <TrendIcon trend={assignment.trend} />
+                {progressData.assignments.length === 0 ? (
+                  <div className="text-center py-8">
+                    <Clock className="w-8 h-8 text-gray-400 mx-auto mb-2" />
+                    <p className="text-sm text-gray-600">No assignments yet</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {progressData.assignments.slice(0, 5).map((assignmentData) => (
+                      <div key={assignmentData.assignment.id} className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="font-medium text-sm truncate">{assignmentData.assignment.title}</span>
+                          <div className="flex items-center space-x-2">
+                            <span className="text-xs text-gray-600">{assignmentData.completionPercentage}%</span>
+                            <Badge 
+                              variant={assignmentData.daysUntilDeadline < 0 ? "destructive" : 
+                                      assignmentData.daysUntilDeadline < 3 ? "secondary" : "outline"}
+                              className="text-xs"
+                            >
+                              {assignmentData.daysUntilDeadline < 0 ? 'Overdue' : 
+                               assignmentData.daysUntilDeadline === 0 ? 'Due today' :
+                               `${assignmentData.daysUntilDeadline}d left`}
+                            </Badge>
+                          </div>
                         </div>
+                        <Progress value={assignmentData.completionPercentage} className="h-2" />
                       </div>
-                    </div>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+                )}
               </CardContent>
             </Card>
 
-            {/* You improved section */}
+            {/* Weekly Progress */}
             <Card className="mt-6">
               <CardContent className="p-4">
                 <div className="text-center">
                   <p className="text-sm font-medium text-gray-800 mb-2">
-                    You improved in 4 of 6 subjects this week!
+                    Weekly Progress Overview
                   </p>
                   <div className="h-24">
                     <ResponsiveContainer width="100%" height="100%">
                       <LineChart data={[
-                        { name: 'Feb', value: 50 },
-                        { name: 'Mar', value: 55 },
-                        { name: 'Apr', value: 60 },
-                        { name: 'May', value: 65 },
-                        { name: 'Jul', value: 70 },
-                        { name: 'Sat', value: 75 },
-                        { name: 'Jul', value: 78 }
+                        { name: 'Mon', value: progressData.overallStats.averageProgress - 10 },
+                        { name: 'Tue', value: progressData.overallStats.averageProgress - 5 },
+                        { name: 'Wed', value: progressData.overallStats.averageProgress },
+                        { name: 'Thu', value: progressData.overallStats.averageProgress + 2 },
+                        { name: 'Fri', value: progressData.overallStats.averageProgress + 5 },
+                        { name: 'Sat', value: progressData.overallStats.averageProgress + 8 },
+                        { name: 'Sun', value: progressData.overallStats.averageProgress + 10 }
                       ]}>
                         <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fontSize: 9}} />
                         <YAxis hide />
@@ -402,50 +490,33 @@ export default function ProgressPage() {
                     </ResponsiveContainer>
                   </div>
                   <p className="text-xs text-gray-600 mt-2">
-                    On track for a {data.finalGradeProjection}% final grade
-                    <span className="ml-2 text-orange-500 font-medium">{data.finalGradeProjection}%</span>
+                    {progressData.overallStats.weeklyImprovement > 0 ? 'Improving' : 'Needs attention'} this week
+                    <span className="ml-2 text-orange-500 font-medium">
+                      {progressData.overallStats.weeklyImprovement > 0 ? '+' : ''}
+                      {progressData.overallStats.weeklyImprovement}%
+                    </span>
                   </p>
                 </div>
               </CardContent>
             </Card>
           </div>
 
-          {/* Right Column - Notes and Calendar */}
+          {/* Right Column - Study Calendar */}
           <div className="lg:col-span-1">
             <Card>
               <CardHeader>
-                <CardTitle className="text-lg font-semibold">Notes</CardTitle>
+                <CardTitle className="text-lg font-semibold">Study Calendar</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="space-y-3">
-                  {data.notes.map((note, index) => (
-                    <div key={`note-${index}`} className="flex items-center space-x-3">
-                      {note.completed ? (
-                        <CheckCircle2 className="w-4 h-4 text-emerald-500" />
-                      ) : (
-                        <Circle className="w-4 h-4 text-gray-300" />
-                      )}
-                      <span className={`text-sm ${note.completed ? 'line-through text-gray-500' : 'text-gray-800'}`}>
-                        {note.task}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Study Calendar - matching the grid from image */}
-            <Card className="mt-6">
-              <CardContent className="p-4">
                 <div className="grid grid-cols-7 gap-1 mb-2">
-                  {['M', 'T', 'W', 'T', 'F', 'S', 'S', 'U'].slice(0, 7).map((day, index) => (
+                  {['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((day, index) => (
                     <div key={`day-${index}`} className="text-xs text-gray-500 text-center font-medium p-1">
                       {day}
                     </div>
                   ))}
                 </div>
                 <div className="grid grid-cols-7 gap-1">
-                  {data.studyCalendar.slice(0, 49).map((day, index) => (
+                  {progressData.studyCalendar.slice(0, 49).map((day, index) => (
                     <div
                       key={`cal-${index}`}
                       className={`w-4 h-4 rounded-sm ${
@@ -460,8 +531,47 @@ export default function ProgressPage() {
                   ))}
                 </div>
                 
-                <div className="mt-4 p-3 bg-orange-50 rounded-lg">
-                  <p className="text-sm font-medium text-gray-800">Try 15-min Pomodoro bursts this weekend</p>
+                <div className="mt-4 p-3 bg-blue-50 rounded-lg">
+                  <p className="text-sm font-medium text-gray-800">
+                    {progressData.overallStats.weeklyImprovement > 0 
+                      ? 'Great progress! Keep up the momentum.' 
+                      : 'Consider increasing study time this week.'}
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Quick Actions */}
+            <Card className="mt-6">
+              <CardHeader>
+                <CardTitle className="text-lg font-semibold">Quick Actions</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  <Button 
+                    variant="outline" 
+                    className="w-full justify-start"
+                    onClick={() => setLocation("/units")}
+                  >
+                    <BookOpen className="w-4 h-4 mr-2" />
+                    Manage Units
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    className="w-full justify-start"
+                    onClick={() => setLocation("/assignments")}
+                  >
+                    <Target className="w-4 h-4 mr-2" />
+                    View Assignments
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    className="w-full justify-start"
+                    onClick={() => setLocation("/documents")}
+                  >
+                    <BarChart3 className="w-4 h-4 mr-2" />
+                    Study Documents
+                  </Button>
                 </div>
               </CardContent>
             </Card>
