@@ -12,6 +12,10 @@ import { execSync, spawn, exec as execCallback } from "child_process";
 import { promisify } from 'util';
 const exec = promisify(execCallback);
 
+// YouTube Data API v3 integration
+import axios from 'axios';
+import cors from 'cors';
+
 // Create uploads directory if it doesn't exist
 const uploadsDir = path.join(process.cwd(), 'uploads');
 if (!fs.existsSync(uploadsDir)) {
@@ -845,7 +849,7 @@ Please provide a progress calculation and suggested grade based on the assignmen
       if (document.summary) {
         res.json({
           content: document.summary,
-          createdAt: document.updatedAt,
+          createdAt: document.uploadedAt,
         });
       } else {
         res.json(null);
@@ -1535,6 +1539,244 @@ What would you like help with?`;
       res.json({ message: "Song added to playlist", playlistId: id, songId });
     } catch (error) {
       res.status(500).json({ message: "Failed to add song to playlist", error: error instanceof Error ? error.message : "Unknown error" });
+    }
+  });
+
+  // YouTube Data API v3 Routes
+  const YOUTUBE_API_KEY = process.env.YOUTUBE_API_KEY || 'YOUR_YOUTUBE_API_KEY_HERE'; // Replace with your real YouTube API key
+  
+  // Check if API key is properly configured
+  if (YOUTUBE_API_KEY === 'YOUR_YOUTUBE_API_KEY_HERE') {
+    console.warn('⚠️  WARNING: Please set a real YouTube API key in your environment variables or replace the placeholder in server/routes.ts');
+    console.warn('📖 Instructions: https://developers.google.com/youtube/v3/getting-started');
+  }
+  
+  // Fallback mock data for when API key is invalid
+  const mockVideos = [
+    {
+      id: { videoId: 'dQw4w9WgXcQ' },
+      snippet: {
+        title: 'Rick Astley - Never Gonna Give You Up',
+        channelTitle: 'Rick Astley',
+        thumbnails: { medium: { url: 'https://i.ytimg.com/vi/dQw4w9WgXcQ/mqdefault.jpg' } }
+      }
+    },
+    {
+      id: { videoId: '9bZkp7q19f0' },
+      snippet: {
+        title: 'PSY - GANGNAM STYLE',
+        channelTitle: 'officialpsy',
+        thumbnails: { medium: { url: 'https://i.ytimg.com/vi/9bZkp7q19f0/mqdefault.jpg' } }
+      }
+    },
+    {
+      id: { videoId: 'kJQP7kiw5Fk' },
+      snippet: {
+        title: 'Luis Fonsi - Despacito ft. Daddy Yankee',
+        channelTitle: 'Luis Fonsi',
+        thumbnails: { medium: { url: 'https://i.ytimg.com/vi/kJQP7kiw5Fk/mqdefault.jpg' } }
+      }
+    },
+    {
+      id: { videoId: 'y6120QOlsfU' },
+      snippet: {
+        title: 'Sandstorm - Darude',
+        channelTitle: 'Darude',
+        thumbnails: { medium: { url: 'https://i.ytimg.com/vi/y6120QOlsfU/mqdefault.jpg' } }
+      }
+    },
+    {
+      id: { videoId: 'ZZ5LpwO-An4' },
+      snippet: {
+        title: 'Haddaway - What Is Love',
+        channelTitle: 'Haddaway',
+        thumbnails: { medium: { url: 'https://i.ytimg.com/vi/ZZ5LpwO-An4/mqdefault.jpg' } }
+      }
+    }
+  ];
+  
+  // Search YouTube videos (Mock implementation for demo)
+  app.get("/api/youtube/search", async (req, res) => {
+    try {
+      const { q, maxResults = 15 } = req.query;
+      
+      if (!q || typeof q !== 'string') {
+        return res.status(400).json({ message: "Query parameter 'q' is required" });
+      }
+
+      console.log('YouTube API request params:', {
+        part: 'snippet',
+        q: q,
+        type: 'video',
+        maxResults: maxResults,
+        key: YOUTUBE_API_KEY.substring(0, 10) + '...', // Log partial key for security
+        videoCategoryId: '10' // Music category
+      });
+
+      const response = await axios.get('https://www.googleapis.com/youtube/v3/search', {
+        params: {
+          part: 'snippet',
+          q: q,
+          type: 'video',
+          maxResults: maxResults,
+          key: YOUTUBE_API_KEY,
+          videoCategoryId: '10' // Music category
+        }
+      });
+
+      console.log('YouTube API response received:', response.data.items?.length || 0, 'items');
+
+      res.json({ items: response.data.items });
+    } catch (error) {
+      console.error('YouTube search error:', error);
+      
+      // Check for specific API key issues
+      if (error instanceof Error) {
+        if (error.message.includes('400') || error.message.includes('403')) {
+          console.error('❌ YouTube API Error: Invalid API key or quota exceeded');
+          console.error('🔑 Please check your YouTube API key configuration');
+          res.status(400).json({ 
+            message: "YouTube API Error: Please check your API key configuration",
+            error: "Invalid API key or quota exceeded"
+          });
+        } else {
+          res.status(500).json({ 
+            message: "YouTube search failed", 
+            error: error.message
+          });
+        }
+      } else {
+        res.status(500).json({ 
+          message: "YouTube search failed", 
+          error: "Unknown error"
+        });
+      }
+    }
+  });
+
+  // Get video details (including duration)
+  app.get("/api/youtube/video/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      
+      console.log('YouTube API video details for ID:', id);
+
+      const response = await axios.get('https://www.googleapis.com/youtube/v3/videos', {
+        params: {
+          part: 'snippet,contentDetails',
+          id: id,
+          key: YOUTUBE_API_KEY
+        }
+      });
+
+      if (response.data.items.length === 0) {
+        return res.status(404).json({ message: "Video not found" });
+      }
+
+      const video = response.data.items[0];
+      const duration = video.contentDetails.duration; // ISO 8601 duration format
+      
+      // Convert ISO 8601 duration to readable format
+      const durationMatch = duration.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/);
+      let readableDuration = '0:00';
+      if (durationMatch) {
+        const hours = parseInt(durationMatch[1] || '0');
+        const minutes = parseInt(durationMatch[2] || '0');
+        const seconds = parseInt(durationMatch[3] || '0');
+        if (hours > 0) {
+          readableDuration = `${hours}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+        } else {
+          readableDuration = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+        }
+      }
+
+      res.json({
+        id: video.id,
+        title: video.snippet.title,
+        artist: video.snippet.channelTitle,
+        thumbnail: video.snippet.thumbnails.medium.url,
+        duration: readableDuration,
+        description: video.snippet.description
+      });
+    } catch (error) {
+      console.error('YouTube video details error:', error);
+      
+      // Check for specific API key issues
+      if (error instanceof Error) {
+        if (error.message.includes('400') || error.message.includes('403')) {
+          console.error('❌ YouTube API Error: Invalid API key or quota exceeded');
+          console.error('🔑 Please check your YouTube API key configuration');
+          res.status(400).json({ 
+            message: "YouTube API Error: Please check your API key configuration",
+            error: "Invalid API key or quota exceeded"
+          });
+        } else {
+          res.status(500).json({ 
+            message: "Failed to get video details", 
+            error: error.message
+          });
+        }
+      } else {
+        res.status(500).json({ 
+          message: "Failed to get video details", 
+          error: "Unknown error"
+        });
+      }
+    }
+  });
+
+  // Get YouTube search suggestions
+  app.get("/api/youtube/suggestions", async (req, res) => {
+    try {
+      const { q } = req.query;
+      
+      if (!q || typeof q !== 'string') {
+        return res.status(400).json({ message: "Query parameter 'q' is required" });
+      }
+
+      // Use YouTube's search suggestions endpoint
+      const response = await axios.get('https://suggestqueries.google.com/complete/search', {
+        params: {
+          client: 'youtube',
+          ds: 'yt',
+          q: q
+        }
+      });
+
+      // Extract suggestions from the response - Google returns [query, [suggestions], ...]
+      let suggestions: string[] = [];
+      if (Array.isArray(response.data) && response.data.length > 1 && Array.isArray(response.data[1])) {
+        suggestions = response.data[1];
+      } else if (Array.isArray(response.data) && response.data.length > 0) {
+        // Fallback: if the response structure is different, try to extract suggestions
+        suggestions = response.data.filter((item: any) => typeof item === 'string' && item !== q);
+      }
+      
+      // Ensure we return an array
+      if (!Array.isArray(suggestions)) {
+        suggestions = [];
+      }
+      
+      res.json({ suggestions });
+    } catch (error) {
+      console.error('YouTube suggestions error:', error);
+      
+      // Return empty array as fallback
+      res.json({ suggestions: [] });
+    }
+  });
+
+  // Get YouTube embed URL for player
+  app.get("/api/youtube/embed/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const embedUrl = `https://www.youtube.com/embed/${id}?autoplay=1&enablejsapi=1&origin=${encodeURIComponent(req.get('origin') || 'http://localhost:5000')}`;
+      res.json({ embedUrl });
+    } catch (error) {
+      res.status(500).json({ 
+        message: "Failed to generate embed URL", 
+        error: error instanceof Error ? error.message : "Unknown error" 
+      });
     }
   });
 

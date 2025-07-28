@@ -1,512 +1,558 @@
-import { useState, useEffect, useRef } from "react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Card, CardContent } from "@/components/ui/card";
-import { 
-  Search, 
-  Play, 
-  Pause, 
-  SkipBack, 
-  SkipForward, 
-  Volume2, 
-  Shuffle, 
-  Repeat,
-  Download,
-  Plus,
-  Heart,
-  MoreHorizontal,
-  Music,
-  ArrowLeft,
-  Clock,
-  TrendingUp,
-  Star,
-  ListMusic,
-  Radio,
-  Waves,
-  Moon,
-  Sun,
-  AlertTriangle
-} from "lucide-react";
-import { useLocation } from "wouter";
-import { useToast } from "@/hooks/use-toast";
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { Search, Play, Pause, SkipBack, SkipForward, Volume2, Heart, Plus, List, X, Clock, User, Menu, Home, TrendingUp, Music, History, ThumbsUp, Share2, MoreVertical } from 'lucide-react';
+import { Button } from '../components/ui/button';
+import { Input } from '../components/ui/input';
+import { Card, CardContent } from '../components/ui/card';
+import { Badge } from '../components/ui/badge';
+import { ScrollArea } from '../components/ui/scroll-area';
+import { apiRequest } from '../lib/queryClient';
 
-interface Song {
+interface YouTubeVideo {
+  id: { videoId: string };
+  snippet: {
+    title: string;
+    channelTitle: string;
+    thumbnails: {
+      medium: { url: string };
+      high: { url: string };
+    };
+    publishedAt: string;
+    description: string;
+  };
+}
+
+interface VideoDetails {
   id: string;
   title: string;
   artist: string;
-  duration: string;
   thumbnail: string;
-  plays?: string;
-  album?: string;
-  isPopular?: boolean;
-  mood?: string;
-  streamUrl?: string;
-  youtubeId?: string;
+  duration: string;
+  description: string;
 }
 
 interface Playlist {
   id: string;
   name: string;
-  cover: string;
-  songCount: number;
-  description?: string;
-  mood?: string;
+  videos: VideoDetails[];
 }
 
-export default function MusicPlayer() {
-  const [, navigate] = useLocation();
-  const [searchQuery, setSearchQuery] = useState("");
-  const [searchResults, setSearchResults] = useState<Song[]>([]);
-  const [isSearching, setIsSearching] = useState(false);
-  const [showSearchResults, setShowSearchResults] = useState(false);
-  const [currentSong, setCurrentSong] = useState<Song | null>(null);
+const LuvNoirMusic: React.FC = () => {
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<YouTubeVideo[]>([]);
+  const [currentVideo, setCurrentVideo] = useState<VideoDetails | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
-  const [currentTime, setCurrentTime] = useState(142);
-  const [duration, setDuration] = useState(215);
-  const [volume, setVolume] = useState(0.7);
-  const [activeSection, setActiveSection] = useState("discover");
-  
-  const audioRef = useRef<HTMLAudioElement>(null);
-  const { toast } = useToast();
+  const [volume, setVolume] = useState(50);
+  const [playlists, setPlaylists] = useState<Playlist[]>([]);
+  const [currentPlaylist, setCurrentPlaylist] = useState<Playlist | null>(null);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [showPlaylistModal, setShowPlaylistModal] = useState(false);
+  const [newPlaylistName, setNewPlaylistName] = useState('');
+  const [apiKeyStatus, setApiKeyStatus] = useState<'checking' | 'valid' | 'invalid'>('checking');
 
-  // Get the previous page from localStorage or default to dashboard
-  const getPreviousPage = () => {
-    return localStorage.getItem('previousPage') || '/';
-  };
-  
-  const handleBackNavigation = () => {
-    const previousPage = getPreviousPage();
-    localStorage.removeItem('previousPage');
-    navigate(previousPage);
-  };
+  const playerRef = useRef<HTMLIFrameElement>(null);
+  const searchTimeoutRef = useRef<NodeJS.Timeout>();
 
-  // Search function to get real YouTube results
-  const handleSearch = async () => {
-    if (!searchQuery.trim()) return;
-    
-    setIsSearching(true);
-    setShowSearchResults(true);
-    
-    try {
-      const response = await fetch(`/api/music/search?q=${encodeURIComponent(searchQuery)}`);
-      if (!response.ok) {
-        throw new Error('Search failed');
-      }
-      
-      const results = await response.json();
-      
-      if (Array.isArray(results) && results.length > 0) {
-        setSearchResults(results);
-        setActiveSection("search");
-        toast({
-          title: "Search completed",
-          description: `Found ${results.length} tracks`
-        });
-      } else {
-        toast({
-          title: "No results found",
-          description: "Try a different search term",
-          variant: "destructive"
-        });
-      }
-    } catch (error) {
-      console.error('Search failed:', error);
-      
-      // Try to get error details from response
-      let errorMessage = "Could not search for music. Please try again.";
-      if (error instanceof Error) {
-        errorMessage = error.message;
-      }
-      
-      toast({
-        title: "Search temporarily unavailable",
-        description: "YouTube is blocking searches right now. Try different search terms or wait a moment.",
-        variant: "destructive"
-      });
-    } finally {
-      setIsSearching(false);
-    }
+  // Handle broken thumbnail images
+  const handleImageError = (event: React.SyntheticEvent<HTMLImageElement, Event>) => {
+    const img = event.target as HTMLImageElement;
+    img.src = 'https://via.placeholder.com/320x180/1f2937/9ca3af?text=No+Thumbnail';
   };
 
-  // Remove demo data - only use real search results
-  const calmCollection: Song[] = [];
-
-  const moodPlaylists: Playlist[] = [];
-
-  // Remove useEffect that sets demo song
-
-  const formatTime = (time: number) => {
-    const minutes = Math.floor(time / 60);
-    const seconds = Math.floor(time % 60);
-    return `${minutes}:${seconds.toString().padStart(2, '0')}`;
-  };
-
-  const playPause = () => {
-    setIsPlaying(!isPlaying);
-  };
-
-  const nextSong = () => {
-    if (searchResults.length > 0) {
-      const currentIndex = searchResults.findIndex(song => song.id === currentSong?.id);
-      const nextIndex = (currentIndex + 1) % searchResults.length;
-      setCurrentSong(searchResults[nextIndex]);
-    }
-  };
-
-  const prevSong = () => {
-    if (searchResults.length > 0) {
-      const currentIndex = searchResults.findIndex(song => song.id === currentSong?.id);
-      const prevIndex = currentIndex === 0 ? searchResults.length - 1 : currentIndex - 1;
-      setCurrentSong(searchResults[prevIndex]);
-    }
-  };
-
-  // Remove duplicate search function - keep the one defined earlier
-
-  const playTrack = async (song: Song) => {
-    setCurrentSong(song);
-    setIsPlaying(true);
-    
-    // Get streaming URL if it's a YouTube track
-    if (song.youtubeId) {
+  // Check API key status on mount
+  useEffect(() => {
+    const checkApiKey = async () => {
       try {
-        const response = await fetch(`/api/music/stream/${song.youtubeId}`);
+        const response = await apiRequest('GET', '/api/youtube/search?q=test&maxResults=1');
         if (response.ok) {
-          const streamData = await response.json();
-          if (audioRef.current && streamData.streamUrl) {
-            audioRef.current.src = streamData.streamUrl;
-            audioRef.current.play().catch(console.error);
-          }
+          setApiKeyStatus('valid');
         } else {
-          toast({
-            title: "Playback failed",
-            description: "Could not load this track",
-            variant: "destructive"
-          });
+          setApiKeyStatus('invalid');
         }
       } catch (error) {
-        console.error('Stream failed:', error);
-        toast({
-          title: "Playback error",
-          description: "Connection problem occurred",
-          variant: "destructive"
-        });
+        setApiKeyStatus('invalid');
       }
+    };
+    
+    checkApiKey();
+  }, []);
+
+  // Load YouTube IFrame API
+  useEffect(() => {
+    const tag = document.createElement('script');
+    tag.src = 'https://www.youtube.com/iframe_api';
+    const firstScriptTag = document.getElementsByTagName('script')[0];
+    firstScriptTag.parentNode?.insertBefore(tag, firstScriptTag);
+
+    (window as any).onYouTubeIframeAPIReady = () => {
+      console.log('YouTube IFrame API ready');
+    };
+  }, []);
+
+  // Search suggestions
+  const getSearchSuggestions = useCallback(async (query: string) => {
+    if (query.length < 2) {
+      setSuggestions([]);
+      return;
+    }
+
+    try {
+      const response = await apiRequest('GET', `/api/youtube/suggestions?q=${encodeURIComponent(query)}`);
+      const data = await response.json();
+      
+      // Handle different response formats
+      let suggestionsArray: string[] = [];
+      if (Array.isArray(data.suggestions)) {
+        suggestionsArray = data.suggestions;
+      } else if (typeof data.suggestions === 'string') {
+        // If it's a string, split it into words or use it as a single suggestion
+        suggestionsArray = [data.suggestions];
+      } else if (data.suggestions) {
+        // Try to convert to array if it's some other format
+        suggestionsArray = Array.isArray(data.suggestions) ? data.suggestions : [];
+      }
+      
+      setSuggestions(suggestionsArray);
+    } catch (error) {
+      console.error('Failed to get suggestions:', error);
+      setSuggestions([]);
+    }
+  }, []);
+
+  // Debounced search suggestions
+  useEffect(() => {
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
+    }
+
+    searchTimeoutRef.current = setTimeout(() => {
+      getSearchSuggestions(searchQuery);
+    }, 300);
+
+    return () => {
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current);
+      }
+    };
+  }, [searchQuery, getSearchSuggestions]);
+
+  const searchVideos = async (query: string) => {
+    if (!query.trim()) return;
+
+    setIsLoading(true);
+    try {
+      const response = await apiRequest('GET', `/api/youtube/search?q=${encodeURIComponent(query)}&maxResults=20`);
+      const data = await response.json();
+      setSearchResults(data.items || []);
+      setShowSuggestions(false);
+    } catch (error) {
+      console.error('Search error:', error);
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const getMoodIcon = (mood?: string) => {
-    switch(mood) {
-      case "focused": return <Moon className="w-4 h-4" />;
-      case "chill": return <Waves className="w-4 h-4" />;
-      case "natural": return <Sun className="w-4 h-4" />;
-      case "dreamy": return <Star className="w-4 h-4" />;
-      default: return <Music className="w-4 h-4" />;
+  const playVideo = async (videoId: string) => {
+    try {
+      const response = await apiRequest('GET', `/api/youtube/video/${videoId}`);
+      const data = await response.json();
+      setCurrentVideo(data);
+      setIsPlaying(true);
+    } catch (error) {
+      console.error('Failed to get video details:', error);
     }
+  };
+
+  const togglePlayPause = () => {
+    if (playerRef.current) {
+      if (isPlaying) {
+        playerRef.current.contentWindow?.postMessage('{"event":"command","func":"pauseVideo","args":""}', '*');
+      } else {
+        playerRef.current.contentWindow?.postMessage('{"event":"command","func":"playVideo","args":""}', '*');
+      }
+      setIsPlaying(!isPlaying);
+    }
+  };
+
+  const setPlayerVolume = (newVolume: number) => {
+    setVolume(newVolume);
+    if (playerRef.current) {
+      playerRef.current.contentWindow?.postMessage(`{"event":"command","func":"setVolume","args":[${newVolume}]}`, '*');
+    }
+  };
+
+  const createPlaylist = () => {
+    if (!newPlaylistName.trim()) return;
+
+    const newPlaylist: Playlist = {
+      id: Date.now().toString(),
+      name: newPlaylistName,
+      videos: []
+    };
+
+    setPlaylists([...playlists, newPlaylist]);
+    setNewPlaylistName('');
+    setShowPlaylistModal(false);
+  };
+
+  const addToPlaylist = (playlistId: string, video: VideoDetails) => {
+    setPlaylists(playlists.map(playlist => {
+      if (playlist.id === playlistId) {
+        return {
+          ...playlist,
+          videos: [...playlist.videos, video]
+        };
+      }
+      return playlist;
+    }));
+  };
+
+  const removeFromPlaylist = (playlistId: string, videoId: string) => {
+    setPlaylists(playlists.map(playlist => {
+      if (playlist.id === playlistId) {
+        return {
+          ...playlist,
+          videos: playlist.videos.filter(video => video.id !== videoId)
+        };
+      }
+      return playlist;
+    }));
+  };
+
+  const formatDuration = (duration: string) => {
+    return duration;
+  };
+
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffInDays = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
+    
+    if (diffInDays === 0) return 'Today';
+    if (diffInDays === 1) return 'Yesterday';
+    if (diffInDays < 7) return `${diffInDays} days ago`;
+    if (diffInDays < 30) return `${Math.floor(diffInDays / 7)} weeks ago`;
+    if (diffInDays < 365) return `${Math.floor(diffInDays / 30)} months ago`;
+    return `${Math.floor(diffInDays / 365)} years ago`;
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-stone-50 via-purple-50/30 to-pink-50/30">
-      {/* Floating Header */}
-      <div className="relative">
-        <div className="absolute top-6 left-6 right-6 bg-white/70 backdrop-blur-xl border border-white/50 rounded-2xl shadow-lg z-50">
-          <div className="px-6 py-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-4">
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  onClick={handleBackNavigation}
-                  className="text-stone-600 hover:text-purple-600 hover:bg-purple-50/50"
-                >
-                  <ArrowLeft className="w-5 h-5 mr-2" />
-                  Back
-                </Button>
-                <div className="h-6 w-px bg-stone-300/50" />
-                <div className="flex items-center space-x-3">
-                  <div className="w-8 h-8 bg-gradient-to-br from-purple-500 to-pink-500 rounded-xl flex items-center justify-center shadow-md">
-                    <Music className="w-4 h-4 text-white" />
-                  </div>
-                  <h1 className="text-2xl font-light bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
-                    LuvNoir
-                  </h1>
-                </div>
-              </div>
-              
-              {/* Floating Search */}
-              <div className="flex-1 max-w-md mx-8">
-                <div className="relative">
-                  <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-stone-400 w-5 h-5" />
-                  <Input
-                    placeholder="Find your calm..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
-                    className="pl-12 py-3 bg-white/60 border-white/30 text-stone-700 placeholder-stone-500 focus:bg-white/80 transition-all rounded-xl backdrop-blur-sm"
-                  />
-                </div>
-              </div>
-
-              <div className="flex items-center space-x-3">
-                <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-pink-500 rounded-xl flex items-center justify-center text-white font-medium shadow-md">
-                  M
-                </div>
-              </div>
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-pink-900 text-white">
+      {/* API Key Status Banner */}
+      {apiKeyStatus === 'invalid' && (
+        <div className="bg-red-600/20 border-b border-red-500/30 p-3">
+          <div className="max-w-7xl mx-auto flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <div className="w-2 h-2 bg-red-400 rounded-full animate-pulse"></div>
+              <span className="text-red-200 text-sm font-medium">
+                YouTube API key not configured. Please set up a real API key to use the app.
+              </span>
             </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="pt-24 pb-8 px-8 max-w-7xl mx-auto space-y-12">
-        {/* Mood Navigation */}
-        <div className="flex space-x-3 overflow-x-auto pb-2 pt-4">
-          {[
-            { id: "discover", label: "Discover", icon: TrendingUp },
-            { id: "search", label: "Search Results", icon: Search },
-            { id: "focus", label: "Focus", icon: Moon },
-            { id: "relax", label: "Relax", icon: Waves },
-            { id: "nature", label: "Nature", icon: Sun },
-            { id: "favorites", label: "Favorites", icon: Heart }
-          ].map((section) => {
-            const Icon = section.icon;
-            // Hide search tab if no results
-            if (section.id === "search" && searchResults.length === 0) return null;
-            
-            return (
-              <Button
-                key={section.id}
-                variant={activeSection === section.id ? "default" : "outline"}
-                size="sm"
-                onClick={() => setActiveSection(section.id)}
-                className={`whitespace-nowrap transition-all ${
-                  activeSection === section.id 
-                    ? "bg-gradient-to-r from-purple-500 to-pink-500 text-white border-0 shadow-lg" 
-                    : "bg-white/50 border-white/30 text-stone-700 hover:bg-white/70 backdrop-blur-sm"
-                }`}
+            <div className="flex items-center space-x-4">
+              <a 
+                href="https://developers.google.com/youtube/v3/getting-started" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="text-red-300 hover:text-red-100 text-sm underline"
               >
-                <Icon className="w-4 h-4 mr-2" />
-                {section.label}
-                {section.id === "search" && searchResults.length > 0 && (
-                  <span className="ml-2 bg-white/20 px-2 py-0.5 rounded-full text-xs">
-                    {searchResults.length}
-                  </span>
-                )}
-              </Button>
-            );
-          })}
-        </div>
-
-        {/* Welcome Message when no search results */}
-        {!currentSong && searchResults.length === 0 && (
-          <div className="text-center py-20">
-            <div className="w-24 h-24 bg-gradient-to-br from-red-500 to-orange-500 rounded-full flex items-center justify-center mx-auto mb-6">
-              <AlertTriangle className="w-12 h-12 text-white" />
-            </div>
-            <h2 className="text-3xl font-light text-stone-800 mb-4">YouTube Search Currently Blocked</h2>
-            <p className="text-stone-600 text-lg mb-4">YouTube is actively blocking automated music searches with bot protection.</p>
-            <div className="bg-yellow-50/50 border border-yellow-200 rounded-xl p-6 max-w-2xl mx-auto">
-              <h3 className="font-semibold text-yellow-800 mb-2">Technical Issue</h3>
-              <p className="text-yellow-700 text-sm leading-relaxed">
-                YouTube detects and blocks yt-dlp requests with "HTTP 429: Too Many Requests" and "Sign in to confirm you're not a bot" messages. 
-                This is a platform-level restriction that affects all automated YouTube access.
-              </p>
+                Get API Key
+              </a>
+              <span className="text-red-400 text-xs">|</span>
+              <span className="text-red-300 text-xs">
+                Set YOUTUBE_API_KEY in environment or replace placeholder in server/routes.ts
+              </span>
             </div>
           </div>
-        )}
+        </div>
+      )}
+      
+      {/* Header */}
+      <header className="bg-black/20 backdrop-blur-md border-b border-purple-500/20 sticky top-0 z-50">
+        <div className="flex items-center justify-between px-4 py-3">
+          <div className="flex items-center space-x-4">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setSidebarOpen(!sidebarOpen)}
+              className="text-purple-300 hover:text-purple-100"
+            >
+              <Menu className="w-5 h-5" />
+            </Button>
+            <div className="flex items-center space-x-2">
+              <Music className="w-8 h-8 text-purple-400" />
+              <span className="text-xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
+                LuvNoir
+              </span>
+            </div>
+          </div>
 
-        {/* Now Playing - Minimalist Design */}
-        {currentSong && (
-          <div className="relative">
-            <Card className="bg-white/60 backdrop-blur-xl border-white/40 shadow-xl rounded-3xl overflow-hidden">
-              <CardContent className="p-0">
-                <div className="grid grid-cols-12 gap-0 items-center">
-                  <div className="col-span-4 p-8">
-                    <div className="aspect-square bg-gradient-to-br from-purple-100/50 to-pink-100/50 rounded-2xl flex items-center justify-center relative group cursor-pointer backdrop-blur-sm border border-white/30">
-                      <Music className="w-20 h-20 text-purple-400/60" />
-                      <div className="absolute inset-0 bg-gradient-to-br from-purple-500/20 to-pink-500/20 rounded-2xl opacity-0 group-hover:opacity-100 transition-all flex items-center justify-center">
-                        <Play className="w-16 h-16 text-white drop-shadow-lg" />
-                      </div>
-                      {isPlaying && (
-                        <div className="absolute -bottom-3 -right-3 w-10 h-10 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center shadow-lg">
-                          <Waves className="w-5 h-5 text-white animate-pulse" />
-                        </div>
-                      )}
+          {/* Search Bar */}
+          <div className="flex-1 max-w-2xl mx-8 relative">
+            <div className="relative">
+              <Input
+                type="text"
+                placeholder="Search for music..."
+                value={searchQuery}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  setShowSuggestions(true);
+                }}
+                onKeyPress={(e) => e.key === 'Enter' && searchVideos(searchQuery)}
+                className="bg-black/30 border-purple-500/30 text-white placeholder:text-purple-300/50 focus:border-purple-400"
+              />
+              <Button
+                size="sm"
+                onClick={() => searchVideos(searchQuery)}
+                className="absolute right-1 top-1 bg-purple-600 hover:bg-purple-700"
+              >
+                <Search className="w-4 h-4" />
+              </Button>
+            </div>
+
+            {/* Search Suggestions */}
+            {showSuggestions && Array.isArray(suggestions) && suggestions.length > 0 && (
+              <div className="absolute top-full left-0 right-0 bg-black/90 backdrop-blur-md border border-purple-500/30 rounded-b-lg mt-1 z-50">
+                {suggestions.map((suggestion, index) => (
+                  <div
+                    key={index}
+                    className="px-4 py-2 hover:bg-purple-500/20 cursor-pointer text-purple-200"
+                    onClick={() => {
+                      setSearchQuery(suggestion);
+                      searchVideos(suggestion);
+                    }}
+                  >
+                    <Search className="w-4 h-4 inline mr-2 text-purple-400" />
+                    {suggestion}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="flex items-center space-x-2">
+            <Button variant="ghost" size="sm" className="text-purple-300 hover:text-purple-100">
+              <User className="w-5 h-5" />
+            </Button>
+          </div>
+        </div>
+      </header>
+
+      <div className="flex">
+        {/* Sidebar */}
+        <aside className={`bg-black/20 backdrop-blur-md border-r border-purple-500/20 transition-all duration-300 h-screen ${
+          sidebarOpen ? 'w-64' : 'w-16'
+        }`}>
+          <nav className="p-4 space-y-4">
+            <Button variant="ghost" className="w-full justify-start text-purple-300 hover:text-purple-100 h-12">
+              <Home className="w-5 h-5 mr-3" />
+              {sidebarOpen && 'Home'}
+            </Button>
+            <Button variant="ghost" className="w-full justify-start text-purple-300 hover:text-purple-100 h-12">
+              <TrendingUp className="w-5 h-5 mr-3" />
+              {sidebarOpen && 'Trending'}
+            </Button>
+            <Button variant="ghost" className="w-full justify-start text-purple-300 hover:text-purple-100 h-12">
+              <Music className="w-5 h-5 mr-3" />
+              {sidebarOpen && 'Music'}
+            </Button>
+            <Button variant="ghost" className="w-full justify-start text-purple-300 hover:text-purple-100 h-12">
+              <History className="w-5 h-5 mr-3" />
+              {sidebarOpen && 'History'}
+            </Button>
+          </nav>
+
+          {sidebarOpen && (
+            <div className="p-4 border-t border-purple-500/20 mt-8">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-sm font-semibold text-purple-300">Playlists</h3>
+                <Button
+                  size="sm"
+                  onClick={() => setShowPlaylistModal(true)}
+                  className="bg-purple-600 hover:bg-purple-700"
+                >
+                  <Plus className="w-4 h-4" />
+                </Button>
+              </div>
+              <ScrollArea className="h-64">
+                {playlists.map((playlist) => (
+                  <div
+                    key={playlist.id}
+                    className="text-sm text-purple-200 hover:text-purple-100 cursor-pointer py-2 px-2 rounded hover:bg-purple-500/20 transition-colors"
+                    onClick={() => setCurrentPlaylist(playlist)}
+                  >
+                    {playlist.name} ({playlist.videos.length})
+                  </div>
+                ))}
+              </ScrollArea>
+            </div>
+          )}
+        </aside>
+
+        {/* Main Content */}
+        <main className="flex-1 p-6">
+          {currentVideo ? (
+            <div className="space-y-6">
+              {/* Video Player */}
+              <div className="bg-black/30 rounded-lg overflow-hidden">
+                <div className="relative aspect-video">
+                                     <iframe
+                     ref={playerRef}
+                     src={`https://www.youtube.com/embed/${currentVideo.id}?autoplay=1&enablejsapi=1&origin=${window.location.origin}`}
+                     className="w-full h-full"
+                     allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                     allowFullScreen
+                   />
+                </div>
+              </div>
+
+              {/* Video Info */}
+              <div className="space-y-4">
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <h1 className="text-2xl font-bold text-white mb-2">{currentVideo.title}</h1>
+                    <div className="flex items-center space-x-4 text-purple-300">
+                      <span>{currentVideo.artist}</span>
+                      <span>•</span>
+                      <span>{formatDuration(currentVideo.duration)}</span>
                     </div>
                   </div>
-                  
-                  <div className="col-span-8 p-8 space-y-8">
-                    <div>
-                      <div className="flex items-center space-x-3 mb-4">
-                        <span className="text-sm text-purple-600/80 font-medium tracking-wide">NOW PLAYING</span>
-                        {currentSong.mood && (
-                          <span className="px-3 py-1 bg-purple-100/50 text-purple-700 text-xs rounded-full border border-purple-200/50">
-                            {currentSong.mood}
-                          </span>
-                        )}
-                        {currentSong.isPopular && (
-                          <Star className="w-4 h-4 text-yellow-500 fill-current" />
-                        )}
-                      </div>
-                      <h2 className="text-5xl font-light text-stone-800 mb-3 leading-tight">{currentSong.title}</h2>
-                      <p className="text-2xl text-stone-600 font-light">{currentSong.artist}</p>
-                      {currentSong.album && (
-                        <p className="text-sm text-stone-500 mt-2">{currentSong.album} • {currentSong.plays} plays</p>
-                      )}
-                    </div>
-                    
-                    {/* Minimalist Progress */}
-                    <div className="space-y-4">
-                      <div className="w-full bg-stone-200/50 rounded-full h-1.5">
-                        <div 
-                          className="bg-gradient-to-r from-purple-500 to-pink-500 h-1.5 rounded-full transition-all duration-500 shadow-sm"
-                          style={{ width: `${(currentTime / duration) * 100}%` }}
-                        />
-                      </div>
-                      <div className="flex justify-between text-sm text-stone-500 font-light">
-                        <span>{formatTime(currentTime)}</span>
-                        <span>{formatTime(duration)}</span>
-                      </div>
-                    </div>
-                    
-                    {/* Floating Controls */}
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-6">
-                        <Button variant="ghost" size="lg" className="text-stone-500 hover:text-purple-600 hover:bg-purple-50/50 rounded-full w-12 h-12">
-                          <Shuffle className="w-5 h-5" />
-                        </Button>
-                        <Button variant="ghost" size="lg" onClick={prevSong} className="text-stone-500 hover:text-purple-600 hover:bg-purple-50/50 rounded-full w-12 h-12">
-                          <SkipBack className="w-6 h-6" />
-                        </Button>
-                        <Button 
-                          onClick={playPause}
-                          className="w-16 h-16 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 shadow-xl hover:shadow-2xl transition-all"
-                        >
-                          {isPlaying ? <Pause className="w-7 h-7" /> : <Play className="w-7 h-7" />}
-                        </Button>
-                        <Button variant="ghost" size="lg" onClick={nextSong} className="text-stone-500 hover:text-purple-600 hover:bg-purple-50/50 rounded-full w-12 h-12">
-                          <SkipForward className="w-6 h-6" />
-                        </Button>
-                        <Button variant="ghost" size="lg" className="text-stone-500 hover:text-purple-600 hover:bg-purple-50/50 rounded-full w-12 h-12">
-                          <Repeat className="w-5 h-5" />
-                        </Button>
-                      </div>
-                      
-                      <div className="flex items-center space-x-4">
-                        <Button variant="ghost" size="sm" className="text-stone-500 hover:text-red-500 hover:bg-red-50/50 rounded-full">
-                          <Heart className="w-5 h-5" />
-                        </Button>
-                        <Button variant="ghost" size="sm" className="text-stone-500 hover:text-purple-600 hover:bg-purple-50/50 rounded-full">
-                          <Download className="w-5 h-5" />
-                        </Button>
-                        <div className="flex items-center space-x-3">
-                          <Volume2 className="w-5 h-5 text-stone-500" />
-                          <div className="w-24 h-1.5 bg-stone-200/50 rounded-full">
-                            <div 
-                              className="h-1.5 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full"
-                              style={{ width: `${volume * 100}%` }}
-                            />
-                          </div>
-                        </div>
-                      </div>
+                  <div className="flex items-center space-x-2">
+                    <Button variant="ghost" size="sm" className="text-purple-300 hover:text-purple-100">
+                      <ThumbsUp className="w-5 h-5" />
+                    </Button>
+                    <Button variant="ghost" size="sm" className="text-purple-300 hover:text-purple-100">
+                      <Share2 className="w-5 h-5" />
+                    </Button>
+                    <Button variant="ghost" size="sm" className="text-purple-300 hover:text-purple-100">
+                      <MoreVertical className="w-5 h-5" />
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Player Controls */}
+                <div className="bg-black/20 rounded-lg p-4">
+                  <div className="flex items-center space-x-4">
+                    <Button
+                      onClick={togglePlayPause}
+                      className="bg-purple-600 hover:bg-purple-700"
+                    >
+                      {isPlaying ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5" />}
+                    </Button>
+                    <Button variant="ghost" size="sm" className="text-purple-300 hover:text-purple-100">
+                      <SkipBack className="w-5 h-5" />
+                    </Button>
+                    <Button variant="ghost" size="sm" className="text-purple-300 hover:text-purple-100">
+                      <SkipForward className="w-5 h-5" />
+                    </Button>
+                    <div className="flex items-center space-x-2">
+                      <Volume2 className="w-4 h-4 text-purple-300" />
+                      <input
+                        type="range"
+                        min="0"
+                        max="100"
+                        value={volume}
+                        onChange={(e) => setPlayerVolume(parseInt(e.target.value))}
+                        className="w-20 accent-purple-500"
+                      />
                     </div>
                   </div>
                 </div>
-              </CardContent>
-            </Card>
-          </div>
-        )}
 
-        {/* Search Results */}
-        {activeSection === "search" && searchResults.length > 0 && (
-          <div className="space-y-8">
-            <div className="flex items-center justify-between">
-              <h2 className="text-4xl font-light text-stone-800">Search Results</h2>
-              <p className="text-stone-600">{searchResults.length} tracks found</p>
+                {/* Description */}
+                <div className="bg-black/20 rounded-lg p-4">
+                  <h3 className="text-lg font-semibold text-white mb-2">Description</h3>
+                  <p className="text-purple-200 text-sm leading-relaxed">
+                    {currentVideo.description}
+                  </p>
+                </div>
+              </div>
             </div>
-            <div className="grid grid-cols-1 gap-4">
-              {searchResults.map((song, index) => (
-                <Card key={song.id} className="bg-white/60 backdrop-blur-xl border-white/40 shadow-lg hover:shadow-xl transition-all rounded-2xl overflow-hidden group cursor-pointer">
-                  <CardContent className="p-0">
-                    <div className="grid grid-cols-12 gap-0 items-center p-6">
-                      <div className="col-span-1 flex items-center justify-center">
-                        <Button
-                          onClick={() => playTrack(song)}
-                          variant="ghost" 
-                          size="sm"
-                          className="w-12 h-12 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white opacity-0 group-hover:opacity-100 transition-all"
-                        >
-                          <Play className="w-5 h-5" />
-                        </Button>
-                      </div>
-                      <div className="col-span-2">
-                        <div className="aspect-square bg-gradient-to-br from-purple-100/50 to-pink-100/50 rounded-xl flex items-center justify-center relative">
-                          {song.thumbnail && song.thumbnail !== '/api/placeholder/200/200' ? (
-                            <img 
-                              src={song.thumbnail} 
-                              alt={song.title}
-                              className="w-full h-full object-cover rounded-xl"
-                            />
-                          ) : (
-                            <Music className="w-8 h-8 text-purple-400/60" />
-                          )}
-                        </div>
-                      </div>
-                      <div className="col-span-7 px-6 space-y-2">
-                        <h3 className="text-xl font-medium text-stone-800 line-clamp-1">{song.title}</h3>
-                        <p className="text-stone-600 font-light">{song.artist}</p>
-                        <div className="flex items-center space-x-4 text-sm text-stone-500">
-                          <span className="flex items-center space-x-1">
-                            <Clock className="w-4 h-4" />
-                            <span>{song.duration}</span>
-                          </span>
-                          {song.plays && (
-                            <span className="flex items-center space-x-1">
-                              <TrendingUp className="w-4 h-4" />
-                              <span>{song.plays} plays</span>
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                      <div className="col-span-2 flex items-center justify-end space-x-2">
-                        <Button variant="ghost" size="sm" className="text-stone-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all">
-                          <Heart className="w-5 h-5" />
-                        </Button>
-                        <Button variant="ghost" size="sm" className="text-stone-400 hover:text-purple-600 opacity-0 group-hover:opacity-100 transition-all">
-                          <Download className="w-5 h-5" />
-                        </Button>
-                        <Button variant="ghost" size="sm" className="text-stone-400 hover:text-stone-600 opacity-0 group-hover:opacity-100 transition-all">
-                          <MoreHorizontal className="w-5 h-5" />
-                        </Button>
+          ) : (
+            <div className="text-center py-12">
+              <Music className="w-16 h-16 text-purple-400 mx-auto mb-4" />
+              <h2 className="text-2xl font-bold text-white mb-2">Welcome to LuvNoir</h2>
+              <p className="text-purple-300">Search for your favorite music to get started</p>
+            </div>
+          )}
+
+          {/* Search Results */}
+          {searchResults.length > 0 && (
+            <div className="mt-8">
+              <h2 className="text-xl font-bold text-white mb-4">Search Results</h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                {searchResults.map((video) => (
+                  <Card
+                    key={video.id.videoId}
+                    className="bg-black/20 backdrop-blur-md border-purple-500/20 hover:border-purple-400/40 transition-all cursor-pointer group"
+                    onClick={() => playVideo(video.id.videoId)}
+                  >
+                    <div className="relative aspect-video overflow-hidden rounded-t-lg">
+                      <img
+                        src={video.snippet.thumbnails.medium.url}
+                        alt={video.snippet.title}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                        onError={handleImageError}
+                      />
+                      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
+                        <Play className="w-12 h-12 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
                       </div>
                     </div>
-                  </CardContent>
-                </Card>
-              ))}
+                    <CardContent className="p-3">
+                      <h3 className="font-semibold text-white text-sm line-clamp-2 mb-1">
+                        {video.snippet.title}
+                      </h3>
+                      <p className="text-purple-300 text-xs mb-1">{video.snippet.channelTitle}</p>
+                      <p className="text-purple-400 text-xs">{formatDate(video.snippet.publishedAt)}</p>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
             </div>
-          </div>
-        )}
+          )}
 
-        {/* Show message for discover tab since no demo data */}
-        {activeSection === "discover" && (
-          <div className="text-center py-20">
-            <div className="w-24 h-24 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center mx-auto mb-6">
-              <Music className="w-12 h-12 text-white" />
+          {/* Loading State */}
+          {isLoading && (
+            <div className="flex items-center justify-center py-12">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-400"></div>
             </div>
-            <h2 className="text-3xl font-light text-stone-800 mb-4">Start by searching</h2>
-            <p className="text-stone-600 text-lg">Use the search bar above to find any music from YouTube</p>
-          </div>
-        )}
-        
-        {/* Remove mood playlists demo section */}
+          )}
+        </main>
       </div>
 
-      {/* Hidden Audio Element */}
-      <audio 
-        ref={audioRef}
-        onTimeUpdate={(e) => setCurrentTime(e.currentTarget.currentTime)}
-        onLoadedMetadata={(e) => setDuration(e.currentTarget.duration)}
-        onEnded={nextSong}
-      />
+      {/* Create Playlist Modal */}
+      {showPlaylistModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className="bg-black/90 border border-purple-500/30 rounded-lg p-6 w-96">
+            <h3 className="text-lg font-semibold text-white mb-4">Create New Playlist</h3>
+            <Input
+              type="text"
+              placeholder="Playlist name"
+              value={newPlaylistName}
+              onChange={(e) => setNewPlaylistName(e.target.value)}
+              className="bg-black/30 border-purple-500/30 text-white placeholder:text-purple-300/50 mb-4"
+            />
+            <div className="flex space-x-2">
+              <Button
+                onClick={createPlaylist}
+                className="bg-purple-600 hover:bg-purple-700"
+              >
+                Create
+              </Button>
+              <Button
+                variant="ghost"
+                onClick={() => setShowPlaylistModal(false)}
+                className="text-purple-300 hover:text-purple-100"
+              >
+                Cancel
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
-}
+};
+
+export default LuvNoirMusic;

@@ -52,3 +52,39 @@ StudyCompanion is a complete offline desktop study application designed specific
 ```bash
 git clone https://github.com/studycompanion/app.git
 cd studycompanion
+```
+
+### 2. YouTube API Setup (for Music Streaming)
+
+The music streaming feature requires a YouTube Data API v3 key. Follow these steps:
+
+#### Get Your YouTube API Key:
+1. **Go to Google Cloud Console**: [https://console.cloud.google.com/](https://console.cloud.google.com/)
+2. **Create/Select Project**: Create a new project or select an existing one
+3. **Enable Billing**: YouTube API requires billing to be enabled
+4. **Enable YouTube Data API v3**:
+   - Go to "APIs & Services" > "Library"
+   - Search for "YouTube Data API v3"
+   - Click "Enable"
+5. **Create API Key**:
+   - Go to "APIs & Services" > "Credentials"
+   - Click "Create Credentials" > "API Key"
+   - Copy the generated key
+
+#### Configure the API Key:
+**Option A: Environment Variable (Recommended)**
+```bash
+# Create a .env file in the server directory
+echo "YOUTUBE_API_KEY=your_actual_api_key_here" > server/.env
+```
+
+**Option B: Direct Replacement**
+Replace `YOUR_YOUTUBE_API_KEY_HERE` in `server/routes.ts` with your actual API key.
+
+#### API Quota Information:
+- **Free Tier**: 10,000 units per day
+- **Search Queries**: ~100 units per search
+- **Video Details**: ~1 unit per video
+- **Suggestions**: ~5 units per request
+
+> 💡 **Tip**: The free tier is sufficient for personal use. For heavy usage, consider upgrading to a paid plan.
