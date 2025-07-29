@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Search, Play, Pause, SkipBack, SkipForward, Volume2, Heart, Plus, List, X, Clock, User, Menu, Home, TrendingUp, Music, History, ThumbsUp, Share2, MoreVertical } from 'lucide-react';
+import { Search, Play, Pause, SkipBack, SkipForward, Volume2, Heart, Plus, List, X, Clock, User, Menu, Home, TrendingUp, Music, History, ThumbsUp, Share2, MoreVertical, ArrowLeft } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Card, CardContent } from '../components/ui/card';
@@ -238,6 +238,11 @@ const LuvNoirMusic: React.FC = () => {
     return `${Math.floor(diffInDays / 365)} years ago`;
   };
 
+  const goBack = () => {
+    const previousPage = localStorage.getItem('previousPage') || '/dashboard';
+    window.location.href = previousPage;
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-pink-900 text-white">
       {/* API Key Status Banner */}
@@ -272,6 +277,14 @@ const LuvNoirMusic: React.FC = () => {
       <header className="bg-black/20 backdrop-blur-md border-b border-purple-500/20 sticky top-0 z-50">
         <div className="flex items-center justify-between px-4 py-3">
           <div className="flex items-center space-x-4">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={goBack}
+              className="text-purple-300 hover:text-purple-100"
+            >
+              <ArrowLeft className="w-5 h-5" />
+            </Button>
             <Button
               variant="ghost"
               size="sm"

@@ -607,7 +607,6 @@ function AssignmentEditor({ assignment, isOpen, onOpenChange }: {
                               fileUrl={assignment.attachedFilePath} 
                               filename={assignment.title}
                               documentId={assignment.id.toString()}
-                              unitId={assignment.unitId}
                               isEditing={isEditing}
                               onContentChange={setEditedContent}
                             />
@@ -620,7 +619,6 @@ function AssignmentEditor({ assignment, isOpen, onOpenChange }: {
                               fileUrl={assignment.attachedFilePath} 
                               filename={assignment.title}
                               documentId={assignment.id.toString()}
-                              unitId={assignment.unitId}
                               isEditing={isEditing}
                               onContentChange={setEditedContent}
                             />

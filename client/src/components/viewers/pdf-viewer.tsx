@@ -81,11 +81,8 @@ export default function PDFViewer({ fileUrl, filename, documentId, unitId, isEdi
   };
 
   const goBack = () => {
-    if (unitId) {
-      setLocation(`/units/${unitId}/documents`);
-    } else {
-      setLocation('/units');
-    }
+    console.log('PDFViewer: goBack clicked, navigating to /assignments');
+    window.location.href = '/assignments';
   };
 
   const scrollToHeading = (id: string) => {
@@ -189,11 +186,14 @@ export default function PDFViewer({ fileUrl, filename, documentId, unitId, isEdi
               <Button 
                 variant="outline" 
                 size="sm" 
-                onClick={goBack}
+                onClick={() => {
+                  console.log('PDFViewer: Button clicked!');
+                  goBack();
+                }}
                 className="bg-white hover:bg-stone-50 border-stone-200 text-stone-700 hover:text-stone-900"
-              >
+                >
                 <ArrowLeft className="w-4 h-4 mr-2" />
-                Back to Unit
+                Back to Assignments
               </Button>
               <Button
                 variant="outline"

@@ -16,7 +16,8 @@ import {
   Target,
   Calendar,
   User,
-  RefreshCw
+  RefreshCw,
+  ArrowLeft
 } from 'lucide-react';
 import { apiRequest } from '@/lib/queryClient';
 import { useLocation } from 'wouter';
@@ -191,7 +192,7 @@ export default function StudyDocumentsPage() {
       return matchesSearch && matchesType;
     });
   
-    const sortedDocuments = filteredDocuments.sort((a, b) => {
+  const sortedDocuments = filteredDocuments.sort((a, b) => {
     switch (sortBy) {
       case 'name':
         return a.originalName.localeCompare(b.originalName);
@@ -205,8 +206,6 @@ export default function StudyDocumentsPage() {
         return 0;
     }
   });
-
-  const finalDocuments = sortedDocuments;
 
   const getFileIcon = (fileType: string) => {
     if (fileType.includes('pdf')) return <FileIcon className="w-5 h-5 text-red-500" />;
@@ -268,15 +267,25 @@ export default function StudyDocumentsPage() {
 
       {/* Header */}
       <div className="mb-8 flex justify-between items-start">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Study Documents</h1>
-                          <div className="text-gray-600 flex items-center gap-2">
-                  All PDF and DOCX files from your units and assignments in one place
-                  <span className="inline-flex items-center gap-1 text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full">
-                    <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                    Live Updates
-                  </span>
-                </div>
+        <div className="flex items-center space-x-4">
+          <Button 
+            variant="outline" 
+            onClick={() => setLocation('/progress')}
+            className="flex items-center gap-2"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Back to Progress
+          </Button>
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">Study Documents</h1>
+            <div className="text-gray-600 flex items-center gap-2">
+              All PDF and DOCX files from your units and assignments in one place
+              <span className="inline-flex items-center gap-1 text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full">
+                <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                Live Updates
+              </span>
+            </div>
+          </div>
         </div>
         <div className="flex gap-2">
           <Button 
@@ -287,7 +296,6 @@ export default function StudyDocumentsPage() {
             <RefreshCw className="w-4 h-4" />
             Refresh
           </Button>
-
         </div>
       </div>
 
@@ -407,22 +415,22 @@ export default function StudyDocumentsPage() {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center justify-between">
-            <span>Documents ({finalDocuments.length})</span>
+            <span>Documents ({sortedDocuments.length})</span>
             <Badge variant="secondary">
-              {finalDocuments.length} of {allDocuments.length}
+              {sortedDocuments.length} of {allDocuments.length}
             </Badge>
           </CardTitle>
         </CardHeader>
         <CardContent>
           <ScrollArea className="h-[600px]">
             <div className="space-y-3">
-              {finalDocuments.length === 0 ? (
+              {sortedDocuments.length === 0 ? (
                 <div className="text-center py-8">
                   <FileText className="w-12 h-12 text-gray-400 mx-auto mb-4" />
                   <p className="text-gray-600">No documents found matching your criteria</p>
                 </div>
               ) : (
-                finalDocuments.map((doc) => (
+                sortedDocuments.map((doc) => (
                   <div
                     key={`${doc.source}-${doc.id}`}
                     className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"

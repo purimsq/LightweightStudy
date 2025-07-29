@@ -113,12 +113,8 @@ export default function DOCXViewer({ fileUrl, filename, documentId, unitId, isEd
   };
 
   const goBack = () => {
-    // Go back to the appropriate page based on context
-    if (unitId) {
-      setLocation(`/units/${unitId}/documents`);
-    } else {
-      setLocation("/assignments");
-    }
+    console.log('DOCXViewer: goBack clicked, navigating to /assignments');
+    window.location.href = '/assignments';
   };
 
   const scrollToHeading = (id: string) => {
@@ -224,11 +220,14 @@ export default function DOCXViewer({ fileUrl, filename, documentId, unitId, isEd
               <Button 
                 variant="outline" 
                 size="sm" 
-                onClick={goBack}
+                onClick={() => {
+                  console.log('DOCXViewer: Button clicked!');
+                  goBack();
+                }}
                 className="bg-white hover:bg-stone-50 border-stone-200 text-stone-700 hover:text-stone-900"
               >
                 <ArrowLeft className="w-4 h-4 mr-2" />
-                Back to Unit
+                Back to Assignments
               </Button>
               <Button
                 variant="outline"
