@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { z } from "zod";
-import { insertUnitSchema, insertDocumentSchema, insertNoteSchema, insertAssignmentSchema } from "@shared/schema";
+import { insertUnitSchema, insertDocumentSchema, insertNoteSchema, insertAssignmentSchema, type Assignment } from "@shared/schema";
 import multer from "multer";
 import path from "path";
 import fs from "fs";
@@ -576,6 +576,19 @@ This document has been uploaded and is ready for viewing. The content will be di
       console.log(`✅ Document ${id} completion toggled: ${document.isCompleted ?? false} → ${newCompletion}`);
       console.log(`📤 Sending response:`, updatedDocument);
       
+      // Update unit progress if document has a unit
+      if (document.unitId) {
+        const newProgress = await calculateUnitProgress(document.unitId);
+        const unitProgress = await storage.getUnitProgressByUnit(document.unitId);
+        
+        if (unitProgress) {
+          await storage.updateUnitProgress(unitProgress.id, {
+            progressPercentage: newProgress
+          });
+          console.log(`✅ Updated unit ${document.unitId} progress to ${newProgress}%`);
+        }
+      }
+      
       res.json(updatedDocument);
     } catch (error) {
       console.error("❌ Error toggling document completion:", error);
@@ -840,6 +853,56 @@ Please provide a progress calculation and suggested grade based on the assignmen
     }
   });
 
+  // Helper function to calculate unit progress
+  async function calculateUnitProgress(unitId: number): Promise<number> {
+    try {
+      // Get all documents and assignments for this unit
+      const documents = await storage.getDocumentsByUnit(unitId);
+      const assignments = await storage.getAssignmentsByUnit(unitId);
+      
+      let totalProgress = 0;
+      let totalItems = 0;
+      
+      // Calculate document progress (each completed document = 100% contribution)
+      const completedDocuments = documents.filter(doc => doc.isCompleted ?? false).length;
+      const documentProgress = documents.length > 0 ? (completedDocuments / documents.length) * 100 : 0;
+      totalProgress += documentProgress;
+      totalItems += documents.length;
+      
+      // Calculate assignment progress (based on grades)
+      let assignmentProgress = 0;
+      const completedAssignments = assignments.filter(assign => assign.status === "completed");
+      
+      if (completedAssignments.length > 0) {
+        const totalAssignmentMarks = completedAssignments.reduce((sum: number, assign: Assignment) => {
+          return sum + (assign.userGrade || 0);
+        }, 0);
+        const totalPossibleMarks = completedAssignments.reduce((sum: number, assign: Assignment) => {
+          return sum + (assign.totalMarks || 0);
+        }, 0);
+        
+        assignmentProgress = totalPossibleMarks > 0 ? (totalAssignmentMarks / totalPossibleMarks) * 100 : 0;
+      }
+      
+      totalProgress += assignmentProgress;
+      totalItems += assignments.length;
+      
+      // Calculate overall progress
+      const overallProgress = totalItems > 0 ? totalProgress / totalItems : 0;
+      
+      console.log(`📊 Unit ${unitId} progress calculation:`, {
+        documents: { total: documents.length, completed: completedDocuments, progress: documentProgress },
+        assignments: { total: assignments.length, completed: completedAssignments.length, progress: assignmentProgress },
+        overallProgress: Math.round(overallProgress)
+      });
+      
+      return Math.round(overallProgress);
+    } catch (error) {
+      console.error("Error calculating unit progress:", error);
+      return 0;
+    }
+  }
+
   // Assignment completion toggle with marks
   app.patch("/api/assignments/:id/toggle-completion", async (req, res) => {
     try {
@@ -873,20 +936,16 @@ Please provide a progress calculation and suggested grade based on the assignmen
 
       const updatedAssignment = await storage.updateAssignment(id, updateData);
 
-      // Update unit progress if assignment is completed and has a unit
-      if (newStatus === "completed" && assignment.unitId && userGrade !== undefined && totalMarks !== undefined) {
+      // Update unit progress if assignment has a unit
+      if (assignment.unitId) {
+        const newProgress = await calculateUnitProgress(assignment.unitId);
         const unitProgress = await storage.getUnitProgressByUnit(assignment.unitId);
+        
         if (unitProgress) {
-          // Calculate new progress percentage based on assignment marks
-          const assignmentProgress = Math.round((parseInt(userGrade) / parseInt(totalMarks)) * 100);
-          
-          // For now, we'll add the assignment progress to the existing progress
-          // In a more sophisticated system, you might want to weight this differently
-          const newProgressPercentage = Math.min(100, unitProgress.progressPercentage + assignmentProgress);
-          
           await storage.updateUnitProgress(unitProgress.id, {
-            progressPercentage: newProgressPercentage
+            progressPercentage: newProgress
           });
+          console.log(`✅ Updated unit ${assignment.unitId} progress to ${newProgress}%`);
         }
       }
 

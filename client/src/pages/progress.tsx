@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, TrendingUp, TrendingDown, Minus, Calendar, X, BarChart3, Info, CheckCircle2, Circle, BookOpen, Clock, Target } from "lucide-react";
+import { ArrowLeft, TrendingUp, TrendingDown, Minus, Calendar, X, BarChart3, Info, CheckCircle2, Circle, BookOpen, Clock, Target, TrendingUp as TrendingUpIcon } from "lucide-react";
 import { useLocation } from "wouter";
 import { useState, useMemo, useEffect } from "react";
 import * as React from "react";
@@ -365,7 +365,7 @@ export default function ProgressPage() {
         {/* Main Content Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Left Column - Unit Stats */}
-          <div className="lg:col-span-1">
+          <div className="lg:col-span-2">
             <Card>
               <CardHeader>
                 <CardTitle className="text-lg font-semibold">Unit Statistics</CardTitle>
@@ -531,80 +531,131 @@ export default function ProgressPage() {
             </Card>
           </div>
 
-          {/* Right Column - Study Calendar */}
-          <div className="lg:col-span-1">
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg font-semibold">Study Calendar</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-7 gap-1 mb-2">
-                  {['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((day, index) => (
-                    <div key={`day-${index}`} className="text-xs text-gray-500 text-center font-medium p-1">
-                      {day}
-                    </div>
-                  ))}
-                </div>
-                <div className="grid grid-cols-7 gap-1">
-                  {progressData.studyCalendar.slice(0, 49).map((day, index) => (
-                    <div
-                      key={`cal-${index}`}
-                      className={`w-4 h-4 rounded-sm ${
-                        day.intensity === 0 ? 'bg-gray-100' :
-                        day.intensity === 1 ? 'bg-emerald-100' :
-                        day.intensity === 2 ? 'bg-emerald-200' :
-                        day.intensity === 3 ? 'bg-emerald-300' :
-                        day.intensity === 4 ? 'bg-emerald-400' : 'bg-emerald-500'
-                      }`}
-                      title={`${day.date}: ${day.intensity} hours`}
-                    />
-                  ))}
-                </div>
-                
-                <div className="mt-4 p-3 bg-blue-50 rounded-lg">
-                  <p className="text-sm font-medium text-gray-800">
-                    {progressData.overallStats.weeklyImprovement > 0 
-                      ? 'Great progress! Keep up the momentum.' 
-                      : 'Consider increasing study time this week.'}
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
 
-            {/* Quick Actions */}
-            <Card className="mt-6">
-              <CardHeader>
-                <CardTitle className="text-lg font-semibold">Quick Actions</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  <Button 
-                    variant="outline" 
-                    className="w-full justify-start"
-                    onClick={() => setLocation("/units")}
-                  >
-                    <BookOpen className="w-4 h-4 mr-2" />
-                    Manage Units
-                  </Button>
-                  <Button 
-                    variant="outline" 
-                    className="w-full justify-start"
-                    onClick={() => setLocation("/assignments")}
-                  >
-                    <Target className="w-4 h-4 mr-2" />
-                    View Assignments
-                  </Button>
-                  <Button 
-                    variant="outline" 
-                    className="w-full justify-start"
-                    onClick={() => setLocation("/documents")}
-                  >
-                    <BarChart3 className="w-4 h-4 mr-2" />
-                    Study Documents
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
+
+          {/* Right Column - Study Calendar and Quick Actions Side by Side */}
+          <div className="lg:col-span-2">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Study Calendar */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg font-semibold">Study Calendar</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-7 gap-1 mb-2">
+                    {['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((day, index) => (
+                      <div key={`day-${index}`} className="text-xs text-gray-500 text-center font-medium p-1">
+                        {day}
+                      </div>
+                    ))}
+                  </div>
+                  <div className="grid grid-cols-7 gap-1">
+                    {progressData.studyCalendar.slice(0, 49).map((day, index) => (
+                      <div
+                        key={`cal-${index}`}
+                        className={`w-4 h-4 rounded-sm ${
+                          day.intensity === 0 ? 'bg-gray-100' :
+                          day.intensity === 1 ? 'bg-emerald-100' :
+                          day.intensity === 2 ? 'bg-emerald-200' :
+                          day.intensity === 3 ? 'bg-emerald-300' :
+                          day.intensity === 4 ? 'bg-emerald-400' : 'bg-emerald-500'
+                        }`}
+                        title={`${day.date}: ${day.intensity} hours`}
+                      />
+                    ))}
+                  </div>
+                  
+                  <div className="mt-4 p-3 bg-blue-50 rounded-lg">
+                    <p className="text-sm font-medium text-gray-800">
+                      {progressData.overallStats.weeklyImprovement > 0 
+                        ? 'Great progress! Keep up the momentum.' 
+                        : 'Consider increasing study time this week.'}
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Quick Actions */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg font-semibold">Quick Actions</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    <Button 
+                      variant="outline" 
+                      className="w-full justify-start"
+                      onClick={() => setLocation("/units")}
+                    >
+                      <BookOpen className="w-4 h-4 mr-2" />
+                      Manage Units
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      className="w-full justify-start"
+                      onClick={() => setLocation("/assignments")}
+                    >
+                      <Target className="w-4 h-4 mr-2" />
+                      View Assignments
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      className="w-full justify-start"
+                      onClick={() => setLocation("/study-documents")}
+                    >
+                      <BarChart3 className="w-4 h-4 mr-2" />
+                      Study Documents
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+        </div>
+
+        {/* Simple Line Chart */}
+        <div className="mt-8">
+          <div className="h-80">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={progressData.units.map((unitData, index) => ({
+                name: unitData.unit.name,
+                progress: unitData.progress.progressPercentage
+              }))}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
+                <XAxis 
+                  dataKey="name" 
+                  tick={{ fontSize: 12, fill: '#333' }}
+                  axisLine={{ stroke: '#ccc' }}
+                />
+                <YAxis 
+                  tick={{ fontSize: 12, fill: '#333' }}
+                  axisLine={{ stroke: '#ccc' }}
+                  domain={[0, 100]}
+                />
+                <Tooltip 
+                  content={({ active, payload, label }) => {
+                    if (active && payload && payload.length) {
+                      const data = payload[0].payload;
+                      return (
+                        <div className="bg-white p-2 border border-gray-300 rounded">
+                          <p className="font-medium">{label}</p>
+                          <p className="text-sm">{data.progress}%</p>
+                        </div>
+                      );
+                    }
+                    return null;
+                  }}
+                />
+                <Line 
+                  type="monotone" 
+                  dataKey="progress" 
+                  stroke="#333" 
+                  strokeWidth={1}
+                  dot={{ fill: '#333', strokeWidth: 1, r: 3 }}
+                  activeDot={{ r: 4, stroke: '#333', strokeWidth: 1, fill: '#fff' }}
+                />
+              </LineChart>
+            </ResponsiveContainer>
           </div>
         </div>
       </div>

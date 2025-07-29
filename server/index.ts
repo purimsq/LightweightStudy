@@ -89,8 +89,8 @@ app.use((req, res, next) => {
   }
 
   // Serve the app on the port specified in the environment variable PORT
-  // Default to 3001 for development to avoid port conflicts
-  const port = parseInt(process.env.PORT || '3001', 10);
+  // Default to 3003 for development to avoid port conflicts
+  const port = parseInt(process.env.PORT || '3003', 10);
   server.listen({
     port,
     host: "localhost",

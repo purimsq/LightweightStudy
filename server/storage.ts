@@ -41,6 +41,7 @@ export interface IStorage {
 
   // Assignments
   getAssignments(): Promise<Assignment[]>;
+  getAssignmentsByUnit(unitId: number): Promise<Assignment[]>;
   getAssignment(id: number): Promise<Assignment | undefined>;
   createAssignment(assignment: InsertAssignment): Promise<Assignment>;
   updateAssignment(id: number, assignment: Partial<InsertAssignment>): Promise<Assignment>;
@@ -370,6 +371,10 @@ export class MemStorage implements IStorage {
   // Assignments
   async getAssignments(): Promise<Assignment[]> {
     return Array.from(this.assignments.values());
+  }
+
+  async getAssignmentsByUnit(unitId: number): Promise<Assignment[]> {
+    return Array.from(this.assignments.values()).filter(assignment => assignment.unitId === unitId);
   }
 
   async getAssignment(id: number): Promise<Assignment | undefined> {

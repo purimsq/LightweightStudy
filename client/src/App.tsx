@@ -18,6 +18,7 @@ import StudyPlan from "@/pages/study-plan";
 import AiChat from "@/pages/ai-chat";
 import Progress from "@/pages/progress";
 import Music from "@/pages/music";
+import StudyDocuments from "@/pages/study-documents";
 import FloatingActionButton from "@/components/ui/floating-action-button";
 import DocumentUploadModal from "@/components/modals/document-upload-modal";
 import BreakReminder from "@/components/modals/break-reminder";
@@ -74,6 +75,7 @@ function Router() {
             <Route path="/study-plan" component={StudyPlan} />
             <Route path="/ai-chat" component={AiChat} />
             <Route path="/progress" component={Progress} />
+            <Route path="/study-documents" component={StudyDocuments} />
             <Route component={() => <div className="p-6">Page not found</div>} />
           </Switch>
         </AppLayout>
