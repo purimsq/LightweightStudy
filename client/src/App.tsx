@@ -18,6 +18,7 @@ import StudyPlan from "@/pages/study-plan";
 import AiChat from "@/pages/ai-chat";
 import Progress from "@/pages/progress";
 import Music from "@/pages/music";
+import LocalMusic from "@/pages/local-music";
 import StudyDocuments from "@/pages/study-documents";
 import FloatingActionButton from "@/components/ui/floating-action-button";
 import DocumentUploadModal from "@/components/modals/document-upload-modal";
@@ -49,8 +50,9 @@ function AppLayout({ children }: { children: React.ReactNode }) {
 function Router() {
   return (
     <Switch>
-      {/* Full-screen music page without layout */}
+      {/* Full-screen music pages without layout */}
       <Route path="/music" component={Music} />
+      <Route path="/local-music" component={LocalMusic} />
       
       {/* All other pages with normal layout */}
       <Route>

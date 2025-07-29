@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Search, Play, Pause, SkipBack, SkipForward, Volume2, Heart, Plus, List, X, Clock, User, Menu, Home, TrendingUp, Music, History, ThumbsUp, Share2, MoreVertical, ArrowLeft } from 'lucide-react';
+import { Search, Play, Pause, SkipBack, SkipForward, Volume2, Heart, Plus, List, X, Clock, User, Menu, Home, TrendingUp, Music, History, ThumbsUp, Share2, MoreVertical, ArrowLeft, HardDrive } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Card, CardContent } from '../components/ui/card';
@@ -369,6 +369,14 @@ const LuvNoirMusic: React.FC = () => {
             <Button variant="ghost" className="w-full justify-start text-purple-300 hover:text-purple-100 h-12">
               <Music className="w-5 h-5 mr-3" />
               {sidebarOpen && 'Music'}
+            </Button>
+            <Button 
+              variant="ghost" 
+              className="w-full justify-start text-purple-300 hover:text-purple-100 h-12"
+              onClick={() => window.location.href = '/local-music'}
+            >
+              <HardDrive className="w-5 h-5 mr-3" />
+              {sidebarOpen && 'Local Music'}
             </Button>
             <Button variant="ghost" className="w-full justify-start text-purple-300 hover:text-purple-100 h-12">
               <History className="w-5 h-5 mr-3" />
