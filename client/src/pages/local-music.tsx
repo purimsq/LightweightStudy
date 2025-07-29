@@ -12,6 +12,7 @@ import {
   User, 
   Menu, 
   ArrowLeft,
+  Home,
   FileAudio,
   X,
   Filter,
@@ -357,6 +358,19 @@ const LocalMusic: React.FC = () => {
   });
 
   const goBack = () => {
+    // Get the stored previous page
+    const previousPage = localStorage.getItem('previousPage');
+    
+    // If we have a valid previous page, go there
+    if (previousPage && previousPage !== '/local-music') {
+      window.location.href = previousPage;
+    } else {
+      // Fallback to dashboard
+      window.location.href = '/dashboard';
+    }
+  };
+
+  const goHome = () => {
     window.location.href = '/music';
   };
 
@@ -373,6 +387,14 @@ const LocalMusic: React.FC = () => {
               className="text-[#5E503F] hover:text-[#4A3C2F] hover:bg-[#F6BD60]/20 rounded-full p-2 transition-colors"
             >
               <ArrowLeft className="w-5 h-5" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={goHome}
+              className="text-[#5E503F] hover:text-[#4A3C2F] hover:bg-[#F6BD60]/20 rounded-full p-2 transition-colors"
+            >
+              <Home className="w-5 h-5" />
             </Button>
             <Button
               variant="ghost"

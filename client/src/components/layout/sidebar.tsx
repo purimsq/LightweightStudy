@@ -51,6 +51,11 @@ export default function Sidebar() {
     }, 300);
   };
 
+  const handleHomeClick = () => {
+    // Navigate to LuvNoir home page
+    navigate("/music");
+  };
+
   return (
     <>
       {/* Transition overlay */}
@@ -79,8 +84,8 @@ export default function Sidebar() {
         <div className="space-y-2">
           <button
             onClick={() => {
-              // Store current page before navigating to music
-              localStorage.setItem('previousPage', window.location.pathname);
+              // Store current page as actualPreviousPage before navigating to music
+              localStorage.setItem('actualPreviousPage', window.location.pathname);
               navigate("/music");
             }}
             className="flex items-center space-x-3 hover:bg-gray-50 rounded-lg p-2 transition-all duration-200 group w-full"
@@ -137,8 +142,9 @@ export default function Sidebar() {
         </ul>
       </nav>
 
-      {/* Profile Section */}
-      <div className="p-4 border-t border-neutral-200">
+      {/* Bottom Navigation */}
+      <div className="p-4 border-t border-neutral-200 space-y-2">
+        {/* Profile Section */}
         <button
           onClick={handleProfileClick}
           className="w-full flex items-center space-x-3 hover:bg-gray-50 rounded-lg p-3 transition-all duration-200 group"
