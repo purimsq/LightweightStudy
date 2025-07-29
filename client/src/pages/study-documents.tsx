@@ -151,6 +151,7 @@ export default function StudyDocumentsPage() {
       
       const result = {
         ...doc,
+        fileType: doc.filename.split('.').pop()?.toLowerCase() || 'unknown',
         source: 'unit' as const,
         sourceName: unit?.name || 'Unknown Unit',
         sourceId: doc.unitId,
