@@ -98,6 +98,18 @@ export const unitProgress = pgTable("unit_progress", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+export const music = pgTable("music", {
+  id: serial("id").primaryKey(),
+  filename: text("filename").notNull(),
+  originalName: text("original_name").notNull(),
+  fileType: text("file_type").notNull(),
+  filePath: text("file_path").notNull(),
+  fileSize: integer("file_size").notNull().default(0),
+  artist: text("artist").notNull().default("Unknown Artist"),
+  duration: text("duration").notNull().default("0:00"),
+  uploadedAt: timestamp("uploaded_at").defaultNow().notNull(),
+});
+
 // Insert schemas
 export const insertUserSchema = createInsertSchema(users).omit({
   id: true,
@@ -142,6 +154,11 @@ export const insertUnitProgressSchema = createInsertSchema(unitProgress).omit({
   lastUpdated: true,
 });
 
+export const insertMusicSchema = createInsertSchema(music).omit({
+  id: true,
+  uploadedAt: true,
+});
+
 // Types
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
@@ -166,3 +183,6 @@ export type InsertAiChat = z.infer<typeof insertAiChatSchema>;
 
 export type UnitProgress = typeof unitProgress.$inferSelect;
 export type InsertUnitProgress = z.infer<typeof insertUnitProgressSchema>;
+
+export type Music = typeof music.$inferSelect;
+export type InsertMusic = z.infer<typeof insertMusicSchema>;

@@ -98,6 +98,32 @@ export const MusicProvider: React.FC<MusicProviderProps> = ({ children }) => {
     }
   }, [volume]);
 
+  // Global keyboard controls
+  useEffect(() => {
+    const handleKeyPress = (event: KeyboardEvent) => {
+      // Only handle spacebar for play/pause
+      if (event.code === 'Space') {
+        event.preventDefault(); // Prevent page scrolling
+        
+        if (currentTrack) {
+          if (isPlaying) {
+            pauseTrack();
+          } else {
+            resumeTrack();
+          }
+        }
+      }
+    };
+
+    // Add event listener
+    document.addEventListener('keydown', handleKeyPress);
+
+    // Cleanup
+    return () => {
+      document.removeEventListener('keydown', handleKeyPress);
+    };
+  }, [currentTrack, isPlaying]);
+
   const playTrack = (track: GlobalTrack, source: MusicSource) => {
     if (audioRef.current) {
       audioRef.current.src = track.url;

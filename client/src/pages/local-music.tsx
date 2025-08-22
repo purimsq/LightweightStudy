@@ -37,27 +37,35 @@ import {
   DialogHeader,
   DialogTitle,
 } from '../components/ui/dialog';
+import { musicService, type MusicTrack } from '../services/music-service';
+import { useMusic } from '@/contexts/MusicContext';
+import { useLocation } from 'wouter';
 
-interface LocalTrack {
-  id: string;
-  name: string;
-  artist: string;
-  duration: string;
-  file: File;
-  url: string;
-  uploadedAt: Date;
+interface LocalTrack extends MusicTrack {
+  url: string; // For audio playback
 }
 
 const LocalMusic: React.FC = () => {
+  const [, setLocation] = useLocation();
+  const { 
+    currentTrack: globalTrack, 
+    isPlaying: globalIsPlaying, 
+    currentTime: globalCurrentTime, 
+    duration: globalDuration, 
+    volume: globalVolume,
+    playTrack: globalPlayTrack, 
+    pauseTrack: globalPauseTrack, 
+    resumeTrack: globalResumeTrack, 
+    seekTo: globalSeekTo, 
+    setVolume: globalSetVolume,
+    musicSource
+  } = useMusic();
+
   const [tracks, setTracks] = useState<LocalTrack[]>([]);
   const [currentTrack, setCurrentTrack] = useState<LocalTrack | null>(null);
   const [currentTrackIndex, setCurrentTrackIndex] = useState<number>(-1);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [volume, setVolume] = useState(50);
   const [searchQuery, setSearchQuery] = useState('');
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [currentTime, setCurrentTime] = useState(0);
-  const [duration, setDuration] = useState(0);
   const [filterType, setFilterType] = useState<'all' | 'recent' | 'favorites'>('all');
   const [selectedTracks, setSelectedTracks] = useState<string[]>([]);
   const [selectAll, setSelectAll] = useState(false);
@@ -68,55 +76,67 @@ const LocalMusic: React.FC = () => {
   const [showBrowseModal, setShowBrowseModal] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<{ type: 'single' | 'bulk', trackId?: string } | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
 
-  const audioRef = useRef<HTMLAudioElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Load tracks from localStorage on mount
+  // Load tracks from backend on mount
   useEffect(() => {
-    const savedTracks = localStorage.getItem('localMusicTracks');
-    if (savedTracks) {
-      const parsedTracks = JSON.parse(savedTracks);
-      setTracks(parsedTracks.map((track: any) => ({
-        ...track,
-        uploadedAt: new Date(track.uploadedAt)
-      })));
-    }
+    const loadTracks = async () => {
+      setIsLoading(true);
+      try {
+        const musicTracks = await musicService.getAllMusic();
+        const localTracks: LocalTrack[] = musicTracks.map(track => ({
+          ...track,
+          url: musicService.getMusicUrl(track.filePath)
+        }));
+        setTracks(localTracks);
+      } catch (error) {
+        console.error("Failed to load tracks:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    loadTracks();
   }, []);
 
-  // Save tracks to localStorage whenever tracks change
+  // This effect is no longer needed as tracks are managed by the backend
+  // useEffect(() => {
+  //   localStorage.setItem('localMusicTracks', JSON.stringify(tracks));
+  // }, [tracks]);
+
+  // Sync local state with global state when music source is local
   useEffect(() => {
-    localStorage.setItem('localMusicTracks', JSON.stringify(tracks));
-  }, [tracks]);
+    if (musicSource === 'local' && globalTrack) {
+      const localTrack = tracks.find(t => t.id.toString() === globalTrack.id);
+      if (localTrack) {
+        setCurrentTrack(localTrack);
+        setCurrentTrackIndex(tracks.findIndex(t => t.id === localTrack.id));
+      }
+    } else if (musicSource !== 'local') {
+      // Clear local state if music source is not local
+      setCurrentTrack(null);
+      setCurrentTrackIndex(-1);
+    }
+  }, [globalTrack, musicSource, tracks]);
 
-  // Audio event handlers
+  // Set current track when returning to local music page with playing music
   useEffect(() => {
-    const audio = audioRef.current;
-    if (!audio) return;
-
-    const updateTime = () => setCurrentTime(audio.currentTime);
-    const updateDuration = () => setDuration(audio.duration);
-    const handleEnded = () => {
-      handleTrackEnd();
-    };
-
-    audio.addEventListener('timeupdate', updateTime);
-    audio.addEventListener('loadedmetadata', updateDuration);
-    audio.addEventListener('ended', handleEnded);
-
-    return () => {
-      audio.removeEventListener('timeupdate', updateTime);
-      audio.removeEventListener('loadedmetadata', updateDuration);
-      audio.removeEventListener('ended', handleEnded);
-    };
-  }, [currentTrackIndex, shuffleMode, repeatMode, tracks]);
+    if (musicSource === 'local' && globalTrack && globalIsPlaying && tracks.length > 0) {
+      const localTrack = tracks.find(t => t.id.toString() === globalTrack.id);
+      if (localTrack && !currentTrack) {
+        setCurrentTrack(localTrack);
+        setCurrentTrackIndex(tracks.findIndex(t => t.id === localTrack.id));
+      }
+    }
+  }, [musicSource, globalTrack, globalIsPlaying, tracks, currentTrack]);
 
   const handleTrackEnd = () => {
     if (repeatMode === 'one') {
-      // Repeat current track
-      if (audioRef.current) {
-        audioRef.current.currentTime = 0;
-        audioRef.current.play();
+      // Repeat current track - this will be handled by the global context
+      // For now, just play the same track again
+      if (currentTrack) {
+        playTrack(currentTrack);
       }
     } else {
       // Play next track
@@ -131,7 +151,7 @@ const LocalMusic: React.FC = () => {
     
     if (shuffleMode) {
       // Get unplayed tracks
-      const unplayedTracks = tracks.filter((_, index) => !playedTracks.includes(tracks[index].id));
+      const unplayedTracks = tracks.filter((_, index) => !playedTracks.includes(tracks[index].id.toString()));
       
       if (unplayedTracks.length === 0) {
         // All tracks have been played, reset and start fresh
@@ -150,9 +170,7 @@ const LocalMusic: React.FC = () => {
         if (repeatMode === 'all') {
           nextIndex = 0; // Loop back to first track
         } else {
-          // Stop playing
-          setIsPlaying(false);
-          setCurrentTime(0);
+          // Stop playing - this will be handled by the global context
           return;
         }
       }
@@ -168,7 +186,7 @@ const LocalMusic: React.FC = () => {
     
     if (shuffleMode) {
       // Get unplayed tracks
-      const unplayedTracks = tracks.filter((_, index) => !playedTracks.includes(tracks[index].id));
+      const unplayedTracks = tracks.filter((_, index) => !playedTracks.includes(tracks[index].id.toString()));
       
       if (unplayedTracks.length === 0) {
         // All tracks have been played, reset and start fresh
@@ -202,34 +220,34 @@ const LocalMusic: React.FC = () => {
       setCurrentTrackIndex(index);
       
       // Add to played tracks if shuffle is on
-      if (shuffleMode && !playedTracks.includes(track.id)) {
-        setPlayedTracks(prev => [...prev, track.id]);
+      if (shuffleMode && !playedTracks.includes(track.id.toString())) {
+        setPlayedTracks(prev => [...prev, track.id.toString()]);
       }
     }
   };
 
-  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
     if (!files) return;
 
-    const newTracks: LocalTrack[] = Array.from(files)
-      .filter((file): file is File => file.type.startsWith('audio/'))
-      .map(file => {
-        const url = URL.createObjectURL(file);
-        const track: LocalTrack = {
-          id: Date.now() + Math.random().toString(36).substr(2, 9),
-          name: file.name.replace(/\.[^/.]+$/, ""), // Remove file extension
-          artist: 'Unknown Artist',
-          duration: '0:00', // Will be updated when audio loads
-          file,
-          url,
-          uploadedAt: new Date()
-        };
-        return track;
-      });
+    setIsLoading(true);
+    try {
+      for (const file of files) {
+        if (file.type.startsWith('audio/')) {
+          const uploadedTrack = await musicService.uploadMusic(file);
+          const localTrack: LocalTrack = {
+            ...uploadedTrack,
+            url: musicService.getMusicUrl(uploadedTrack.filePath)
+          };
+          setTracks(prev => [...prev, localTrack]);
+        }
+      }
+    } catch (error) {
+      console.error('Error uploading music:', error);
+    } finally {
+      setIsLoading(false);
+    }
 
-    setTracks(prev => [...prev, ...newTracks]);
-    
     // Clear the input
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
@@ -237,43 +255,41 @@ const LocalMusic: React.FC = () => {
   };
 
   const playTrack = (track: LocalTrack) => {
-    if (audioRef.current) {
-      audioRef.current.src = track.url;
-      audioRef.current.load();
-      setCurrentTrack(track);
-      setCurrentTrackIndex(tracks.findIndex(t => t.id === track.id));
-      setIsPlaying(true);
-      audioRef.current.play();
-      
-      // Add to played tracks if shuffle is on
-      if (shuffleMode && !playedTracks.includes(track.id)) {
-        setPlayedTracks(prev => [...prev, track.id]);
-      }
+    // Convert local track to global track format
+    const globalTrack = {
+      id: track.id.toString(),
+      name: track.originalName,
+      artist: track.artist,
+      duration: track.duration,
+      url: track.url,
+      source: 'local' as const,
+      thumbnail: undefined
+    };
+
+    globalPlayTrack(globalTrack, 'local');
+    setCurrentTrack(track);
+    setCurrentTrackIndex(tracks.findIndex(t => t.id === track.id));
+    
+    // Add to played tracks if shuffle is on
+    if (shuffleMode && !playedTracks.includes(track.id.toString())) {
+      setPlayedTracks(prev => [...prev, track.id.toString()]);
     }
   };
 
   const togglePlayPause = () => {
-    if (!audioRef.current) return;
-
-    if (isPlaying) {
-      audioRef.current.pause();
+    if (globalIsPlaying) {
+      globalPauseTrack();
     } else {
-      audioRef.current.play();
+      globalResumeTrack();
     }
-    setIsPlaying(!isPlaying);
   };
 
   const setPlayerVolume = (newVolume: number) => {
-    setVolume(newVolume);
-    if (audioRef.current) {
-      audioRef.current.volume = newVolume / 100;
-    }
+    globalSetVolume(newVolume);
   };
 
   const seekTo = (time: number) => {
-    if (audioRef.current) {
-      audioRef.current.currentTime = time;
-    }
+    globalSeekTo(time);
   };
 
   const formatTime = (time: number) => {
@@ -282,8 +298,32 @@ const LocalMusic: React.FC = () => {
     return `${minutes}:${seconds.toString().padStart(2, '0')}`;
   };
 
-  const handleDeleteTrack = (trackId: string) => {
-    setDeleteTarget({ type: 'single', trackId });
+  const confirmDelete = async () => {
+    if (!deleteTarget) return;
+
+    if (deleteTarget.type === 'single' && deleteTarget.trackId) {
+      await musicService.deleteMusic(parseInt(deleteTarget.trackId));
+      setTracks(prev => prev.filter(t => t.id !== parseInt(deleteTarget.trackId!)));
+      if (globalTrack?.id === deleteTarget.trackId && musicSource === 'local') {
+        // Clear the global track if it's the one being deleted
+        // This will be handled by the global context
+      }
+    } else if (deleteTarget.type === 'bulk') {
+      for (const trackId of selectedTracks) {
+        await musicService.deleteMusic(parseInt(trackId));
+      }
+      setSelectedTracks([]);
+      setSelectAll(false);
+      setShowMultiSelect(false);
+      setTracks(prev => prev.filter(t => !selectedTracks.includes(t.id.toString())));
+    }
+
+    setShowDeleteDialog(false);
+    setDeleteTarget(null);
+  };
+
+  const handleDeleteTrack = (trackId: number) => {
+    setDeleteTarget({ type: 'single', trackId: trackId.toString() });
     setShowDeleteDialog(true);
   };
 
@@ -292,45 +332,15 @@ const LocalMusic: React.FC = () => {
     setShowDeleteDialog(true);
   };
 
-  const confirmDelete = () => {
-    if (!deleteTarget) return;
-
-    if (deleteTarget.type === 'single' && deleteTarget.trackId) {
-      removeTrack(deleteTarget.trackId);
-    } else if (deleteTarget.type === 'bulk') {
-      selectedTracks.forEach(removeTrack);
-      setSelectedTracks([]);
-      setSelectAll(false);
-      setShowMultiSelect(false);
-    }
-
-    setShowDeleteDialog(false);
-    setDeleteTarget(null);
+  const removeTrack = (trackId: number) => {
+    // This function is no longer needed as tracks are managed by the backend
   };
 
-  const removeTrack = (trackId: string) => {
-    const track = tracks.find(t => t.id === trackId);
-    if (track) {
-      URL.revokeObjectURL(track.url);
-    }
-    setTracks(prev => prev.filter(t => t.id !== trackId));
-    
-    if (currentTrack?.id === trackId) {
-      if (audioRef.current) {
-        audioRef.current.pause();
-        audioRef.current.src = '';
-      }
-      setCurrentTrack(null);
-      setCurrentTrackIndex(-1);
-      setIsPlaying(false);
-    }
-  };
-
-  const handleSelectTrack = (trackId: string) => {
+  const handleSelectTrack = (trackId: number) => {
     setSelectedTracks((prev) =>
-      prev.includes(trackId)
-        ? prev.filter((id) => id !== trackId)
-        : [...prev, trackId]
+      prev.includes(trackId.toString())
+        ? prev.filter((id) => id !== trackId.toString())
+        : [...prev, trackId.toString()]
     );
   };
 
@@ -339,22 +349,27 @@ const LocalMusic: React.FC = () => {
       setSelectedTracks([]);
       setSelectAll(false);
     } else {
-      setSelectedTracks(filteredTracks.map((t) => t.id));
+      setSelectedTracks(tracks.map((t) => t.id.toString()));
       setSelectAll(true);
     }
   };
 
   const filteredTracks = tracks.filter(track => {
-    const matchesSearch = track.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    const matchesSearch = track.originalName.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          track.artist.toLowerCase().includes(searchQuery.toLowerCase());
     
-    if (filterType === 'recent') {
-      const oneWeekAgo = new Date();
-      oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
-      return matchesSearch && track.uploadedAt > oneWeekAgo;
+    switch (filterType) {
+      case 'recent':
+        const oneWeekAgo = new Date();
+        oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+        return matchesSearch && new Date(track.uploadedAt) >= oneWeekAgo;
+      case 'favorites':
+        // For now, just return all tracks that match search
+        // TODO: Implement favorites functionality
+        return matchesSearch;
+      default:
+        return matchesSearch;
     }
-    
-    return matchesSearch;
   });
 
   const goBack = () => {
@@ -363,15 +378,15 @@ const LocalMusic: React.FC = () => {
     
     // If we have a valid previous page, go there
     if (previousPage && previousPage !== '/local-music') {
-      window.location.href = previousPage;
+      setLocation(previousPage);
     } else {
       // Fallback to dashboard
-      window.location.href = '/dashboard';
+      setLocation('/dashboard');
     }
   };
 
   const goHome = () => {
-    window.location.href = '/music';
+    setLocation('/music');
   };
 
   return (
@@ -545,24 +560,28 @@ const LocalMusic: React.FC = () => {
             <div className="lg:col-span-2">
               <Card className="bg-white/95 backdrop-blur-md border-[#F6BD60]/30 shadow-sm rounded-2xl overflow-hidden">
                 <CardContent className="p-8">
-                  {currentTrack ? (
+                  {(currentTrack || (musicSource === 'local' && globalTrack)) ? (
                     <div className="space-y-8">
                       {/* Album Art Placeholder */}
-                      <div className="flex items-start space-x-6">
-                        <div className="w-40 h-40 bg-gradient-to-br from-[#F6BD60] via-[#F4A261] to-[#E76F51] rounded-2xl flex items-center justify-center shadow-sm border border-[#F6BD60]/30">
-                          <Music className="w-16 h-16 text-white" />
-                        </div>
-                        <div className="flex-1">
-                          <div className="mb-4">
-                            <h1 className="text-3xl font-bold text-[#5E503F] mb-2 leading-tight">{currentTrack.name}</h1>
-                            <p className="text-lg text-[#5E503F]/80 font-medium">{currentTrack.artist}</p>
+                                              <div className="flex items-start space-x-6">
+                          <div className="w-40 h-40 bg-gradient-to-br from-[#F6BD60] via-[#F4A261] to-[#E76F51] rounded-2xl flex items-center justify-center shadow-sm border border-[#F6BD60]/30">
+                            <Music className="w-16 h-16 text-white" />
                           </div>
+                          <div className="flex-1">
+                            <div className="mb-4">
+                              <h1 className="text-3xl font-bold text-[#5E503F] mb-2 leading-tight">
+                                {musicSource === 'local' && globalTrack ? globalTrack.name : currentTrack?.originalName}
+                              </h1>
+                              <p className="text-lg text-[#5E503F]/80 font-medium">
+                                {musicSource === 'local' && globalTrack ? globalTrack.artist : currentTrack?.artist}
+                              </p>
+                            </div>
                           
                           {/* Progress Bar */}
                           <div className="space-y-3">
                             <div className="flex justify-between text-sm text-[#5E503F]/70 font-medium">
-                              <span>{formatTime(currentTime)}</span>
-                              <span>{formatTime(duration)}</span>
+                              <span>{formatTime(globalCurrentTime)}</span>
+                              <span>{formatTime(globalDuration)}</span>
                             </div>
                             <div 
                               className="w-full bg-[#F6BD60]/20 rounded-full h-3 overflow-hidden cursor-pointer"
@@ -570,13 +589,13 @@ const LocalMusic: React.FC = () => {
                                 const rect = e.currentTarget.getBoundingClientRect();
                                 const clickX = e.clientX - rect.left;
                                 const percentage = clickX / rect.width;
-                                const newTime = percentage * duration;
+                                const newTime = percentage * globalDuration;
                                 seekTo(newTime);
                               }}
                             >
                               <div 
                                 className="bg-gradient-to-r from-[#F6BD60] to-[#F4A261] h-3 rounded-full transition-all duration-300 shadow-sm relative"
-                                style={{ width: `${duration > 0 ? (currentTime / duration) * 100 : 0}%` }}
+                                style={{ width: `${globalDuration > 0 ? (globalCurrentTime / globalDuration) * 100 : 0}%` }}
                               />
                             </div>
                           </div>
@@ -616,7 +635,7 @@ const LocalMusic: React.FC = () => {
                           onClick={togglePlayPause}
                           className="bg-gradient-to-r from-[#F6BD60]/80 to-[#F4A261]/80 hover:from-[#F4A261]/90 hover:to-[#E76F51]/90 w-16 h-16 rounded-full shadow-sm border-0 transition-colors"
                         >
-                          {isPlaying ? <Pause className="w-8 h-8" /> : <Play className="w-8 h-8 ml-1" />}
+                          {globalIsPlaying ? <Pause className="w-8 h-8" /> : <Play className="w-8 h-8 ml-1" />}
                         </Button>
                         <Button 
                           variant="ghost" 
@@ -656,7 +675,7 @@ const LocalMusic: React.FC = () => {
                           type="range"
                           min="0"
                           max="100"
-                          value={volume}
+                          value={globalVolume}
                           onChange={(e) => setPlayerVolume(parseInt(e.target.value))}
                           className="w-40 accent-[#F4A261]"
                         />
@@ -667,15 +686,24 @@ const LocalMusic: React.FC = () => {
                       <div className="w-24 h-24 bg-gradient-to-br from-[#F6BD60]/20 to-[#F4A261]/20 rounded-full flex items-center justify-center mx-auto mb-6 shadow-sm">
                         <Music className="w-12 h-12 text-[#F4A261]" />
                       </div>
-                      <h2 className="text-3xl font-bold text-[#5E503F] mb-3">No Track Playing</h2>
-                      <p className="text-[#5E503F]/80 text-lg mb-6">Select a track from your library to start listening</p>
-                      <Button
-                        onClick={() => fileInputRef.current?.click()}
-                        className="bg-gradient-to-r from-[#F6BD60]/80 to-[#F4A261]/80 hover:from-[#F4A261]/90 hover:to-[#E76F51]/90 text-white px-6 py-3 rounded-xl shadow-sm transition-colors"
-                      >
-                        <Upload className="w-5 h-5 mr-2" />
-                        Upload Your First Track
-                      </Button>
+                      <h2 className="text-3xl font-bold text-[#5E503F] mb-3">
+                        {musicSource === 'local' && globalTrack ? 'Music Playing in Background' : 'No Track Playing'}
+                      </h2>
+                      <p className="text-[#5E503F]/80 text-lg mb-6">
+                        {musicSource === 'local' && globalTrack 
+                          ? 'Your music is playing in the background. Use the global player at the bottom or press spacebar to control playback.'
+                          : 'Select a track from your library to start listening'
+                        }
+                      </p>
+                      {!(musicSource === 'local' && globalTrack) && (
+                        <Button
+                          onClick={() => fileInputRef.current?.click()}
+                          className="bg-gradient-to-r from-[#F6BD60]/80 to-[#F4A261]/80 hover:from-[#F4A261]/90 hover:to-[#E76F51]/90 text-white px-6 py-3 rounded-xl shadow-sm transition-colors"
+                        >
+                          <Upload className="w-5 h-5 mr-2" />
+                          Upload Your First Track
+                        </Button>
+                      )}
                     </div>
                   )}
                 </CardContent>
@@ -738,7 +766,7 @@ const LocalMusic: React.FC = () => {
                         <div
                           key={track.id}
                           className={`p-4 rounded-xl cursor-pointer transition-all duration-200 hover:shadow-sm ${
-                            currentTrack?.id === track.id 
+                            globalTrack?.id === track.id.toString() && musicSource === 'local'
                               ? 'bg-gradient-to-r from-[#F6BD60]/20 to-[#F4A261]/20 border-2 border-[#F4A261] shadow-sm' 
                               : 'bg-white/60 hover:bg-white/80 border border-[#F6BD60]/20'
                           }`}
@@ -749,7 +777,7 @@ const LocalMusic: React.FC = () => {
                               {showMultiSelect && (
                                 <input
                                   type="checkbox"
-                                  checked={selectedTracks.includes(track.id)}
+                                  checked={selectedTracks.includes(track.id.toString())}
                                   onChange={e => {
                                     e.stopPropagation();
                                     handleSelectTrack(track.id);
@@ -759,18 +787,18 @@ const LocalMusic: React.FC = () => {
                                 />
                               )}
                               <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
-                                currentTrack?.id === track.id 
+                                globalTrack?.id === track.id.toString() && musicSource === 'local'
                                   ? 'bg-gradient-to-br from-[#F6BD60] to-[#F4A261]' 
                                   : 'bg-[#F6BD60]/20'
                               }`}>
                                 <FileAudio className={`w-5 h-5 ${
-                                  currentTrack?.id === track.id ? 'text-white' : 'text-[#5E503F]/70'
+                                  globalTrack?.id === track.id.toString() && musicSource === 'local' ? 'text-white' : 'text-[#5E503F]/70'
                                 }`} />
                               </div>
                               <div className="flex-1 min-w-0">
                                 <p className={`font-semibold truncate ${
-                                  currentTrack?.id === track.id ? 'text-[#5E503F]' : 'text-[#5E503F]/90'
-                                }`}>{track.name}</p>
+                                  globalTrack?.id === track.id.toString() && musicSource === 'local' ? 'text-[#5E503F]' : 'text-[#5E503F]/90'
+                                }`}>{track.originalName}</p>
                                 <p className="text-sm text-[#5E503F]/70 truncate">{track.artist}</p>
                               </div>
                             </div>
@@ -835,8 +863,7 @@ const LocalMusic: React.FC = () => {
         className="hidden"
       />
 
-      {/* Hidden audio element */}
-      <audio ref={audioRef} />
+
 
       {/* Browse All Tracks Modal */}
       <Dialog open={showBrowseModal} onOpenChange={setShowBrowseModal}>
@@ -886,10 +913,10 @@ const LocalMusic: React.FC = () => {
                         <div className="flex-1 min-w-0">
                           <p className={`font-semibold truncate ${
                             currentTrack?.id === track.id ? 'text-[#5E503F]' : 'text-[#5E503F]/90'
-                          }`}>{track.name}</p>
+                          }`}>{track.originalName}</p>
                           <p className="text-sm text-[#5E503F]/70 truncate">{track.artist}</p>
                           <p className="text-xs text-[#5E503F]/50">
-                            Uploaded {track.uploadedAt.toLocaleDateString()}
+                            Uploaded {new Date(track.uploadedAt).toLocaleDateString()}
                           </p>
                         </div>
                       </div>

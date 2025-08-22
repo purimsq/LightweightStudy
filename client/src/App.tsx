@@ -3,8 +3,10 @@ import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { MusicProvider } from "@/contexts/MusicContext";
 import Sidebar from "@/components/layout/sidebar";
 import TopBar from "@/components/layout/top-bar";
+import GlobalMusicPlayer from "@/components/layout/global-music-player";
 import Dashboard from "@/pages/dashboard";
 import Units from "@/pages/units";
 import UnitDocuments from "@/pages/unit-documents";
@@ -43,6 +45,7 @@ function AppLayout({ children }: { children: React.ReactNode }) {
         onClose={() => setIsUploadModalOpen(false)} 
       />
       <BreakReminder />
+      <GlobalMusicPlayer />
     </div>
   );
 }
@@ -89,10 +92,12 @@ function Router() {
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <Toaster />
-        <Router />
-      </TooltipProvider>
+      <MusicProvider>
+        <TooltipProvider>
+          <Toaster />
+          <Router />
+        </TooltipProvider>
+      </MusicProvider>
     </QueryClientProvider>
   );
 }

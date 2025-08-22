@@ -1,5 +1,5 @@
 import { 
-  users, units, documents, notes, assignments, studyPlans, aiChats, unitProgress,
+  users, units, documents, notes, assignments, studyPlans, aiChats, unitProgress, music,
   type User, type InsertUser,
   type Unit, type InsertUnit,
   type Document, type InsertDocument,
@@ -7,7 +7,8 @@ import {
   type Assignment, type InsertAssignment,
   type StudyPlan, type InsertStudyPlan,
   type AiChat, type InsertAiChat,
-  type UnitProgress, type InsertUnitProgress
+  type UnitProgress, type InsertUnitProgress,
+  type Music, type InsertMusic
 } from "@shared/schema";
 
 export interface IStorage {
@@ -69,6 +70,13 @@ export interface IStorage {
   createUnitProgress(progress: InsertUnitProgress): Promise<UnitProgress>;
   updateUnitProgress(id: number, progress: Partial<InsertUnitProgress>): Promise<UnitProgress>;
   deleteUnitProgress(unitId: number): Promise<boolean>;
+
+  // Music
+  getMusic(): Promise<Music[]>;
+  getMusicById(id: number): Promise<Music | undefined>;
+  createMusic(music: InsertMusic): Promise<Music>;
+  updateMusic(id: number, music: Partial<InsertMusic>): Promise<Music>;
+  deleteMusic(id: number): Promise<boolean>;
 }
 
 export class MemStorage implements IStorage {
@@ -81,6 +89,7 @@ export class MemStorage implements IStorage {
   private aiChats: Map<number, AiChat> = new Map();
   private unitProgress: Map<number, UnitProgress> = new Map();
   private quizzes: Map<number, any> = new Map(); // documentId -> quiz
+  private music: Map<number, Music> = new Map(); // musicId -> Music
   private currentId: number = 1;
 
   constructor() {
@@ -534,6 +543,39 @@ export class MemStorage implements IStorage {
       return this.unitProgress.delete(progress.id);
     }
     return false;
+  }
+
+  // Music
+  async getMusic(): Promise<Music[]> {
+    return Array.from(this.music.values());
+  }
+
+  async getMusicById(id: number): Promise<Music | undefined> {
+    return this.music.get(id);
+  }
+
+  async createMusic(insertMusic: InsertMusic): Promise<Music> {
+    const id = this.getNextId();
+    const music: Music = {
+      ...insertMusic,
+      id,
+      uploadedAt: new Date(),
+    };
+    this.music.set(id, music);
+    return music;
+  }
+
+  async updateMusic(id: number, updateMusic: Partial<InsertMusic>): Promise<Music> {
+    const existing = this.music.get(id);
+    if (!existing) throw new Error("Music not found");
+    
+    const updated: Music = { ...existing, ...updateMusic };
+    this.music.set(id, updated);
+    return updated;
+  }
+
+  async deleteMusic(id: number): Promise<boolean> {
+    return this.music.delete(id);
   }
 }
 

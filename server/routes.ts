@@ -61,6 +61,25 @@ const upload = multer({
   }
 });
 
+// Configure multer for music uploads
+const musicUpload = multer({ 
+  storage: storage_multer,
+  fileFilter: (req, file, cb) => {
+    // Allow audio files
+    if (file.mimetype.startsWith('audio/')) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only audio files are allowed'));
+    }
+  },
+  limits: {
+    fileSize: 100 * 1024 * 1024, // 100MB limit for audio files
+    fieldSize: 100 * 1024 * 1024, // 100MB field size limit
+    files: 1, // Allow only 1 file at a time
+    parts: 1000 // Reasonable parts limit for audio uploads
+  }
+});
+
 export async function registerRoutes(app: Express): Promise<Server> {
   
   // Extract content from DOCX files - THIS MUST BE BEFORE STATIC SERVING
@@ -2075,6 +2094,82 @@ What would you like help with?`;
       });
     } catch (error) {
       res.status(500).json({ message: "Failed to fix missing unit progress", error: error instanceof Error ? error.message : "Unknown error" });
+    }
+  });
+
+  // Music endpoints
+  app.get("/api/music", async (req, res) => {
+    try {
+      const music = await storage.getMusic();
+      res.json(music);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to get music", error: error instanceof Error ? error.message : "Unknown error" });
+    }
+  });
+
+  app.get("/api/music/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const music = await storage.getMusicById(id);
+      if (!music) {
+        return res.status(404).json({ message: "Music not found" });
+      }
+      res.json(music);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to get music", error: error instanceof Error ? error.message : "Unknown error" });
+    }
+  });
+
+  app.post("/api/music/upload", musicUpload.single('file'), async (req, res) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ message: "No file uploaded" });
+      }
+
+      // Validate file type
+      if (!req.file.mimetype.startsWith('audio/')) {
+        return res.status(400).json({ message: "Only audio files are allowed" });
+      }
+
+      const musicData = {
+        filename: req.file.filename,
+        originalName: req.file.originalname,
+        fileType: req.file.mimetype,
+        filePath: `/uploads/${req.file.filename}`,
+        fileSize: req.file.size,
+        artist: 'Unknown Artist',
+        duration: '0:00',
+      };
+
+      const music = await storage.createMusic(musicData);
+      res.status(201).json(music);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to upload music", error: error instanceof Error ? error.message : "Unknown error" });
+    }
+  });
+
+  app.delete("/api/music/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const music = await storage.getMusicById(id);
+      if (!music) {
+        return res.status(404).json({ message: "Music not found" });
+      }
+
+      // Delete the file from the filesystem
+      const fs = require('fs');
+      const path = require('path');
+      const filePath = path.join(__dirname, '..', music.filePath);
+      
+      if (fs.existsSync(filePath)) {
+        fs.unlinkSync(filePath);
+      }
+
+      // Delete from database
+      await storage.deleteMusic(id);
+      res.json({ message: "Music deleted successfully" });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to delete music", error: error instanceof Error ? error.message : "Unknown error" });
     }
   });
 

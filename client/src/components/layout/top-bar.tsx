@@ -11,8 +11,8 @@ export default function TopBar() {
     queryKey: ["/api/users/current"],
   });
 
-  // Only show header on dashboard page
-  if (location !== "/dashboard") {
+  // Only show header on dashboard page (both root and dashboard paths)
+  if (location !== "/dashboard" && location !== "/") {
     return null;
   }
 
@@ -47,7 +47,7 @@ export default function TopBar() {
           <div className="text-center py-2">
             {/* Centered Motivational Quote */}
             <blockquote className="text-xl font-bold text-neutral-800 italic">
-              "Discipline is choosing between what you want and what you want most"
+              "Discipline is choosing between what you want now and what you want most"
             </blockquote>
             <p className="text-base text-neutral-600 mt-1">
               When you lack motivation you can always choose discipline

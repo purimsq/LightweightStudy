@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Search, Play, Pause, SkipBack, SkipForward, Volume2, Heart, Plus, List, X, Clock, User, Menu, Home, TrendingUp, Music, History, ThumbsUp, Share2, MoreVertical, ArrowLeft, HardDrive } from 'lucide-react';
+import { useLocation } from 'wouter';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Card, CardContent } from '../components/ui/card';
@@ -37,6 +38,7 @@ interface Playlist {
 }
 
 const LuvNoirMusic: React.FC = () => {
+  const [, setLocation] = useLocation();
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<YouTubeVideo[]>([]);
   const [currentVideo, setCurrentVideo] = useState<VideoDetails | null>(null);
@@ -240,7 +242,7 @@ const LuvNoirMusic: React.FC = () => {
 
   const goBack = () => {
     const previousPage = localStorage.getItem('previousPage') || '/dashboard';
-    window.location.href = previousPage;
+    setLocation(previousPage);
   };
 
   return (
@@ -374,10 +376,9 @@ const LuvNoirMusic: React.FC = () => {
               variant="ghost" 
               className="w-full justify-start text-purple-300 hover:text-purple-100 h-12"
               onClick={() => {
-                // Get the actual previous page from dashboard, not just the current music page
-                const actualPreviousPage = localStorage.getItem('actualPreviousPage') || '/dashboard';
-                localStorage.setItem('previousPage', actualPreviousPage);
-                window.location.href = '/local-music';
+                // Store current page as previous page for back navigation
+                localStorage.setItem('previousPage', '/music');
+                setLocation('/local-music');
               }}
             >
               <HardDrive className="w-5 h-5 mr-3" />
