@@ -25,6 +25,7 @@ import LocalMusic from "@/pages/local-music";
 import StudyDocuments from "@/pages/study-documents";
 import Mail from "@/pages/mail";
 import Sanctuary from "@/pages/sanctuary";
+import StudyCompanion from "@/pages/studycompanion";
 import FloatingActionButton from "@/components/ui/floating-action-button";
 import DocumentUploadModal from "@/components/modals/document-upload-modal";
 import BreakReminder from "@/components/modals/break-reminder";
@@ -86,6 +87,7 @@ function Router() {
             <Route path="/ai-chat" component={AiChat} />
             <Route path="/mail" component={Mail} />
             <Route path="/sanctuary" component={Sanctuary} />
+            <Route path="/studycompanion" component={StudyCompanion} />
             <Route path="/progress" component={Progress} />
             <Route path="/study-documents" component={StudyDocuments} />
             <Route component={() => <div className="p-6">Page not found</div>} />

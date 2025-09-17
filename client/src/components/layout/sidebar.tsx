@@ -76,17 +76,20 @@ export default function Sidebar() {
       <div className={`${isCollapsed ? 'w-16' : 'w-64'} bg-cream border-r border-neutral-200 flex flex-col transition-all duration-300 ease-in-out`}>
       {/* Logo and User Greeting */}
       <div className="p-4 border-b border-neutral-200">
-        <div className="flex items-center space-x-3 mb-3">
-          <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-            <Book className="text-white text-sm" />
-          </div>
-          {!isCollapsed && (
-            <div>
-              <h1 className="font-semibold text-neutral-800 text-lg">StudyCompanion</h1>
-              <p className="text-xs text-neutral-600">Lightweight</p>
-            </div>
-          )}
-        </div>
+            <button 
+              onClick={() => navigate("/studycompanion")}
+              className="flex items-center space-x-3 mb-3 hover:bg-gray-50 rounded-lg p-2 -m-2 transition-all duration-200 group w-full"
+            >
+              <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center group-hover:scale-105 transition-transform">
+                <Book className="text-white text-sm" />
+              </div>
+              {!isCollapsed && (
+                <div className="text-left">
+                  <h1 className="font-semibold text-neutral-800 text-lg group-hover:text-purple-600 transition-colors">StudyCompanion</h1>
+                  <p className="text-xs text-neutral-600 group-hover:text-purple-500 transition-colors">Lightweight</p>
+                </div>
+              )}
+            </button>
         <div className="space-y-1">
           <button
             onClick={() => {
