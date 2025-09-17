@@ -23,8 +23,11 @@ logger = logging.getLogger(__name__)
 def create_app():
     app = Flask(__name__)
     
+    # Disable automatic .env loading to avoid encoding issues
+    app.config['LOAD_DOTENV'] = False
+    
     # Enable CORS for frontend communication
-    CORS(app, origins=["http://localhost:5000", "http://127.0.0.1:5000"])
+    CORS(app, origins=["http://localhost:5000", "http://127.0.0.1:5000", "http://localhost:3003", "http://127.0.0.1:3003"])
     
     # Configuration
     app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'lightweight-study-app-secret')
@@ -96,5 +99,5 @@ if __name__ == '__main__':
     app.run(
         host='0.0.0.0',
         port=port,
-        debug=os.environ.get('FLASK_ENV') == 'development'
+        debug=False  # Disable debug mode to avoid .env loading issues
     )

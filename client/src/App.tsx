@@ -4,6 +4,7 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { MusicProvider } from "@/contexts/MusicContext";
+import { SidebarProvider } from "@/contexts/SidebarContext";
 import Sidebar from "@/components/layout/sidebar";
 import TopBar from "@/components/layout/top-bar";
 import GlobalMusicPlayer from "@/components/layout/global-music-player";
@@ -22,18 +23,22 @@ import Progress from "@/pages/progress";
 import Music from "@/pages/music";
 import LocalMusic from "@/pages/local-music";
 import StudyDocuments from "@/pages/study-documents";
+import Mail from "@/pages/mail";
+import Sanctuary from "@/pages/sanctuary";
 import FloatingActionButton from "@/components/ui/floating-action-button";
 import DocumentUploadModal from "@/components/modals/document-upload-modal";
 import BreakReminder from "@/components/modals/break-reminder";
 import { useState } from "react";
+import { useSidebar } from "@/contexts/SidebarContext";
 
 function AppLayout({ children }: { children: React.ReactNode }) {
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
+  const { isCollapsed } = useSidebar();
 
   return (
     <div className="flex h-screen overflow-hidden">
       <Sidebar />
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div className={`flex-1 flex flex-col overflow-hidden transition-all duration-300 ease-in-out ${isCollapsed ? 'ml-0' : ''}`}>
         <TopBar />
         <main className="flex-1 overflow-y-auto">
           {children}
@@ -79,6 +84,8 @@ function Router() {
             <Route path="/assignments/:id/view" component={AssignmentViewer} />
             <Route path="/study-plan" component={StudyPlan} />
             <Route path="/ai-chat" component={AiChat} />
+            <Route path="/mail" component={Mail} />
+            <Route path="/sanctuary" component={Sanctuary} />
             <Route path="/progress" component={Progress} />
             <Route path="/study-documents" component={StudyDocuments} />
             <Route component={() => <div className="p-6">Page not found</div>} />
@@ -92,12 +99,14 @@ function Router() {
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <MusicProvider>
-        <TooltipProvider>
-          <Toaster />
-          <Router />
-        </TooltipProvider>
-      </MusicProvider>
+      <SidebarProvider>
+        <MusicProvider>
+          <TooltipProvider>
+            <Toaster />
+            <Router />
+          </TooltipProvider>
+        </MusicProvider>
+      </SidebarProvider>
     </QueryClientProvider>
   );
 }
