@@ -15,7 +15,12 @@ class MusicService {
 
   async getAllMusic(): Promise<MusicTrack[]> {
     try {
-      const response = await fetch(this.baseUrl);
+      const token = localStorage.getItem('authToken');
+      const response = await fetch(this.baseUrl, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
@@ -28,7 +33,12 @@ class MusicService {
 
   async getMusicById(id: number): Promise<MusicTrack> {
     try {
-      const response = await fetch(`${this.baseUrl}/${id}`);
+      const token = localStorage.getItem('authToken');
+      const response = await fetch(`${this.baseUrl}/${id}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
@@ -44,8 +54,12 @@ class MusicService {
       const formData = new FormData();
       formData.append('file', file);
 
+      const token = localStorage.getItem('authToken');
       const response = await fetch(`${this.baseUrl}/upload`, {
         method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
         body: formData,
       });
 
@@ -63,8 +77,12 @@ class MusicService {
 
   async deleteMusic(id: number): Promise<void> {
     try {
+      const token = localStorage.getItem('authToken');
       const response = await fetch(`${this.baseUrl}/${id}`, {
         method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
       });
 
       if (!response.ok) {

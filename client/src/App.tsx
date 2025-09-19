@@ -5,6 +5,8 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { MusicProvider } from "@/contexts/MusicContext";
 import { SidebarProvider } from "@/contexts/SidebarContext";
+import { AuthProvider } from "@/contexts/AuthContext";
+import ProtectedRoute from "@/components/ProtectedRoute";
 import Sidebar from "@/components/layout/sidebar";
 import TopBar from "@/components/layout/top-bar";
 import GlobalMusicPlayer from "@/components/layout/global-music-player";
@@ -26,6 +28,8 @@ import StudyDocuments from "@/pages/study-documents";
 import Mail from "@/pages/mail";
 import Sanctuary from "@/pages/sanctuary";
 import StudyCompanion from "@/pages/studycompanion";
+import Login from "@/pages/login";
+import Signup from "@/pages/signup";
 import FloatingActionButton from "@/components/ui/floating-action-button";
 import DocumentUploadModal from "@/components/modals/document-upload-modal";
 import BreakReminder from "@/components/modals/break-reminder";
@@ -59,40 +63,46 @@ function AppLayout({ children }: { children: React.ReactNode }) {
 function Router() {
   return (
     <Switch>
+      {/* Full-screen auth pages without layout */}
+      <Route path="/login" component={Login} />
+      <Route path="/signup" component={Signup} />
+      
       {/* Full-screen music pages without layout */}
       <Route path="/music" component={Music} />
       <Route path="/local-music" component={LocalMusic} />
       
-      {/* All other pages with normal layout */}
+      {/* All other pages with normal layout - Protected Routes */}
       <Route>
-        <AppLayout>
-          <Switch>
-            <Route path="/" component={Dashboard} />
-            <Route path="/dashboard" component={Dashboard} />
-            <Route path="/units" component={Units} />
-            <Route path="/units/:id/documents" component={UnitDocuments} />
-            <Route path="/documents/:id" component={DocumentViewer} />
-            <Route path="/documents/:id/notes">
-              {params => <Notes documentId={params.id} />}
-            </Route>
-            <Route path="/documents/:id/summary">
-              {params => <Summary documentId={params.id} />}
-            </Route>
-            <Route path="/documents/:id/quiz">
-              {params => <Quiz documentId={params.id} />}
-            </Route>
-            <Route path="/assignments" component={Assignments} />
-            <Route path="/assignments/:id/view" component={AssignmentViewer} />
-            <Route path="/study-plan" component={StudyPlan} />
-            <Route path="/ai-chat" component={AiChat} />
-            <Route path="/mail" component={Mail} />
-            <Route path="/sanctuary" component={Sanctuary} />
-            <Route path="/studycompanion" component={StudyCompanion} />
-            <Route path="/progress" component={Progress} />
-            <Route path="/study-documents" component={StudyDocuments} />
-            <Route component={() => <div className="p-6">Page not found</div>} />
-          </Switch>
-        </AppLayout>
+        <ProtectedRoute>
+          <AppLayout>
+            <Switch>
+              <Route path="/" component={Dashboard} />
+              <Route path="/dashboard" component={Dashboard} />
+              <Route path="/units" component={Units} />
+              <Route path="/units/:id/documents" component={UnitDocuments} />
+              <Route path="/documents/:id" component={DocumentViewer} />
+              <Route path="/documents/:id/notes">
+                {params => <Notes documentId={params.id} />}
+              </Route>
+              <Route path="/documents/:id/summary">
+                {params => <Summary documentId={params.id} />}
+              </Route>
+              <Route path="/documents/:id/quiz">
+                {params => <Quiz documentId={params.id} />}
+              </Route>
+              <Route path="/assignments" component={Assignments} />
+              <Route path="/assignments/:id/view" component={AssignmentViewer} />
+              <Route path="/study-plan" component={StudyPlan} />
+              <Route path="/ai-chat" component={AiChat} />
+              <Route path="/mail" component={Mail} />
+              <Route path="/sanctuary" component={Sanctuary} />
+                  <Route path="/studycompanion" component={StudyCompanion} />
+                  <Route path="/progress" component={Progress} />
+              <Route path="/study-documents" component={StudyDocuments} />
+              <Route component={() => <div className="p-6">Page not found</div>} />
+            </Switch>
+          </AppLayout>
+        </ProtectedRoute>
       </Route>
     </Switch>
   );
@@ -101,14 +111,16 @@ function Router() {
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <SidebarProvider>
-        <MusicProvider>
-          <TooltipProvider>
-            <Toaster />
-            <Router />
-          </TooltipProvider>
-        </MusicProvider>
-      </SidebarProvider>
+      <AuthProvider>
+        <SidebarProvider>
+          <MusicProvider>
+            <TooltipProvider>
+              <Toaster />
+              <Router />
+            </TooltipProvider>
+          </MusicProvider>
+        </SidebarProvider>
+      </AuthProvider>
     </QueryClientProvider>
   );
 }

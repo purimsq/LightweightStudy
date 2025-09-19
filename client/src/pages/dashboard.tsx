@@ -5,9 +5,12 @@ import QuickActions from "@/components/dashboard/quick-actions";
 import { Card, CardContent } from "@/components/ui/card";
 import { History } from "lucide-react";
 import { format } from "date-fns";
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function Dashboard() {
-  const { data: user } = useQuery({
+  const { user } = useAuth();
+  
+  const { data: userData } = useQuery({
     queryKey: ["/api/users/current"],
   });
 
@@ -22,7 +25,7 @@ export default function Dashboard() {
         <div className="mb-8">
           <div className="flex items-center justify-between mb-2">
             <h2 className="text-2xl font-bold text-neutral-800">
-              Hey, {user?.name || "Mitchell"}! 👋
+              Hey, {user?.name || "User"}! 👋
             </h2>
             <div className="text-sm text-neutral-600">
               <div className="text-right">

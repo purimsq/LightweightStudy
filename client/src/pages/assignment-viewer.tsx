@@ -16,7 +16,12 @@ export default function AssignmentViewer() {
   const { data: assignment, isLoading, error } = useQuery({
     queryKey: ["/api/assignments", assignmentId],
     queryFn: async () => {
-      const response = await fetch(`/api/assignments/${assignmentId}`);
+      const token = localStorage.getItem('authToken');
+      const response = await fetch(`/api/assignments/${assignmentId}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
       if (!response.ok) {
         throw new Error("Failed to fetch assignment");
       }

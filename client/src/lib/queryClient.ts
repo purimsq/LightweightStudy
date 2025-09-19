@@ -7,6 +7,11 @@ async function throwIfResNotOk(res: Response) {
   }
 }
 
+// Helper function to get auth token
+function getAuthToken(): string | null {
+  return localStorage.getItem('authToken');
+}
+
 export async function apiRequest(
   method: string,
   url: string,
@@ -14,9 +19,20 @@ export async function apiRequest(
 ): Promise<Response> {
   console.log(`🌐 API Request: ${method} ${url}`, data ? { data } : '');
   
+  const token = getAuthToken();
+  const headers: Record<string, string> = {};
+  
+  if (data) {
+    headers["Content-Type"] = "application/json";
+  }
+  
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+  
   const res = await fetch(url, {
     method,
-    headers: data ? { "Content-Type": "application/json" } : {},
+    headers,
     body: data ? JSON.stringify(data) : undefined,
     credentials: "include",
   });
@@ -36,7 +52,15 @@ export const getQueryFn: <T>(options: {
     const url = queryKey.join("/") as string;
     console.log(`🌐 GET Query Request: ${url}`);
     
+    const token = getAuthToken();
+    const headers: Record<string, string> = {};
+    
+    if (token) {
+      headers["Authorization"] = `Bearer ${token}`;
+    }
+    
     const res = await fetch(url, {
+      headers,
       credentials: "include",
     });
 

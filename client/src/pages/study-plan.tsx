@@ -12,7 +12,12 @@ export default function StudyPlan() {
   const { data: todaysPlan } = useQuery({
     queryKey: ["/api/study-plans", { date: today.toISOString() }],
     queryFn: async () => {
-      const response = await fetch(`/api/study-plans?date=${today.toISOString()}`);
+      const token = localStorage.getItem('authToken');
+      const response = await fetch(`/api/study-plans?date=${today.toISOString()}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
       if (!response.ok) throw new Error("Failed to fetch study plan");
       return response.json();
     },

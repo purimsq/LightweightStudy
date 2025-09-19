@@ -32,8 +32,12 @@ export default function DocumentUploadModal({ isOpen, onClose }: DocumentUploadM
         formData.append('file', file);
         formData.append('unitId', selectedUnit);
 
+        const token = localStorage.getItem('authToken');
         const response = await fetch('/api/documents', {
           method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+          },
           body: formData,
         });
 

@@ -17,7 +17,12 @@ export default function DocumentViewer() {
   const { data: document, isLoading } = useQuery({
     queryKey: ["/api/documents", documentId],
     queryFn: async () => {
-      const response = await fetch(`/api/documents/${documentId}`);
+      const token = localStorage.getItem('authToken');
+      const response = await fetch(`/api/documents/${documentId}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
       if (!response.ok) throw new Error("Failed to fetch document");
       return response.json();
     },
@@ -27,7 +32,12 @@ export default function DocumentViewer() {
     queryKey: ["/api/units", document?.unitId],
     queryFn: async () => {
       if (!document?.unitId) return null;
-      const response = await fetch(`/api/units/${document.unitId}`);
+      const token = localStorage.getItem('authToken');
+      const response = await fetch(`/api/units/${document.unitId}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
       if (!response.ok) throw new Error("Failed to fetch unit");
       return response.json();
     },

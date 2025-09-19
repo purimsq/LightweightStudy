@@ -221,8 +221,12 @@ function UploadAssignmentDialog({ isOpen, onOpenChange, units }: {
 
   const uploadMutation = useMutation({
     mutationFn: async (formData: FormData) => {
+      const token = localStorage.getItem('authToken');
       const response = await fetch("/api/assignments/upload", {
         method: "POST",
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
         body: formData,
       });
       return response.json();

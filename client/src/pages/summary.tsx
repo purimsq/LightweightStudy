@@ -29,9 +29,13 @@ export default function SummaryPage({ documentId }: SummaryPageProps) {
   // Generate summary mutation
   const generateSummaryMutation = useMutation({
     mutationFn: async () => {
+      const token = localStorage.getItem('authToken');
       const response = await fetch(`/api/documents/${documentId}/generate-summary`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          'Authorization': `Bearer ${token}`,
+        },
       });
       if (!response.ok) throw new Error("Failed to generate summary");
       return response.json();

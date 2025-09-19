@@ -38,6 +38,10 @@ export default function UnitCards({ units }: UnitCardsProps) {
     queryKey: ["/api/documents"],
   });
 
+  const { data: unitProgress = [] } = useQuery({
+    queryKey: ["/api/unit-progress"],
+  });
+
   const handleUnitClick = (unitId: number) => {
     navigate(`/units?selected=${unitId}`);
   };
@@ -45,9 +49,8 @@ export default function UnitCards({ units }: UnitCardsProps) {
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
       {units.map((unit) => {
-        const progressPercentage = unit.totalTopics > 0 
-          ? Math.round((unit.completedTopics / unit.totalTopics) * 100) 
-          : 0;
+        const unitProgressData = unitProgress.find((progress: any) => progress.unitId === unit.id);
+        const progressPercentage = unitProgressData?.progressPercentage || 0;
 
         const colorClass = colorMap[unit.color as keyof typeof colorMap] || colorMap.blue;
         const icon = iconMap[unit.icon as keyof typeof iconMap] || "📁";
@@ -73,7 +76,7 @@ export default function UnitCards({ units }: UnitCardsProps) {
             <div className="mb-3">
               <div className="flex items-center justify-between text-sm text-neutral-600 mb-1">
                 <span>Progress</span>
-                <span>{unit.completedTopics} of {unit.totalTopics} topics</span>
+                <span>{progressPercentage}%</span>
               </div>
               <Progress value={progressPercentage} className="h-2" />
             </div>

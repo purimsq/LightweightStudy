@@ -5,6 +5,7 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useState } from "react";
 import { useSidebar } from "@/contexts/SidebarContext";
+import { useAuth } from "@/contexts/AuthContext";
 
 const navigation = [
   { name: "Dashboard", href: "/dashboard", icon: Home },
@@ -20,10 +21,14 @@ export default function Sidebar() {
   const [location, navigate] = useLocation();
   const [isAnimating, setIsAnimating] = useState(false);
   const { isCollapsed, toggleSidebar } = useSidebar();
+  const { user: authUser } = useAuth();
   
   const { data: user } = useQuery({
     queryKey: ["/api/users/current"],
   });
+
+  // Use authenticated user data if available, fallback to query data
+  const currentUser = authUser || user;
 
   const updatePaceMutation = useMutation({
     mutationFn: async (pace: number) => {
@@ -180,17 +185,17 @@ export default function Sidebar() {
         <button
           onClick={handleProfileClick}
           className={`w-full flex items-center ${isCollapsed ? 'justify-center' : 'space-x-3'} hover:bg-gray-50 rounded-lg p-2 transition-all duration-200 group`}
-          title={isCollapsed ? 'Mitchell - study mode' : undefined}
+          title={isCollapsed ? `${currentUser?.name || 'User'} - study mode` : undefined}
         >
           {/* Profile Circle */}
-          <div className="w-8 h-8 bg-gray-400 rounded-full flex items-center justify-center text-white font-medium text-sm group-hover:bg-gray-500 transition-colors">
-            M
+          <div className="w-8 h-8 bg-gradient-to-br from-purple-600 to-pink-600 rounded-full flex items-center justify-center text-white font-medium text-sm group-hover:from-purple-700 group-hover:to-pink-700 transition-all">
+            {currentUser?.avatar || currentUser?.name?.charAt(0)?.toUpperCase() || 'U'}
           </div>
           
           {/* Profile Info */}
           {!isCollapsed && (
             <div className="text-left text-gray-600">
-              <div className="font-medium text-sm">Mitchell</div>
+              <div className="font-medium text-sm">{currentUser?.name || 'User'}</div>
               <div className="text-xs">study mode</div>
             </div>
           )}

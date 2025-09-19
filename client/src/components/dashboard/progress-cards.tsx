@@ -24,10 +24,13 @@ export default function ProgressCards() {
     queryKey: ["/api/assignments"],
   });
 
-  // Calculate today's progress
-  const totalTopics = units.reduce((sum: number, unit: any) => sum + unit.totalTopics, 0);
-  const completedTopics = units.reduce((sum: number, unit: any) => sum + unit.completedTopics, 0);
-  const progressPercentage = totalTopics > 0 ? Math.round((completedTopics / totalTopics) * 100) : 0;
+  const { data: unitProgress = [] } = useQuery({
+    queryKey: ["/api/unit-progress"],
+  });
+
+  // Calculate today's progress based on unit progress data
+  const totalProgress = unitProgress.reduce((sum: number, progress: any) => sum + (progress.progressPercentage || 0), 0);
+  const progressPercentage = unitProgress.length > 0 ? Math.round(totalProgress / unitProgress.length) : 0;
 
   // Calculate real-time stats
   const completedAssignments = assignments.filter(a => a.status === 'completed').length;
@@ -44,8 +47,8 @@ export default function ProgressCards() {
           </div>
           <div className="mb-3">
             <div className="flex items-center justify-between text-sm text-neutral-600 mb-1">
-              <span>Completed Topics</span>
-              <span>{completedTopics} of {totalTopics}</span>
+              <span>Overall Progress</span>
+              <span>{progressPercentage}%</span>
             </div>
             <Progress value={progressPercentage} className="h-2" />
           </div>

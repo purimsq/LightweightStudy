@@ -96,9 +96,13 @@ export default function NotesPage({ documentId }: NotesPageProps) {
   // Create note mutation
   const createNoteMutation = useMutation({
     mutationFn: async (noteData: { title: string; content: string }) => {
+      const token = localStorage.getItem('authToken');
       const response = await fetch(`/api/documents/${documentId}/notes`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          'Authorization': `Bearer ${token}`,
+        },
         body: JSON.stringify(noteData),
       });
       if (!response.ok) throw new Error("Failed to create note");
@@ -117,9 +121,13 @@ export default function NotesPage({ documentId }: NotesPageProps) {
   // Update note mutation
   const updateNoteMutation = useMutation({
     mutationFn: async (noteData: Note) => {
+      const token = localStorage.getItem('authToken');
       const response = await fetch(`/api/notes/${noteData.id}`, {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          'Authorization': `Bearer ${token}`,
+        },
         body: JSON.stringify(noteData),
       });
       if (!response.ok) throw new Error("Failed to update note");
@@ -138,7 +146,13 @@ export default function NotesPage({ documentId }: NotesPageProps) {
   // Delete note mutation
   const deleteNoteMutation = useMutation({
     mutationFn: async (noteId: number) => {
-      const response = await fetch(`/api/notes/${noteId}`, { method: "DELETE" });
+      const token = localStorage.getItem('authToken');
+      const response = await fetch(`/api/notes/${noteId}`, { 
+        method: "DELETE",
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
       if (!response.ok) throw new Error("Failed to delete note");
       return response.json();
     },

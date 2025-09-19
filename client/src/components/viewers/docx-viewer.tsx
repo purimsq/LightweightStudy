@@ -55,9 +55,13 @@ export default function DOCXViewer({ fileUrl, filename, documentId, unitId, isEd
 
         // Use the server's document extraction endpoint for DOCX files
         const extractedFilename = fileUrl.split('/').pop(); // Extract filename from URL
+        const token = localStorage.getItem('authToken');
         const response = await fetch(`/api/documents/${encodeURIComponent(extractedFilename || '')}/extract`, {
           cache: 'force-cache',
           priority: 'high',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+          },
         });
         
         if (!response.ok) {

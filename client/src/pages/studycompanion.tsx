@@ -1,4 +1,4 @@
-import { Book, Brain, Target, Users, Zap, Shield, Heart, Star, ArrowRight, CheckCircle, User, Mail, Phone, Calendar, MapPin, Edit3, Camera, Settings, Bell, Lock, Palette, Globe, Download, Upload, Trash2, Save, X, Eye, EyeOff } from "lucide-react";
+import { Book, Brain, Target, Users, Zap, Shield, Heart, Star, ArrowRight, CheckCircle, User, Mail, Phone, Calendar, MapPin, Edit3, Camera, Settings, Bell, Lock, Palette, Globe, Download, Upload, Trash2, Save, X, Eye, EyeOff, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -8,22 +8,28 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
-import { useState } from "react";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import React, { useState } from "react";
+import { useAuth } from "@/contexts/AuthContext";
+import { useToast } from "@/hooks/use-toast";
 
 export default function StudyCompanion() {
+  const { user, updateUser, logout } = useAuth();
+  const { toast } = useToast();
   const [isEditing, setIsEditing] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [activeTab, setActiveTab] = useState("profile");
+  const [isUpdating, setIsUpdating] = useState(false);
 
-  // Mock user data - in real app this would come from context/API
+  // Use real user data from auth context
   const [userData, setUserData] = useState({
-    name: "Mitchell",
-    email: "mitchell@example.com",
-    phone: "+1 (555) 123-4567",
-    bio: "Passionate student focused on academic excellence and personal growth.",
-    location: "New York, NY",
-    joinDate: "September 2024",
-    avatar: "M",
+    name: user?.name || "",
+    email: user?.email || "",
+    phone: user?.phone || "",
+    bio: user?.bio || "",
+    location: user?.location || "",
+    joinDate: user?.createdAt ? new Date(user.createdAt).toLocaleDateString('en-US', { month: 'long', year: 'numeric' }) : "",
+    avatar: user?.avatar || "U",
     studyMode: true,
     notifications: {
       email: true,
@@ -44,15 +50,85 @@ export default function StudyCompanion() {
     }
   });
 
-  const handleSave = () => {
-    setIsEditing(false);
-    // In real app, save to backend
-    console.log("Saving user data:", userData);
+  // Update userData when user changes
+  React.useEffect(() => {
+    if (user) {
+      setUserData(prev => ({
+        ...prev,
+        name: user.name || "",
+        email: user.email || "",
+        phone: user.phone || "",
+        bio: user.bio || "",
+        location: user.location || "",
+        joinDate: user.createdAt ? new Date(user.createdAt).toLocaleDateString('en-US', { month: 'long', year: 'numeric' }) : "",
+        avatar: user.avatar || "U",
+      }));
+    }
+  }, [user]);
+
+  const handleSave = async () => {
+    if (!user) return;
+    
+    setIsUpdating(true);
+    try {
+      const response = await fetch('/api/auth/profile', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
+        },
+        body: JSON.stringify({
+          name: userData.name,
+          phone: userData.phone,
+          bio: userData.bio,
+          location: userData.location,
+        }),
+      });
+
+      if (response.ok) {
+        const updatedUser = await response.json();
+        updateUser(updatedUser.user);
+        setIsEditing(false);
+        toast({
+          title: "Profile Updated",
+          description: "Your profile has been updated successfully.",
+        });
+      } else {
+        throw new Error('Failed to update profile');
+      }
+    } catch (error) {
+      toast({
+        title: "Update Failed",
+        description: "Failed to update your profile. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsUpdating(false);
+    }
   };
 
   const handleCancel = () => {
     setIsEditing(false);
-    // Reset to original data
+    // Reset to original user data
+    if (user) {
+      setUserData(prev => ({
+        ...prev,
+        name: user.name || "",
+        email: user.email || "",
+        phone: user.phone || "",
+        bio: user.bio || "",
+        location: user.location || "",
+        avatar: user.avatar || "U",
+      }));
+    }
+  };
+
+  const handleLogout = () => {
+    logout();
+    toast({
+      title: "Logged Out",
+      description: "You have been successfully logged out.",
+    });
   };
 
   return (
@@ -63,6 +139,7 @@ export default function StudyCompanion() {
           <h1 className="text-3xl font-bold text-gray-900 mb-2">Profile & Settings</h1>
           <p className="text-gray-600">Manage your account, preferences, and privacy settings</p>
         </div>
+
 
         {/* Tab Navigation */}
         <div className="flex space-x-1 mb-8 bg-gray-100 p-1 rounded-lg w-fit">
@@ -181,17 +258,21 @@ export default function StudyCompanion() {
                     rows={3}
                   />
                 </div>
-                {isEditing && (
-                  <div className="flex space-x-2 pt-4">
-                    <Button onClick={handleSave} className="flex items-center space-x-2">
-                      <Save className="w-4 h-4" />
-                      <span>Save Changes</span>
-                    </Button>
-                    <Button onClick={handleCancel} variant="outline">
-                      Cancel
-                    </Button>
-                  </div>
-                )}
+                    {isEditing && (
+                      <div className="flex space-x-2 pt-4">
+                        <Button 
+                          onClick={handleSave} 
+                          disabled={isUpdating}
+                          className="flex items-center space-x-2"
+                        >
+                          <Save className="w-4 h-4" />
+                          <span>{isUpdating ? "Saving..." : "Save Changes"}</span>
+                        </Button>
+                        <Button onClick={handleCancel} variant="outline" disabled={isUpdating}>
+                          Cancel
+                        </Button>
+                      </div>
+                    )}
               </CardContent>
             </Card>
 
@@ -466,6 +547,7 @@ export default function StudyCompanion() {
         {/* Account Tab */}
         {activeTab === "account" && (
           <div className="space-y-6">
+            
             <Card>
               <CardHeader>
                 <CardTitle>Change Password</CardTitle>
@@ -512,35 +594,67 @@ export default function StudyCompanion() {
               </CardContent>
             </Card>
 
-            <Card>
-              <CardHeader>
-                <CardTitle>Account Information</CardTitle>
-                <CardDescription>View and manage your account details</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <Label>Account ID</Label>
-                    <Input value="USR-123456789" disabled />
-                  </div>
-                  <div>
-                    <Label>Member Since</Label>
-                    <Input value={userData.joinDate} disabled />
-                  </div>
-                  <div>
-                    <Label>Last Login</Label>
-                    <Input value="Today, 1:48 PM" disabled />
-                  </div>
-                  <div>
-                    <Label>Account Status</Label>
-                    <div className="flex items-center space-x-2">
-                      <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                      <span className="text-sm text-gray-600">Active</span>
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Account Information</CardTitle>
+                    <CardDescription>View and manage your account details</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <Label>Account ID</Label>
+                        <Input value={`USR-${user?.id || '000000000'}`} disabled />
+                      </div>
+                      <div>
+                        <Label>Member Since</Label>
+                        <Input value={userData.joinDate} disabled />
+                      </div>
+                      <div>
+                        <Label>Last Login</Label>
+                        <Input value={user?.lastLoginDate ? new Date(user.lastLoginDate).toLocaleString() : "Never"} disabled />
+                      </div>
+                      <div>
+                        <Label>Account Status</Label>
+                        <div className="flex items-center space-x-2">
+                          <div className={`w-2 h-2 rounded-full ${user?.isActive ? 'bg-green-500' : 'bg-red-500'}`}></div>
+                          <span className="text-sm text-gray-600">{user?.isActive ? 'Active' : 'Inactive'}</span>
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+                  </CardContent>
+                </Card>
+
+                {/* Logout Section */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Sign Out</CardTitle>
+                    <CardDescription>Sign out of your account on this device</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button variant="destructive" className="flex items-center space-x-2">
+                          <LogOut className="w-4 h-4" />
+                          <span>Sign Out</span>
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Are you sure you want to sign out?</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            You will need to sign in again to access your account. Any unsaved changes will be lost.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                          <AlertDialogAction onClick={handleLogout} className="bg-red-600 hover:bg-red-700">
+                            Sign Out
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  </CardContent>
+                </Card>
           </div>
         )}
       </div>

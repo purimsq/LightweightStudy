@@ -71,10 +71,12 @@ function DocumentCard({ document, onDelete }: { document: Document; onDelete: ()
       console.log(`🔄 Toggling completion for document ${documentId}`);
       
       // Use relative URL since client and server are on the same port
+      const token = localStorage.getItem('authToken');
       const response = await fetch(`/api/documents/${documentId}/toggle-completion`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
         },
       });
       
@@ -208,7 +210,12 @@ export default function UnitDocuments() {
   const { data: unit, isLoading: unitLoading } = useQuery({
     queryKey: ["/api/units", unitId],
     queryFn: async () => {
-      const response = await fetch(`/api/units/${unitId}`);
+      const token = localStorage.getItem('authToken');
+      const response = await fetch(`/api/units/${unitId}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
       if (!response.ok) throw new Error("Failed to fetch unit");
       return response.json();
     },
@@ -217,7 +224,12 @@ export default function UnitDocuments() {
   const { data: documents = [], isLoading: documentsLoading } = useQuery({
     queryKey: ["/api/documents", { unitId }],
     queryFn: async () => {
-      const response = await fetch(`/api/documents?unitId=${unitId}`);
+      const token = localStorage.getItem('authToken');
+      const response = await fetch(`/api/documents?unitId=${unitId}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
       if (!response.ok) throw new Error("Failed to fetch documents");
       return response.json();
     },

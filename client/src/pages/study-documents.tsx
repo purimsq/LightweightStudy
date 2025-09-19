@@ -68,7 +68,12 @@ export default function StudyDocumentsPage() {
   const { refetch: refetchDocuments } = useQuery({
     queryKey: ['api', 'documents'],
     queryFn: async () => {
-      const result = await fetch('/api/documents').then(res => res.json());
+      const token = localStorage.getItem('authToken');
+      const result = await fetch('/api/documents', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      }).then(res => res.json());
       return result;
     },
     enabled: false, // Don't run automatically
@@ -77,7 +82,12 @@ export default function StudyDocumentsPage() {
   const { refetch: refetchAssignments } = useQuery({
     queryKey: ['api', 'assignments'],
     queryFn: async () => {
-      const result = await fetch('/api/assignments').then(res => res.json());
+      const token = localStorage.getItem('authToken');
+      const result = await fetch('/api/assignments', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      }).then(res => res.json());
       return result;
     },
     enabled: false, // Don't run automatically
@@ -86,7 +96,12 @@ export default function StudyDocumentsPage() {
   const { refetch: refetchUnits } = useQuery({
     queryKey: ['api', 'units'],
     queryFn: async () => {
-      const result = await fetch('/api/units').then(res => res.json());
+      const token = localStorage.getItem('authToken');
+      const result = await fetch('/api/units', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      }).then(res => res.json());
       return result;
     },
     enabled: false, // Don't run automatically
@@ -104,7 +119,12 @@ export default function StudyDocumentsPage() {
   const { data: documents = [], isLoading: docsLoading } = useQuery({
     queryKey: ['api', 'documents'],
     queryFn: async () => {
-      const result = await fetch('/api/documents').then(res => res.json());
+      const token = localStorage.getItem('authToken');
+      const result = await fetch('/api/documents', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      }).then(res => res.json());
       return result;
     },
     refetchOnMount: true,
@@ -116,7 +136,12 @@ export default function StudyDocumentsPage() {
   const { data: assignments = [], isLoading: assignmentsLoading } = useQuery({
     queryKey: ['api', 'assignments'],
     queryFn: async () => {
-      const result = await fetch('/api/assignments').then(res => res.json());
+      const token = localStorage.getItem('authToken');
+      const result = await fetch('/api/assignments', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      }).then(res => res.json());
       return result;
     },
     refetchOnMount: true,
@@ -128,7 +153,12 @@ export default function StudyDocumentsPage() {
   const { data: units = [], isLoading: unitsLoading } = useQuery({
     queryKey: ['api', 'units'],
     queryFn: async () => {
-      const result = await fetch('/api/units').then(res => res.json());
+      const token = localStorage.getItem('authToken');
+      const result = await fetch('/api/units', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      }).then(res => res.json());
       return result;
     },
     refetchOnMount: true,

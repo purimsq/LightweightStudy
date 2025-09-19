@@ -59,9 +59,13 @@ export default function QuizPage({ documentId }: QuizPageProps) {
   // Generate quiz mutation
   const generateQuizMutation = useMutation({
     mutationFn: async () => {
+      const token = localStorage.getItem('authToken');
       const response = await fetch(`/api/documents/${documentId}/generate-quiz`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          'Authorization': `Bearer ${token}`,
+        },
         body: JSON.stringify({ 
           questionTypes: selectedQuestionTypes, 
           numberOfQuestions: numberOfQuestions 

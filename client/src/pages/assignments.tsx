@@ -117,8 +117,12 @@ function CreateAssignmentDialog({ isOpen, onOpenChange, units }: {
         };
         formData.append('assignmentData', JSON.stringify(assignmentData));
         
+        const token = localStorage.getItem('authToken');
         const response = await fetch('/api/assignments/upload', {
           method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+          },
           body: formData,
         });
         return response.json();
@@ -322,8 +326,12 @@ function AssignmentEditor({ assignment, isOpen, onOpenChange }: {
       formData.append('file', file);
       formData.append('assignmentId', assignment.id.toString());
 
+      const token = localStorage.getItem('authToken');
       const response = await fetch('/api/assignments/add-document', {
         method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
         body: formData,
       });
 
@@ -689,10 +697,12 @@ function AssignmentCard({ assignment, units }: { assignment: Assignment; units: 
 
   const toggleCompletionMutation = useMutation({
     mutationFn: async ({ assignmentId, userGrade, totalMarks }: { assignmentId: number; userGrade?: string; totalMarks?: string }) => {
+      const token = localStorage.getItem('authToken');
       const response = await fetch(`/api/assignments/${assignmentId}/toggle-completion`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
         },
         body: JSON.stringify({ userGrade, totalMarks }),
       });

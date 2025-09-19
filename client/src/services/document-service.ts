@@ -115,7 +115,12 @@ export class DocumentService {
   async getDocuments(unitId?: number): Promise<Document[]> {
     try {
       const url = unitId ? `${this.baseUrl}?unitId=${unitId}` : this.baseUrl;
-      const response = await fetch(url);
+      const token = localStorage.getItem('authToken');
+      const response = await fetch(url, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
       if (!response.ok) throw new Error("Failed to fetch documents");
       return await response.json();
     } catch (error) {
