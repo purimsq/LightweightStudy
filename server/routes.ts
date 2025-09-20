@@ -395,6 +395,321 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Friends
+  app.get("/api/friends", authenticateToken, async (req: AuthenticatedRequest, res) => {
+    try {
+      const friends = await storage.getFriends(req.user!.id);
+      res.json(friends);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to get friends", error: error instanceof Error ? error.message : "Unknown error" });
+    }
+  });
+
+  app.get("/api/friends/pending", authenticateToken, async (req: AuthenticatedRequest, res) => {
+    try {
+      const pendingRequests = await storage.getPendingFriendRequests(req.user!.id);
+      res.json(pendingRequests);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to get pending friend requests", error: error instanceof Error ? error.message : "Unknown error" });
+    }
+  });
+
+  app.get("/api/friends/sent", authenticateToken, async (req: AuthenticatedRequest, res) => {
+    try {
+      const sentRequests = await storage.getSentFriendRequests(req.user!.id);
+      res.json(sentRequests);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to get sent friend requests", error: error instanceof Error ? error.message : "Unknown error" });
+    }
+  });
+
+  app.get("/api/friends/all", authenticateToken, async (req: AuthenticatedRequest, res) => {
+    try {
+      const allRequests = await storage.getAllFriendRequests(req.user!.id);
+      res.json(allRequests);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to get all friend requests", error: error instanceof Error ? error.message : "Unknown error" });
+    }
+  });
+
+  app.post("/api/friends/request", authenticateToken, async (req: AuthenticatedRequest, res) => {
+    try {
+      const { friendId } = req.body;
+      if (!friendId) {
+        return res.status(400).json({ message: "Friend ID is required" });
+      }
+      
+      const friendRequest = await storage.sendFriendRequest(req.user!.id, friendId);
+      res.status(201).json(friendRequest);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to send friend request", error: error instanceof Error ? error.message : "Unknown error" });
+    }
+  });
+
+  app.post("/api/friends/accept", authenticateToken, async (req: AuthenticatedRequest, res) => {
+    try {
+      const { friendId } = req.body;
+      if (!friendId) {
+        return res.status(400).json({ message: "Friend ID is required" });
+      }
+      
+      const friend = await storage.acceptFriendRequest(req.user!.id, friendId);
+      res.json(friend);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to accept friend request", error: error instanceof Error ? error.message : "Unknown error" });
+    }
+  });
+
+  app.post("/api/friends/reject", authenticateToken, async (req: AuthenticatedRequest, res) => {
+    try {
+      const { friendId } = req.body;
+      if (!friendId) {
+        return res.status(400).json({ message: "Friend ID is required" });
+      }
+      
+      await storage.rejectFriendRequest(req.user!.id, friendId);
+      res.json({ message: "Friend request rejected" });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to reject friend request", error: error instanceof Error ? error.message : "Unknown error" });
+    }
+  });
+
+  app.delete("/api/friends/request/:friendId", authenticateToken, async (req: AuthenticatedRequest, res) => {
+    try {
+      const friendId = parseInt(req.params.friendId);
+      await storage.deleteFriendRequest(req.user!.id, friendId);
+      res.json({ message: "Friend request deleted" });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to delete friend request", error: error instanceof Error ? error.message : "Unknown error" });
+    }
+  });
+
+  app.get("/api/users/search", authenticateToken, async (req: AuthenticatedRequest, res) => {
+    try {
+      const { q } = req.query;
+      if (!q || typeof q !== 'string') {
+        return res.status(400).json({ message: "Search query is required" });
+      }
+      
+      const users = await storage.searchUsers(q, req.user!.id);
+      res.json(users);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to search users", error: error instanceof Error ? error.message : "Unknown error" });
+    }
+  });
+
+  // Messages
+  app.get("/api/messages/conversations", authenticateToken, async (req: AuthenticatedRequest, res) => {
+    try {
+      const conversations = await storage.getConversations(req.user!.id);
+      res.json(conversations);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to get conversations", error: error instanceof Error ? error.message : "Unknown error" });
+    }
+  });
+
+  app.get("/api/messages/:friendId", authenticateToken, async (req: AuthenticatedRequest, res) => {
+    try {
+      const friendId = parseInt(req.params.friendId);
+      const messages = await storage.getMessages(req.user!.id, friendId);
+      res.json(messages);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to get messages", error: error instanceof Error ? error.message : "Unknown error" });
+    }
+  });
+
+  app.post("/api/messages", authenticateToken, async (req: AuthenticatedRequest, res) => {
+    try {
+      const { receiverId, content, messageType = 'text' } = req.body;
+      if (!receiverId || !content) {
+        return res.status(400).json({ message: "Receiver ID and content are required" });
+      }
+      
+      const message = await storage.sendMessage({
+        senderId: req.user!.id,
+        receiverId,
+        content,
+        messageType
+      });
+      res.status(201).json(message);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to send message", error: error instanceof Error ? error.message : "Unknown error" });
+    }
+  });
+
+  app.patch("/api/messages/:senderId/read", authenticateToken, async (req: AuthenticatedRequest, res) => {
+    try {
+      const senderId = parseInt(req.params.senderId);
+      await storage.markMessagesAsRead(req.user!.id, senderId);
+      res.json({ message: "Messages marked as read" });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to mark messages as read", error: error instanceof Error ? error.message : "Unknown error" });
+    }
+  });
+
+  // Groups
+  app.get("/api/groups", authenticateToken, async (req: AuthenticatedRequest, res) => {
+    try {
+      const groups = await storage.getUserGroups(req.user!.id);
+      res.json(groups);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to get groups", error: error instanceof Error ? error.message : "Unknown error" });
+    }
+  });
+
+  app.post("/api/groups", authenticateToken, async (req: AuthenticatedRequest, res) => {
+    try {
+      const { name, description, avatar, memberIds } = req.body;
+      if (!name) {
+        return res.status(400).json({ message: "Group name is required" });
+      }
+
+      // Create the group
+      const group = await storage.createGroup({ name, description, avatar }, req.user!.id);
+      
+      // Add the creator as admin
+      await storage.addGroupMember(group.id, req.user!.id, 'admin');
+      
+      // Add other members
+      if (memberIds && Array.isArray(memberIds)) {
+        for (const memberId of memberIds) {
+          await storage.addGroupMember(group.id, memberId, 'member');
+        }
+      }
+
+      res.status(201).json(group);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to create group", error: error instanceof Error ? error.message : "Unknown error" });
+    }
+  });
+
+  app.get("/api/groups/:id/members", authenticateToken, async (req: AuthenticatedRequest, res) => {
+    try {
+      const groupId = parseInt(req.params.id);
+      const isMember = await storage.isUserInGroup(req.user!.id, groupId);
+      if (!isMember) {
+        return res.status(403).json({ message: "You are not a member of this group" });
+      }
+
+      const members = await storage.getGroupMembers(groupId);
+      res.json(members);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to get group members", error: error instanceof Error ? error.message : "Unknown error" });
+    }
+  });
+
+  app.post("/api/groups/:id/members", authenticateToken, async (req: AuthenticatedRequest, res) => {
+    try {
+      const groupId = parseInt(req.params.id);
+      const { userId, role = 'member' } = req.body;
+      
+      if (!userId) {
+        return res.status(400).json({ message: "User ID is required" });
+      }
+
+      const isMember = await storage.isUserInGroup(req.user!.id, groupId);
+      if (!isMember) {
+        return res.status(403).json({ message: "You are not a member of this group" });
+      }
+
+      const member = await storage.addGroupMember(groupId, userId, role);
+      res.status(201).json(member);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to add group member", error: error instanceof Error ? error.message : "Unknown error" });
+    }
+  });
+
+  app.delete("/api/groups/:id/members/:userId", authenticateToken, async (req: AuthenticatedRequest, res) => {
+    try {
+      const groupId = parseInt(req.params.id);
+      const userId = parseInt(req.params.userId);
+      
+      const isMember = await storage.isUserInGroup(req.user!.id, groupId);
+      if (!isMember) {
+        return res.status(403).json({ message: "You are not a member of this group" });
+      }
+
+      await storage.removeGroupMember(groupId, userId);
+      res.json({ message: "Member removed from group" });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to remove group member", error: error instanceof Error ? error.message : "Unknown error" });
+    }
+  });
+
+  app.get("/api/groups/:id/messages", authenticateToken, async (req: AuthenticatedRequest, res) => {
+    try {
+      const groupId = parseInt(req.params.id);
+      const isMember = await storage.isUserInGroup(req.user!.id, groupId);
+      if (!isMember) {
+        return res.status(403).json({ message: "You are not a member of this group" });
+      }
+
+      const messages = await storage.getGroupMessages(groupId);
+      res.json(messages);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to get group messages", error: error instanceof Error ? error.message : "Unknown error" });
+    }
+  });
+
+  app.post("/api/groups/:id/messages", authenticateToken, async (req: AuthenticatedRequest, res) => {
+    try {
+      const groupId = parseInt(req.params.id);
+      const { content, messageType = 'text' } = req.body;
+      
+      if (!content) {
+        return res.status(400).json({ message: "Message content is required" });
+      }
+
+      const isMember = await storage.isUserInGroup(req.user!.id, groupId);
+      if (!isMember) {
+        return res.status(403).json({ message: "You are not a member of this group" });
+      }
+
+      const message = await storage.sendMessage({
+        senderId: req.user!.id,
+        groupId,
+        content,
+        messageType
+      });
+      res.status(201).json(message);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to send group message", error: error instanceof Error ? error.message : "Unknown error" });
+    }
+  });
+
+  app.patch("/api/groups/:id", authenticateToken, async (req: AuthenticatedRequest, res) => {
+    try {
+      const groupId = parseInt(req.params.id);
+      const updateData = req.body;
+      
+      const isMember = await storage.isUserInGroup(req.user!.id, groupId);
+      if (!isMember) {
+        return res.status(403).json({ message: "You are not a member of this group" });
+      }
+
+      const group = await storage.updateGroup(groupId, updateData);
+      res.json(group);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to update group", error: error instanceof Error ? error.message : "Unknown error" });
+    }
+  });
+
+  app.delete("/api/groups/:id", authenticateToken, async (req: AuthenticatedRequest, res) => {
+    try {
+      const groupId = parseInt(req.params.id);
+      
+      const isMember = await storage.isUserInGroup(req.user!.id, groupId);
+      if (!isMember) {
+        return res.status(403).json({ message: "You are not a member of this group" });
+      }
+
+      await storage.deleteGroup(groupId);
+      res.json({ message: "Group deleted successfully" });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to delete group", error: error instanceof Error ? error.message : "Unknown error" });
+    }
+  });
+
   // Units
   app.get("/api/units", authenticateToken, async (req: AuthenticatedRequest, res) => {
     try {
@@ -795,7 +1110,7 @@ This document has been uploaded and is ready for viewing. The content will be di
         attachedFileName: req.file.originalname,
         attachedFileType: req.file.mimetype,
       });
-      
+
       const finalAssignmentData = { ...validatedData, userId: req.user!.id };
 
       const assignment = await storage.createAssignment(finalAssignmentData);
@@ -902,27 +1217,25 @@ Please provide a progress calculation and suggested grade based on the assignmen
       const documents = await storage.getDocumentsByUnit(unitId, userId);
       const assignments = await storage.getAssignmentsByUnit(unitId, userId);
       
-      let totalProgress = 0;
-      let totalItems = 0;
-      
-      // Calculate document progress (each completed document = equal contribution)
+      // Count total items and completed items
+      const totalDocuments = documents.length;
       const completedDocuments = documents.filter(doc => doc.isCompleted ?? false).length;
-      const documentProgress = documents.length > 0 ? (completedDocuments / documents.length) * 100 : 0;
-      totalProgress += documentProgress;
-      totalItems += documents.length;
       
-      // Calculate assignment progress (based on completion status, not grades)
-      const completedAssignments = assignments.filter(assign => assign.status === "completed");
-      const assignmentProgress = assignments.length > 0 ? (completedAssignments.length / assignments.length) * 100 : 0;
-      totalProgress += assignmentProgress;
-      totalItems += assignments.length;
+      const totalAssignments = assignments.length;
+      const completedAssignments = assignments.filter(assign => assign.status === "completed").length;
       
-      // Calculate overall progress as average of document and assignment progress
-      const overallProgress = totalItems > 0 ? totalProgress / 2 : 0; // Divide by 2 because we have 2 categories (documents + assignments)
+      // Total items in the unit
+      const totalItems = totalDocuments + totalAssignments;
+      const completedItems = completedDocuments + completedAssignments;
+      
+      // Calculate progress: completed items / total items * 100
+      const overallProgress = totalItems > 0 ? (completedItems / totalItems) * 100 : 0;
       
       console.log(`📊 Unit ${unitId} progress calculation:`, {
-        documents: { total: documents.length, completed: completedDocuments, progress: Math.round(documentProgress) },
-        assignments: { total: assignments.length, completed: completedAssignments.length, progress: Math.round(assignmentProgress) },
+        documents: { total: totalDocuments, completed: completedDocuments },
+        assignments: { total: totalAssignments, completed: completedAssignments },
+        totalItems,
+        completedItems,
         overallProgress: Math.round(overallProgress)
       });
       

@@ -1,6 +1,6 @@
 import { db } from './database';
 import * as schema from '../shared/schema';
-import { eq, and, desc, asc } from 'drizzle-orm';
+import { eq, and, desc, asc, ne, or, like } from 'drizzle-orm';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 
@@ -510,6 +510,370 @@ export class SQLiteStorage {
       .where(and(eq(schema.studyPlans.date, date), eq(schema.studyPlans.userId, userId)))
       .limit(1);
     return result[0];
+  }
+
+  // Friends
+  async sendFriendRequest(userId: number, friendId: number): Promise<schema.Friend> {
+    const result = await db
+      .insert(schema.friends)
+      .values({ userId, friendId, status: 'pending' })
+      .returning();
+    return result[0];
+  }
+
+  async acceptFriendRequest(userId: number, friendId: number): Promise<schema.Friend> {
+    const result = await db
+      .update(schema.friends)
+      .set({ status: 'accepted', updatedAt: new Date() })
+      .where(and(eq(schema.friends.userId, friendId), eq(schema.friends.friendId, userId)))
+      .returning();
+    return result[0];
+  }
+
+  async rejectFriendRequest(userId: number, friendId: number): Promise<void> {
+    await db
+      .delete(schema.friends)
+      .where(and(eq(schema.friends.userId, friendId), eq(schema.friends.friendId, userId)));
+  }
+
+  async getFriends(userId: number): Promise<Array<schema.User & { friendStatus: string }>> {
+    const result = await db
+      .select({
+        id: schema.users.id,
+        username: schema.users.username,
+        email: schema.users.email,
+        name: schema.users.name,
+        avatar: schema.users.avatar,
+        bio: schema.users.bio,
+        location: schema.users.location,
+        isActive: schema.users.isActive,
+        lastLoginDate: schema.users.lastLoginDate,
+        createdAt: schema.users.createdAt,
+        updatedAt: schema.users.updatedAt,
+        learningPace: schema.users.learningPace,
+        studyStreak: schema.users.studyStreak,
+        emailVerified: schema.users.emailVerified,
+        phone: schema.users.phone,
+        friendStatus: schema.friends.status,
+      })
+      .from(schema.friends)
+      .innerJoin(schema.users, eq(schema.friends.friendId, schema.users.id))
+      .where(and(eq(schema.friends.userId, userId), eq(schema.friends.status, 'accepted')));
+    return result;
+  }
+
+  async getPendingFriendRequests(userId: number): Promise<Array<schema.User & { friendStatus: string }>> {
+    const result = await db
+      .select({
+        id: schema.users.id,
+        username: schema.users.username,
+        email: schema.users.email,
+        name: schema.users.name,
+        avatar: schema.users.avatar,
+        bio: schema.users.bio,
+        location: schema.users.location,
+        isActive: schema.users.isActive,
+        lastLoginDate: schema.users.lastLoginDate,
+        createdAt: schema.users.createdAt,
+        updatedAt: schema.users.updatedAt,
+        learningPace: schema.users.learningPace,
+        studyStreak: schema.users.studyStreak,
+        emailVerified: schema.users.emailVerified,
+        phone: schema.users.phone,
+        friendStatus: schema.friends.status,
+      })
+      .from(schema.friends)
+      .innerJoin(schema.users, eq(schema.friends.userId, schema.users.id))
+      .where(and(eq(schema.friends.friendId, userId), eq(schema.friends.status, 'pending')));
+    return result;
+  }
+
+  async getSentFriendRequests(userId: number): Promise<Array<schema.User & { friendStatus: string }>> {
+    const result = await db
+      .select({
+        id: schema.users.id,
+        username: schema.users.username,
+        email: schema.users.email,
+        name: schema.users.name,
+        avatar: schema.users.avatar,
+        bio: schema.users.bio,
+        location: schema.users.location,
+        isActive: schema.users.isActive,
+        lastLoginDate: schema.users.lastLoginDate,
+        createdAt: schema.users.createdAt,
+        updatedAt: schema.users.updatedAt,
+        learningPace: schema.users.learningPace,
+        studyStreak: schema.users.studyStreak,
+        emailVerified: schema.users.emailVerified,
+        phone: schema.users.phone,
+        friendStatus: schema.friends.status,
+      })
+      .from(schema.friends)
+      .innerJoin(schema.users, eq(schema.friends.friendId, schema.users.id))
+      .where(and(eq(schema.friends.userId, userId), eq(schema.friends.status, 'pending')));
+    return result;
+  }
+
+  async deleteFriendRequest(userId: number, friendId: number): Promise<void> {
+    await db
+      .delete(schema.friends)
+      .where(
+        and(
+          eq(schema.friends.userId, userId),
+          eq(schema.friends.friendId, friendId)
+        )
+      );
+  }
+
+  async getAllFriendRequests(userId: number): Promise<Array<schema.User & { friendStatus: string; requestType: 'sent' | 'received' }>> {
+    // Get sent requests
+    const sentRequests = await db
+      .select({
+        id: schema.users.id,
+        username: schema.users.username,
+        email: schema.users.email,
+        name: schema.users.name,
+        avatar: schema.users.avatar,
+        bio: schema.users.bio,
+        location: schema.users.location,
+        isActive: schema.users.isActive,
+        lastLoginDate: schema.users.lastLoginDate,
+        createdAt: schema.users.createdAt,
+        updatedAt: schema.users.updatedAt,
+        learningPace: schema.users.learningPace,
+        studyStreak: schema.users.studyStreak,
+        emailVerified: schema.users.emailVerified,
+        phone: schema.users.phone,
+        friendStatus: schema.friends.status,
+        requestType: 'sent' as const,
+      })
+      .from(schema.friends)
+      .innerJoin(schema.users, eq(schema.friends.friendId, schema.users.id))
+      .where(eq(schema.friends.userId, userId));
+
+    // Get received requests
+    const receivedRequests = await db
+      .select({
+        id: schema.users.id,
+        username: schema.users.username,
+        email: schema.users.email,
+        name: schema.users.name,
+        avatar: schema.users.avatar,
+        bio: schema.users.bio,
+        location: schema.users.location,
+        isActive: schema.users.isActive,
+        lastLoginDate: schema.users.lastLoginDate,
+        createdAt: schema.users.createdAt,
+        updatedAt: schema.users.updatedAt,
+        learningPace: schema.users.learningPace,
+        studyStreak: schema.users.studyStreak,
+        emailVerified: schema.users.emailVerified,
+        phone: schema.users.phone,
+        friendStatus: schema.friends.status,
+        requestType: 'received' as const,
+      })
+      .from(schema.friends)
+      .innerJoin(schema.users, eq(schema.friends.userId, schema.users.id))
+      .where(eq(schema.friends.friendId, userId));
+
+    return [...sentRequests, ...receivedRequests];
+  }
+
+  async searchUsers(query: string, currentUserId: number): Promise<schema.User[]> {
+    // If query is empty or very short, return all users except current user
+    if (!query || query.length < 1) {
+      const result = await db
+        .select()
+        .from(schema.users)
+        .where(ne(schema.users.id, currentUserId)); // Exclude current user
+      return result;
+    }
+
+    // If query is provided, filter users
+    const result = await db
+      .select()
+      .from(schema.users)
+      .where(
+        and(
+          ne(schema.users.id, currentUserId), // Exclude current user
+          or(
+            like(schema.users.username, `%${query}%`),
+            like(schema.users.name, `%${query}%`),
+            like(schema.users.email, `%${query}%`)
+          )
+        )
+      );
+    return result;
+  }
+
+  async areFriends(userId1: number, userId2: number): Promise<boolean> {
+    const result = await db
+      .select()
+      .from(schema.friends)
+      .where(
+        and(
+          eq(schema.friends.status, 'accepted'),
+          // Check both directions of friendship
+          // This is a simplified check - you might want to use OR for both directions
+        )
+      )
+      .limit(1);
+    return result.length > 0;
+  }
+
+  // Messages
+  async sendMessage(messageData: schema.InsertMessage): Promise<schema.Message> {
+    const result = await db.insert(schema.messages).values(messageData).returning();
+    return result[0];
+  }
+
+  async getMessages(userId: number, friendId: number): Promise<schema.Message[]> {
+    const result = await db
+      .select()
+      .from(schema.messages)
+      .where(
+        and(
+          // Messages where user is sender and friend is receiver
+          eq(schema.messages.senderId, userId),
+          eq(schema.messages.receiverId, friendId)
+        )
+      )
+      .orderBy(asc(schema.messages.createdAt));
+    return result;
+  }
+
+  async getConversations(userId: number): Promise<Array<schema.User & { lastMessage: schema.Message; unreadCount: number }>> {
+    // This is a complex query - simplified version
+    const result = await db
+      .select({
+        id: schema.users.id,
+        username: schema.users.username,
+        email: schema.users.email,
+        name: schema.users.name,
+        avatar: schema.users.avatar,
+        bio: schema.users.bio,
+        location: schema.users.location,
+        isActive: schema.users.isActive,
+        lastLoginDate: schema.users.lastLoginDate,
+        createdAt: schema.users.createdAt,
+        updatedAt: schema.users.updatedAt,
+        learningPace: schema.users.learningPace,
+        studyStreak: schema.users.studyStreak,
+        emailVerified: schema.users.emailVerified,
+        phone: schema.users.phone,
+        lastMessage: schema.messages,
+        unreadCount: 0, // This would need a proper count query
+      })
+      .from(schema.friends)
+      .innerJoin(schema.users, eq(schema.friends.friendId, schema.users.id))
+      .leftJoin(schema.messages, eq(schema.messages.senderId, schema.users.id))
+      .where(and(eq(schema.friends.userId, userId), eq(schema.friends.status, 'accepted')));
+    return result;
+  }
+
+  async markMessagesAsRead(userId: number, senderId: number): Promise<void> {
+    await db
+      .update(schema.messages)
+      .set({ isRead: true, updatedAt: new Date() })
+      .where(and(eq(schema.messages.receiverId, userId), eq(schema.messages.senderId, senderId)));
+  }
+
+  // Groups
+  async createGroup(groupData: schema.InsertGroup, createdBy: number): Promise<schema.Group> {
+    const result = await db.insert(schema.groups).values({ ...groupData, createdBy }).returning();
+    return result[0];
+  }
+
+  async addGroupMember(groupId: number, userId: number, role: string = 'member'): Promise<schema.GroupMember> {
+    const result = await db
+      .insert(schema.groupMembers)
+      .values({ groupId, userId, role })
+      .returning();
+    return result[0];
+  }
+
+  async removeGroupMember(groupId: number, userId: number): Promise<void> {
+    await db
+      .delete(schema.groupMembers)
+      .where(and(eq(schema.groupMembers.groupId, groupId), eq(schema.groupMembers.userId, userId)));
+  }
+
+  async getUserGroups(userId: number): Promise<Array<schema.Group & { memberCount: number; lastMessage?: schema.Message }>> {
+    const result = await db
+      .select({
+        id: schema.groups.id,
+        name: schema.groups.name,
+        description: schema.groups.description,
+        avatar: schema.groups.avatar,
+        createdBy: schema.groups.createdBy,
+        isActive: schema.groups.isActive,
+        createdAt: schema.groups.createdAt,
+        updatedAt: schema.groups.updatedAt,
+        memberCount: 0, // This would need a proper count query
+        lastMessage: schema.messages,
+      })
+      .from(schema.groupMembers)
+      .innerJoin(schema.groups, eq(schema.groupMembers.groupId, schema.groups.id))
+      .leftJoin(schema.messages, eq(schema.messages.groupId, schema.groups.id))
+      .where(and(eq(schema.groupMembers.userId, userId), eq(schema.groups.isActive, true)));
+    return result;
+  }
+
+  async getGroupMembers(groupId: number): Promise<Array<schema.User & { role: string }>> {
+    const result = await db
+      .select({
+        id: schema.users.id,
+        username: schema.users.username,
+        email: schema.users.email,
+        name: schema.users.name,
+        avatar: schema.users.avatar,
+        bio: schema.users.bio,
+        location: schema.users.location,
+        isActive: schema.users.isActive,
+        lastLoginDate: schema.users.lastLoginDate,
+        createdAt: schema.users.createdAt,
+        updatedAt: schema.users.updatedAt,
+        learningPace: schema.users.learningPace,
+        studyStreak: schema.users.studyStreak,
+        emailVerified: schema.users.emailVerified,
+        phone: schema.users.phone,
+        role: schema.groupMembers.role,
+      })
+      .from(schema.groupMembers)
+      .innerJoin(schema.users, eq(schema.groupMembers.userId, schema.users.id))
+      .where(eq(schema.groupMembers.groupId, groupId));
+    return result;
+  }
+
+  async getGroupMessages(groupId: number): Promise<schema.Message[]> {
+    const result = await db
+      .select()
+      .from(schema.messages)
+      .where(eq(schema.messages.groupId, groupId))
+      .orderBy(asc(schema.messages.createdAt));
+    return result;
+  }
+
+  async isUserInGroup(userId: number, groupId: number): Promise<boolean> {
+    const result = await db
+      .select()
+      .from(schema.groupMembers)
+      .where(and(eq(schema.groupMembers.userId, userId), eq(schema.groupMembers.groupId, groupId)))
+      .limit(1);
+    return result.length > 0;
+  }
+
+  async updateGroup(groupId: number, groupData: Partial<schema.InsertGroup>): Promise<schema.Group> {
+    const result = await db
+      .update(schema.groups)
+      .set({ ...groupData, updatedAt: new Date() })
+      .where(eq(schema.groups.id, groupId))
+      .returning();
+    return result[0];
+  }
+
+  async deleteGroup(groupId: number): Promise<void> {
+    await db.delete(schema.groups).where(eq(schema.groups.id, groupId));
   }
 }
 

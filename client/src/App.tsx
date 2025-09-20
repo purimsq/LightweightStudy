@@ -25,7 +25,7 @@ import Progress from "@/pages/progress";
 import Music from "@/pages/music";
 import LocalMusic from "@/pages/local-music";
 import StudyDocuments from "@/pages/study-documents";
-import Mail from "@/pages/mail";
+import Messages from "@/pages/messages";
 import Sanctuary from "@/pages/sanctuary";
 import StudyCompanion from "@/pages/studycompanion";
 import Login from "@/pages/login";
@@ -94,7 +94,7 @@ function Router() {
               <Route path="/assignments/:id/view" component={AssignmentViewer} />
               <Route path="/study-plan" component={StudyPlan} />
               <Route path="/ai-chat" component={AiChat} />
-              <Route path="/mail" component={Mail} />
+              <Route path="/messages" component={Messages} />
               <Route path="/sanctuary" component={Sanctuary} />
                   <Route path="/studycompanion" component={StudyCompanion} />
                   <Route path="/progress" component={Progress} />

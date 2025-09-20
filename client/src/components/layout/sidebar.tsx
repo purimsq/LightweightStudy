@@ -1,6 +1,6 @@
 import { useLocation } from "wouter";
 import { Slider } from "@/components/ui/slider";
-import { Book, Home, Folder, ClipboardList, Calendar, Bot, Music, SkipBack, SkipForward, Pause, Mail, Heart, ChevronLeft, ChevronRight } from "lucide-react";
+import { Book, Home, Folder, ClipboardList, Calendar, Bot, Music, SkipBack, SkipForward, Pause, MessageCircle, Heart, ChevronLeft, ChevronRight } from "lucide-react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useState } from "react";
@@ -13,7 +13,7 @@ const navigation = [
   { name: "Assignments & CATs", href: "/assignments", icon: ClipboardList },
   { name: "Daily Study Plan", href: "/study-plan", icon: Calendar },
   { name: "AI Chat", href: "/ai-chat", icon: Bot },
-  { name: "Mail", href: "/mail", icon: Mail },
+  { name: "Messages", href: "/messages", icon: MessageCircle },
   { name: "Sanctuary", href: "/sanctuary", icon: Heart },
 ];
 
