@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
+import { useSocket } from "@/contexts/SocketContext";
 import { useToast } from "@/hooks/use-toast";
 
 interface User {
@@ -54,6 +55,7 @@ interface Group {
 
 export default function MessagesPage() {
   const { user } = useAuth();
+  const { socket, isConnected } = useSocket();
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState<'conversations' | 'requests' | 'friends' | 'search' | 'groups'>('conversations');
@@ -69,42 +71,149 @@ export default function MessagesPage() {
   const [showUserProfile, setShowUserProfile] = useState(false);
   const [profileUser, setProfileUser] = useState<User | null>(null);
   const [sentRequests, setSentRequests] = useState<Set<number>>(new Set());
+  const [typingUsers, setTypingUsers] = useState<Set<number>>(new Set());
+  const [isTyping, setIsTyping] = useState(false);
+  const [requestFilter, setRequestFilter] = useState<'sent' | 'received'>('received');
+
+  // Real-time message handling
+  useEffect(() => {
+    if (!socket || !user) return;
+
+    // Join chat room when a friend is selected
+    if (selectedFriend) {
+      socket.emit('join_chat', selectedFriend.id, user.id);
+    }
+
+    // Listen for new messages
+    socket.on('new_message', (message: any) => {
+      if (selectedFriend && message.senderId === selectedFriend.id) {
+        // Add message to local state immediately for real-time updates
+        queryClient.setQueryData(['/api/messages', selectedFriend.id], (oldData: any) => {
+          if (!oldData) return [message];
+          return [...oldData, message];
+        });
+      }
+      // Refresh conversations list
+      queryClient.invalidateQueries({ queryKey: ["/api/messages/conversations", user?.id] });
+    });
+
+    // Listen for typing indicators
+    socket.on('user_typing', (data: { userId: number; isTyping: boolean }) => {
+      if (selectedFriend && data.userId === selectedFriend.id) {
+        setTypingUsers(prev => {
+          const newSet = new Set(prev);
+          if (data.isTyping) {
+            newSet.add(data.userId);
+          } else {
+            newSet.delete(data.userId);
+          }
+          return newSet;
+        });
+      }
+    });
+
+    // Listen for friend request notifications
+    socket.on('friend_request_received', (data: any) => {
+      console.log('📨 Friend request received:', data);
+      // Refresh friend requests data
+      queryClient.invalidateQueries({ queryKey: ["/api/friends/pending", user?.id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/friends/all", user?.id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/friends/sent", user?.id] });
+      
+      // Show notification
+      toast.success(`New friend request from ${data.fromName}!`);
+    });
+
+    // Listen for friend request acceptance notifications
+    socket.on('friend_request_accepted', (data: any) => {
+      console.log('📨 Friend request accepted:', data);
+      // Refresh all friend-related data
+      queryClient.invalidateQueries({ queryKey: ["/api/friends", user?.id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/friends/pending", user?.id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/friends/all", user?.id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/friends/sent", user?.id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/messages/conversations", user?.id] });
+      
+      // Show notification
+      toast.success(`You are now friends with ${data.fromName}!`);
+    });
+
+    return () => {
+      socket.off('new_message');
+      socket.off('user_typing');
+      socket.off('friend_request_received');
+      socket.off('friend_request_accepted');
+    };
+  }, [socket, user, selectedFriend, queryClient]);
 
   // Fetch conversations
   const { data: conversations = [] } = useQuery({
-    queryKey: ["/api/messages/conversations"],
+    queryKey: ["/api/messages/conversations", user?.id],
+    enabled: !!user,
   });
 
   // Fetch friends
   const { data: friends = [] } = useQuery({
-    queryKey: ["/api/friends"],
+    queryKey: ["/api/friends", user?.id],
+    enabled: !!user,
   });
 
   // Fetch pending friend requests
   const { data: pendingRequests = [] } = useQuery({
-    queryKey: ["/api/friends/pending"],
+    queryKey: ["/api/friends/pending", user?.id],
+    enabled: !!user,
   });
 
   // Fetch all friend requests
   const { data: allFriendRequests = [] } = useQuery({
-    queryKey: ["/api/friends/all"],
+    queryKey: ["/api/friends/all", user?.id],
+    enabled: !!user,
   });
 
   // Fetch groups
   const { data: groups = [] } = useQuery({
-    queryKey: ["/api/groups"],
+    queryKey: ["/api/groups", user?.id],
+    enabled: !!user,
   });
 
   // Fetch messages for selected friend
   const { data: messages = [] } = useQuery({
-    queryKey: selectedGroup ? ["/api/groups", selectedGroup.id, "messages"] : ["/api/messages", selectedFriend?.id],
-    enabled: !!selectedFriend || !!selectedGroup,
+    queryKey: selectedGroup ? ["/api/groups", selectedGroup.id, "messages", user?.id] : ["/api/messages", selectedFriend?.id, user?.id],
+    enabled: (!!selectedFriend || !!selectedGroup) && !!user,
   });
 
   // Search users
   const { data: searchResults = [] } = useQuery({
-    queryKey: [`/api/users/search?q=${searchQuery}`],
-    enabled: activeTab === 'search', // Always fetch when on search tab
+    queryKey: ["/api/users/search", user?.id, searchQuery],
+    queryFn: async () => {
+      const token = localStorage.getItem('authToken');
+      const url = `/api/users/search?q=${encodeURIComponent(searchQuery)}`;
+      console.log(`🌐 Search Query Request: ${url}`);
+      
+      const res = await fetch(url, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+        credentials: "include",
+      });
+
+      console.log(`📡 Search Query Response: ${res.status} ${res.statusText} for ${url}`);
+
+      if (!res.ok) {
+        throw new Error(`Search failed: ${res.statusText}`);
+      }
+
+      const data = await res.json();
+      console.log(`📄 Search Query Data for ${url}:`, data);
+      return data;
+    },
+    enabled: (activeTab === 'search' || searchQuery.length > 0) && !!user, // Search when on search tab or when there's a query
+  });
+
+  // Get all friend requests to check status
+  const { data: allRequests = [] } = useQuery({
+    queryKey: ["/api/friends/all", user?.id],
+    enabled: !!user,
   });
 
   // Send message mutation
@@ -134,10 +243,10 @@ export default function MessagesPage() {
       setNewMessage('');
       if (selectedGroup) {
         queryClient.invalidateQueries({ queryKey: ["/api/groups", selectedGroup.id, "messages"] });
-        queryClient.invalidateQueries({ queryKey: ["/api/groups"] });
+        queryClient.invalidateQueries({ queryKey: ["/api/groups", user?.id] });
       } else {
         queryClient.invalidateQueries({ queryKey: ["/api/messages", selectedFriend?.id] });
-        queryClient.invalidateQueries({ queryKey: ["/api/messages/conversations"] });
+        queryClient.invalidateQueries({ queryKey: ["/api/messages/conversations", user?.id] });
       }
     },
   });
@@ -166,14 +275,17 @@ export default function MessagesPage() {
       setGroupDescription('');
       setSelectedMembers([]);
       setShowCreateGroup(false);
-      queryClient.invalidateQueries({ queryKey: ["/api/groups"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/groups", user?.id] });
     },
   });
 
   // Send friend request mutation
   const sendFriendRequestMutation = useMutation({
     mutationFn: async (friendId: number) => {
+      console.log('🚀 Friend request mutation started for user ID:', friendId);
       const token = localStorage.getItem('authToken');
+      console.log('🔑 Token exists:', !!token);
+      
       const response = await fetch('/api/friends/request', {
         method: 'POST',
         headers: {
@@ -182,14 +294,24 @@ export default function MessagesPage() {
         },
         body: JSON.stringify({ friendId }),
       });
-      if (!response.ok) throw new Error('Failed to send friend request');
-      return response.json();
+      
+      console.log('📡 Friend request response:', response.status, response.statusText);
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error('❌ Friend request failed:', errorData);
+        throw new Error(`Failed to send friend request: ${errorData.message || response.statusText}`);
+      }
+      
+      const data = await response.json();
+      console.log('✅ Friend request success:', data);
+      return data;
     },
     onSuccess: (data, variables) => {
-      queryClient.invalidateQueries({ queryKey: ["/api/friends"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/friends/pending"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/friends/sent"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/friends/all"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/friends", user?.id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/friends/pending", user?.id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/friends/sent", user?.id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/friends/all", user?.id] });
       setSentRequests(prev => new Set([...prev, variables]));
       toast.success('Friend request sent!');
     },
@@ -214,13 +336,23 @@ export default function MessagesPage() {
       if (!response.ok) throw new Error('Failed to accept friend request');
       return response.json();
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/friends"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/friends/pending"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/friends/sent"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/friends/all"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/messages/conversations"] });
-      toast.success('Friend request accepted!');
+    onSuccess: (data, friendId) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/friends", user?.id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/friends/pending", user?.id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/friends/sent", user?.id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/friends/all", user?.id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/messages/conversations", user?.id] });
+      
+      // Automatically switch to conversations tab and select the new friend
+      setActiveTab('conversations');
+      
+      // Find the new friend in the updated conversations list
+      setTimeout(() => {
+        queryClient.invalidateQueries({ queryKey: ["/api/messages/conversations", user?.id] });
+        // The conversations will be refreshed and the new friend should appear
+      }, 100);
+      
+      toast.success('Friend request accepted! You can now start chatting.');
     },
     onError: (error) => {
       console.error('Accept friend request error:', error);
@@ -244,9 +376,9 @@ export default function MessagesPage() {
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/friends/pending"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/friends/sent"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/friends/all"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/friends/pending", user?.id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/friends/sent", user?.id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/friends/all", user?.id] });
       toast.success('Friend request rejected');
     },
     onError: (error) => {
@@ -269,9 +401,9 @@ export default function MessagesPage() {
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/friends/pending"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/friends/sent"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/friends/all"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/friends/pending", user?.id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/friends/sent", user?.id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/friends/all", user?.id] });
       toast.success('Friend request deleted');
     },
     onError: (error) => {
@@ -282,12 +414,55 @@ export default function MessagesPage() {
 
   const handleSendMessage = (e: React.FormEvent) => {
     e.preventDefault();
-    if (newMessage.trim() && selectedFriend) {
+    if (newMessage.trim() && selectedFriend && user) {
+      // Send message via socket for real-time delivery
+      if (socket) {
+        socket.emit('send_message', {
+          friendId: selectedFriend.id,
+          userId: user.id,
+          content: newMessage.trim(),
+          messageType: 'text'
+        });
+      }
+      
+      // Also save to database
       sendMessageMutation.mutate(newMessage.trim());
+      setNewMessage('');
+    }
+  };
+
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSendMessage(e);
+    }
+    // Allow all other keys including space to work normally
+  };
+
+  const handleTyping = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setNewMessage(e.target.value);
+    
+    if (socket && selectedFriend && user) {
+      if (e.target.value.length > 0 && !isTyping) {
+        setIsTyping(true);
+        socket.emit('typing', {
+          friendId: selectedFriend.id,
+          userId: user.id,
+          isTyping: true
+        });
+      } else if (e.target.value.length === 0 && isTyping) {
+        setIsTyping(false);
+        socket.emit('typing', {
+          friendId: selectedFriend.id,
+          userId: user.id,
+          isTyping: false
+        });
+      }
     }
   };
 
   const handleSendFriendRequest = (friendId: number) => {
+    console.log('🔗 Sending friend request to user ID:', friendId);
     sendFriendRequestMutation.mutate(friendId);
   };
 
@@ -394,23 +569,38 @@ export default function MessagesPage() {
                   <p className={`text-xs mt-1 ${
                     message.senderId === user?.id ? 'text-primary-100' : 'text-gray-500'
                   }`}>
-                    {formatTime(message.createdAt)}
+                    {formatTime(message.createdAt || message.timestamp)}
                   </p>
                 </div>
               </div>
             </div>
           ))}
+          
+          {/* Typing indicator */}
+          {typingUsers.size > 0 && (
+            <div className="flex justify-start">
+              <div className="bg-gray-100 text-gray-900 px-4 py-2 rounded-lg">
+                <p className="text-sm italic">
+                  {Array.from(typingUsers).map(userId => {
+                    const typingUser = conversations.find((c: any) => c.id === userId);
+                    return typingUser ? typingUser.name : 'Someone';
+                  }).join(', ')} {typingUsers.size === 1 ? 'is' : 'are'} typing...
+                </p>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Message Input */}
         <form onSubmit={handleSendMessage} className="bg-white border-t p-4">
           <div className="flex space-x-2">
-            <Input
-              value={newMessage}
-              onChange={(e) => setNewMessage(e.target.value)}
-              placeholder="Type a message..."
-              className="flex-1"
-            />
+                <Input
+                  value={newMessage}
+                  onChange={handleTyping}
+                  onKeyPress={handleKeyPress}
+                  placeholder="Type a message... (Press Enter to send)"
+                  className="flex-1"
+                />
             <Button
               type="submit"
               disabled={!newMessage.trim() || sendMessageMutation.isPending}
@@ -435,7 +625,12 @@ export default function MessagesPage() {
             </div>
             <div>
               <h1 className="text-2xl font-bold text-gray-900">Messages</h1>
-              <div className="w-2 h-2 bg-green-500 rounded-full inline-block ml-2" />
+              <div className="flex items-center space-x-2">
+                <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'}`}></div>
+                <span className="text-sm text-gray-500">
+                  {isConnected ? 'Connected' : 'Disconnected'}
+                </span>
+              </div>
             </div>
           </div>
           <Button
@@ -664,96 +859,128 @@ export default function MessagesPage() {
             </div>
           )}
 
-            {activeTab === 'requests' && (
-              <div>
-                <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-                  <UserPlus className="w-5 h-5 mr-2" />
-                  Friend Requests
-                </h2>
-                
-                {/* All Requests */}
-                {allFriendRequests.length > 0 ? (
-                  <div className="space-y-2">
-                    {allFriendRequests.map((request: any) => (
-                      <Card key={`${request.requestType}-${request.id}`} className="p-4">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center space-x-3">
-                            <div className="w-10 h-10 bg-primary rounded-full flex items-center justify-center text-white font-medium">
-                              {getInitials(request.name)}
-                            </div>
-                            <div>
-                              <h4 className="font-medium">{request.name}</h4>
-                              <p className="text-sm text-gray-500">@{request.username}</p>
-                              <p className="text-xs text-gray-400">
-                                {request.requestType === 'sent' ? 'You sent a request' : 'Sent you a request'}
-                              </p>
-                            </div>
-                          </div>
-                          <div className="flex items-center space-x-2">
-                            {/* Status Badge */}
-                            <Badge 
-                              variant={request.friendStatus === 'accepted' ? 'default' : 
-                                      request.friendStatus === 'rejected' ? 'destructive' : 
-                                      'secondary'}
-                              className={
-                                request.friendStatus === 'accepted' ? 'bg-green-100 text-green-800' :
-                                request.friendStatus === 'rejected' ? 'bg-red-100 text-red-800' :
-                                'bg-yellow-100 text-yellow-800'
-                              }
-                            >
-                              {request.friendStatus === 'accepted' ? 'Accepted' :
-                               request.friendStatus === 'rejected' ? 'Rejected' :
-                               'Pending'}
-                            </Badge>
-                            
-                            {/* Action Buttons */}
-                            {request.requestType === 'received' && request.friendStatus === 'pending' && (
-                              <div className="flex space-x-1">
-                                <Button
-                                  size="sm"
-                                  onClick={() => handleAcceptFriendRequest(request.id)}
-                                  disabled={acceptFriendRequestMutation.isPending}
-                                  className="bg-green-600 hover:bg-green-700"
-                                >
-                                  <Check className="w-4 h-4 mr-1" />
-                                  Accept
-                                </Button>
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={() => handleRejectFriendRequest(request.id)}
-                                  disabled={rejectFriendRequestMutation.isPending}
-                                >
-                                  <X className="w-4 h-4 mr-1" />
-                                  Reject
-                                </Button>
+                {activeTab === 'requests' && (
+                  <div>
+                    <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                      <UserPlus className="w-5 h-5 mr-2" />
+                      Friend Requests
+                    </h2>
+                    
+                    {/* Tabs for Sent and Received */}
+                    <div className="flex space-x-4 mb-6">
+                      <button
+                        onClick={() => setRequestFilter('received')}
+                        className={`px-4 py-2 rounded-lg font-medium ${
+                          requestFilter === 'received'
+                            ? 'bg-primary text-white'
+                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                        }`}
+                      >
+                        Received ({allFriendRequests.filter((r: any) => r.requestType === 'received').length})
+                      </button>
+                      <button
+                        onClick={() => setRequestFilter('sent')}
+                        className={`px-4 py-2 rounded-lg font-medium ${
+                          requestFilter === 'sent'
+                            ? 'bg-primary text-white'
+                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                        }`}
+                      >
+                        Sent ({allFriendRequests.filter((r: any) => r.requestType === 'sent').length})
+                      </button>
+                    </div>
+                    
+                    {/* Filtered Requests */}
+                    {(() => {
+                      const filteredRequests = allFriendRequests.filter((r: any) => r.requestType === requestFilter);
+                      return filteredRequests.length > 0 ? (
+                        <div className="space-y-2">
+                          {filteredRequests.map((request: any) => (
+                            <Card key={`${request.requestType}-${request.id}`} className="p-4">
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center space-x-3">
+                                  <div className="w-10 h-10 bg-primary rounded-full flex items-center justify-center text-white font-medium">
+                                    {getInitials(request.name)}
+                                  </div>
+                                  <div>
+                                    <h4 className="font-medium">{request.name}</h4>
+                                    <p className="text-sm text-gray-500">@{request.username}</p>
+                                    <p className="text-xs text-gray-400">
+                                      {request.requestType === 'sent' ? 'You sent a request' : 'Sent you a request'}
+                                    </p>
+                                  </div>
+                                </div>
+                                <div className="flex items-center space-x-2">
+                                  {/* Status Badge */}
+                                  <Badge 
+                                    variant={request.friendStatus === 'accepted' ? 'default' : 
+                                            request.friendStatus === 'rejected' ? 'destructive' : 
+                                            'secondary'}
+                                    className={
+                                      request.friendStatus === 'accepted' ? 'bg-green-100 text-green-800' :
+                                      request.friendStatus === 'rejected' ? 'bg-red-100 text-red-800' :
+                                      'bg-yellow-100 text-yellow-800'
+                                    }
+                                  >
+                                    {request.friendStatus === 'accepted' ? 'Accepted' :
+                                     request.friendStatus === 'rejected' ? 'Rejected' :
+                                     'Pending'}
+                                  </Badge>
+                                  
+                                  {/* Action Buttons */}
+                                  {request.requestType === 'received' && request.friendStatus === 'pending' && (
+                                    <div className="flex space-x-1">
+                                      <Button
+                                        size="sm"
+                                        onClick={() => handleAcceptFriendRequest(request.id)}
+                                        disabled={acceptFriendRequestMutation.isPending}
+                                        className="bg-green-600 hover:bg-green-700 text-white"
+                                      >
+                                        <Check className="w-4 h-4 mr-1" />
+                                        Accept
+                                      </Button>
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={() => handleRejectFriendRequest(request.id)}
+                                        disabled={rejectFriendRequestMutation.isPending}
+                                        className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                                      >
+                                        <X className="w-4 h-4 mr-1" />
+                                        Reject
+                                      </Button>
+                                    </div>
+                                  )}
+                                  
+                                  {/* Delete Button */}
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => deleteFriendRequestMutation.mutate(request.id)}
+                                    disabled={deleteFriendRequestMutation.isPending}
+                                    className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                                  >
+                                    <X className="w-4 h-4" />
+                                  </Button>
+                                </div>
                               </div>
-                            )}
-                            
-                            {/* Delete Button */}
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => deleteFriendRequestMutation.mutate(request.id)}
-                              disabled={deleteFriendRequestMutation.isPending}
-                              className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                            >
-                              <X className="w-4 h-4" />
-                            </Button>
-                          </div>
+                            </Card>
+                          ))}
                         </div>
-                      </Card>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="text-center py-8 text-gray-500">
-                    <UserPlus className="w-12 h-12 mx-auto mb-4 text-gray-300" />
-                    <p>No friend requests</p>
-                    <p className="text-sm">Send friend requests to start connecting!</p>
+                      ) : (
+                        <div className="text-center py-8 text-gray-500">
+                          <UserPlus className="w-12 h-12 mx-auto mb-4 text-gray-300" />
+                          <p>No {requestFilter} friend requests</p>
+                          <p className="text-sm">
+                            {requestFilter === 'sent' 
+                              ? 'Send friend requests to start connecting!' 
+                              : 'You haven\'t received any friend requests yet.'}
+                          </p>
+                        </div>
+                      );
+                    })()}
                   </div>
                 )}
-              </div>
-            )}
 
             {activeTab === 'friends' && (
             <div>
@@ -879,21 +1106,80 @@ export default function MessagesPage() {
                         </div>
                       </div>
                        <div className="flex space-x-2">
-                         <Button
-                           variant="outline"
-                           onClick={() => handleViewProfile(user)}
-                         >
-                           <Info className="w-4 h-4 mr-2" />
-                           View Profile
-                         </Button>
-                         <Button
-                           onClick={() => handleSendFriendRequest(user.id)}
-                           disabled={sendFriendRequestMutation.isPending || sentRequests.has(user.id)}
-                           className={sentRequests.has(user.id) ? "bg-green-600 hover:bg-green-700" : "bg-primary hover:bg-primary/90"}
-                         >
-                           <UserPlus className="w-4 h-4 mr-2" />
-                           {sentRequests.has(user.id) ? 'Request Sent' : sendFriendRequestMutation.isPending ? 'Sending...' : 'Add Friend'}
-                         </Button>
+                         {(() => {
+                           const isFriend = friends.some((f: any) => f.id === user.id);
+                           const sentRequest = allRequests.find((r: any) => r.id === user.id && r.requestType === 'sent');
+                           const receivedRequest = allRequests.find((r: any) => r.id === user.id && r.requestType === 'received');
+                           
+                           if (isFriend) {
+                             return (
+                               <Button
+                                 onClick={() => {
+                                   setSelectedFriend(user);
+                                   setActiveTab('conversations');
+                                 }}
+                                 className="bg-blue-600 hover:bg-blue-700 text-white"
+                               >
+                                 <MessageCircle className="w-4 h-4 mr-2" />
+                                 Message
+                               </Button>
+                             );
+                           } else if (sentRequest) {
+                             return (
+                               <Button
+                                 disabled={true}
+                                 className="bg-green-600 cursor-not-allowed"
+                               >
+                                 <UserPlus className="w-4 h-4 mr-2" />
+                                 Request Sent
+                               </Button>
+                             );
+                           } else if (receivedRequest) {
+                             return (
+                               <div className="flex space-x-1">
+                                 <Button
+                                   size="sm"
+                                   onClick={() => handleAcceptFriendRequest(user.id)}
+                                   disabled={acceptFriendRequestMutation.isPending}
+                                   className="bg-green-600 hover:bg-green-700 text-white"
+                                 >
+                                   <Check className="w-4 h-4 mr-1" />
+                                   Accept
+                                 </Button>
+                                 <Button
+                                   size="sm"
+                                   variant="outline"
+                                   onClick={() => handleRejectFriendRequest(user.id)}
+                                   disabled={rejectFriendRequestMutation.isPending}
+                                   className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                                 >
+                                   <X className="w-4 h-4 mr-1" />
+                                   Reject
+                                 </Button>
+                               </div>
+                             );
+                           } else {
+                             return (
+                               <>
+                                 <Button
+                                   variant="outline"
+                                   onClick={() => handleViewProfile(user)}
+                                 >
+                                   <Info className="w-4 h-4 mr-2" />
+                                   View Profile
+                                 </Button>
+                                 <Button
+                                   onClick={() => handleSendFriendRequest(user.id)}
+                                   disabled={sendFriendRequestMutation.isPending}
+                                   className="bg-primary hover:bg-primary/90"
+                                 >
+                                   <UserPlus className="w-4 h-4 mr-2" />
+                                   {sendFriendRequestMutation.isPending ? 'Sending...' : 'Add Friend'}
+                                 </Button>
+                               </>
+                             );
+                           }
+                         })()}
                        </div>
                     </div>
                   ))}

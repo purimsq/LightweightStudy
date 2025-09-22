@@ -1,5 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { useLocation } from 'wouter';
+import { queryClient } from '@/lib/queryClient';
+import { usePageStateStore } from '@/stores/pageStateStore';
 
 export interface User {
   id: number;
@@ -195,6 +197,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         console.error('Logout request failed:', error);
       });
     }
+
+    // Clear all cached data for privacy
+    queryClient.clear();
+    
+    // Clear Zustand store states on logout
+    usePageStateStore.getState().clearAllStates();
 
     // Clear local storage
     localStorage.removeItem('authToken');

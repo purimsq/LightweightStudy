@@ -4,7 +4,6 @@ import { Button } from "@/components/ui/button";
 import { ArrowLeft, Download, Edit, Eye, Save } from "lucide-react";
 import { useState } from "react";
 import type { Assignment } from "@shared/schema";
-import PDFViewer from "@/components/viewers/pdf-viewer";
 import DOCXViewer from "@/components/viewers/docx-viewer";
 import EditableDocument from "@/components/viewers/editable-document";
 
@@ -99,12 +98,7 @@ export default function AssignmentViewer() {
         <div className="max-w-6xl mx-auto">
           {assignment.attachedFilePath ? (
             // Show file viewer based on type
-            assignment.attachedFileType === "application/pdf" ? (
-              <PDFViewer 
-                fileUrl={assignment.attachedFilePath} 
-                documentId={assignment.id.toString()}
-              />
-            ) : assignment.attachedFileType?.includes("document") ? (
+            assignment.attachedFileType?.includes("document") ? (
               <DOCXViewer 
                 fileUrl={assignment.attachedFilePath} 
                 filename={assignment.attachedFileName || "document.docx"}

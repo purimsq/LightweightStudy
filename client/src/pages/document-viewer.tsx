@@ -3,16 +3,18 @@ import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { ArrowLeft, Download, BookOpen, FileText, Eye } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import type { Document } from "@shared/schema";
-import PDFViewer from "@/components/viewers/pdf-viewer";
 import DOCXViewer from "@/components/viewers/docx-viewer";
 import EditableDocument from "@/components/viewers/editable-document";
+import { useDocumentViewerStore } from "@/stores/pageStateStore";
 
 export default function DocumentViewer() {
   const [location, setLocation] = useLocation();
   const documentId = parseInt(location.split("/")[2]);
-  const [viewMode, setViewMode] = useState<"text" | "original">("text");
+  
+  // Use Zustand store for persistent state
+  const { viewMode, setViewMode } = useDocumentViewerStore(documentId);
 
   const { data: document, isLoading } = useQuery({
     queryKey: ["/api/documents", documentId],
@@ -144,7 +146,7 @@ export default function DocumentViewer() {
       {/* Document Content */}
       <div className="pt-20 px-8 pb-8 bg-neutral-50 min-h-screen">
         <div className="max-w-5xl mx-auto">
-          {document.extractedText || document.fileType === 'application/pdf' || document.fileType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ? (
+          {document.extractedText || document.fileType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ? (
             <div className="bg-white">
               {/* Document Toolbar */}
               <div className="bg-white border border-neutral-200 rounded-t-lg p-4 flex items-center justify-between">
@@ -162,23 +164,14 @@ export default function DocumentViewer() {
                 </div>
                 <div className="flex items-center space-x-3">
                   <div className="text-xs text-neutral-500">
-                    {document.fileType === 'application/pdf' ? 'PDF Viewer' : 
-                     document.fileType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ? 'DOCX Viewer' : 
+                    {document.fileType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ? 'DOCX Viewer' : 
                      'Text Editor'}
                   </div>
                 </div>
               </div>
               
               {/* Document Viewer */}
-              {document.fileType === 'application/pdf' ? (
-                <div className="border border-neutral-200 rounded-b-lg overflow-hidden">
-                  <PDFViewer 
-                    fileUrl={document.filePath} 
-                    documentId={documentId.toString()}
-                    unitId={document.unitId}
-                  />
-                </div>
-              ) : document.fileType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ? (
+              {document.fileType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ? (
                 <div className="border border-neutral-200 rounded-b-lg overflow-hidden">
                   <DOCXViewer 
                     fileUrl={document.filePath} 
@@ -205,9 +198,7 @@ export default function DocumentViewer() {
               <FileText className="w-24 h-24 text-neutral-400 mx-auto mb-6" />
               <h2 className="text-2xl font-bold text-neutral-800 mb-2">Document Ready for Viewing</h2>
               <p className="text-neutral-600 mb-4">
-                {document.fileType === 'application/pdf' ? 
-                  'PDF documents are displayed using the built-in PDF viewer with zoom, navigation, and outline features.' :
-                  document.fileType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ?
+                {document.fileType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ?
                   'DOCX documents are converted to HTML for easy reading with automatic heading detection and navigation.' :
                   'This document is ready for viewing and editing.'
                 }

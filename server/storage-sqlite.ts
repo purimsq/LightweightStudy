@@ -1,6 +1,6 @@
 import { db } from './database';
 import * as schema from '../shared/schema';
-import { eq, and, desc, asc, ne, or, like } from 'drizzle-orm';
+import { eq, and, desc, asc, ne, or, like, count } from 'drizzle-orm';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 
@@ -514,6 +514,22 @@ export class SQLiteStorage {
 
   // Friends
   async sendFriendRequest(userId: number, friendId: number): Promise<schema.Friend> {
+    // Check if there's already a friendship or pending request
+    const existingFriendship = await db
+      .select()
+      .from(schema.friends)
+      .where(
+        or(
+          and(eq(schema.friends.userId, userId), eq(schema.friends.friendId, friendId)),
+          and(eq(schema.friends.userId, friendId), eq(schema.friends.friendId, userId))
+        )
+      )
+      .limit(1);
+
+    if (existingFriendship.length > 0) {
+      throw new Error('Friend request already exists or users are already friends');
+    }
+
     const result = await db
       .insert(schema.friends)
       .values({ userId, friendId, status: 'pending' })
@@ -522,11 +538,22 @@ export class SQLiteStorage {
   }
 
   async acceptFriendRequest(userId: number, friendId: number): Promise<schema.Friend> {
+    // Update the existing friend request to accepted
     const result = await db
       .update(schema.friends)
       .set({ status: 'accepted', updatedAt: new Date() })
       .where(and(eq(schema.friends.userId, friendId), eq(schema.friends.friendId, userId)))
       .returning();
+
+    // Create the reverse friendship for the accepting user
+    await db
+      .insert(schema.friends)
+      .values({
+        userId: userId,
+        friendId: friendId,
+        status: 'accepted'
+      });
+
     return result[0];
   }
 
@@ -626,57 +653,41 @@ export class SQLiteStorage {
   }
 
   async getAllFriendRequests(userId: number): Promise<Array<schema.User & { friendStatus: string; requestType: 'sent' | 'received' }>> {
-    // Get sent requests
-    const sentRequests = await db
-      .select({
-        id: schema.users.id,
-        username: schema.users.username,
-        email: schema.users.email,
-        name: schema.users.name,
-        avatar: schema.users.avatar,
-        bio: schema.users.bio,
-        location: schema.users.location,
-        isActive: schema.users.isActive,
-        lastLoginDate: schema.users.lastLoginDate,
-        createdAt: schema.users.createdAt,
-        updatedAt: schema.users.updatedAt,
-        learningPace: schema.users.learningPace,
-        studyStreak: schema.users.studyStreak,
-        emailVerified: schema.users.emailVerified,
-        phone: schema.users.phone,
-        friendStatus: schema.friends.status,
-        requestType: 'sent' as const,
-      })
-      .from(schema.friends)
-      .innerJoin(schema.users, eq(schema.friends.friendId, schema.users.id))
-      .where(eq(schema.friends.userId, userId));
+    try {
+      // Get sent requests - where current user is the sender AND status is pending
+      const sentRequests = await db
+        .select()
+        .from(schema.friends)
+        .innerJoin(schema.users, eq(schema.friends.friendId, schema.users.id))
+        .where(and(eq(schema.friends.userId, userId), eq(schema.friends.status, 'pending')));
 
-    // Get received requests
-    const receivedRequests = await db
-      .select({
-        id: schema.users.id,
-        username: schema.users.username,
-        email: schema.users.email,
-        name: schema.users.name,
-        avatar: schema.users.avatar,
-        bio: schema.users.bio,
-        location: schema.users.location,
-        isActive: schema.users.isActive,
-        lastLoginDate: schema.users.lastLoginDate,
-        createdAt: schema.users.createdAt,
-        updatedAt: schema.users.updatedAt,
-        learningPace: schema.users.learningPace,
-        studyStreak: schema.users.studyStreak,
-        emailVerified: schema.users.emailVerified,
-        phone: schema.users.phone,
-        friendStatus: schema.friends.status,
-        requestType: 'received' as const,
-      })
-      .from(schema.friends)
-      .innerJoin(schema.users, eq(schema.friends.userId, schema.users.id))
-      .where(eq(schema.friends.friendId, userId));
+      // Get received requests - where current user is the receiver AND status is pending
+      const receivedRequests = await db
+        .select()
+        .from(schema.friends)
+        .innerJoin(schema.users, eq(schema.friends.userId, schema.users.id))
+        .where(and(eq(schema.friends.friendId, userId), eq(schema.friends.status, 'pending')));
 
-    return [...sentRequests, ...receivedRequests];
+
+      // Transform the results
+      const allRequests = [
+        ...sentRequests.map(req => ({
+          ...req.users,
+          friendStatus: req.friends.status,
+          requestType: 'sent' as const,
+        })),
+        ...receivedRequests.map(req => ({
+          ...req.users,
+          friendStatus: req.friends.status,
+          requestType: 'received' as const,
+        }))
+      ];
+
+      return allRequests;
+    } catch (error) {
+      console.error('Error in getAllFriendRequests:', error);
+      return [];
+    }
   }
 
   async searchUsers(query: string, currentUserId: number): Promise<schema.User[]> {
@@ -742,33 +753,79 @@ export class SQLiteStorage {
     return result;
   }
 
-  async getConversations(userId: number): Promise<Array<schema.User & { lastMessage: schema.Message; unreadCount: number }>> {
-    // This is a complex query - simplified version
-    const result = await db
-      .select({
-        id: schema.users.id,
-        username: schema.users.username,
-        email: schema.users.email,
-        name: schema.users.name,
-        avatar: schema.users.avatar,
-        bio: schema.users.bio,
-        location: schema.users.location,
-        isActive: schema.users.isActive,
-        lastLoginDate: schema.users.lastLoginDate,
-        createdAt: schema.users.createdAt,
-        updatedAt: schema.users.updatedAt,
-        learningPace: schema.users.learningPace,
-        studyStreak: schema.users.studyStreak,
-        emailVerified: schema.users.emailVerified,
-        phone: schema.users.phone,
-        lastMessage: schema.messages,
-        unreadCount: 0, // This would need a proper count query
-      })
-      .from(schema.friends)
-      .innerJoin(schema.users, eq(schema.friends.friendId, schema.users.id))
-      .leftJoin(schema.messages, eq(schema.messages.senderId, schema.users.id))
-      .where(and(eq(schema.friends.userId, userId), eq(schema.friends.status, 'accepted')));
-    return result;
+  async getConversations(userId: number): Promise<Array<schema.User & { lastMessage: schema.Message | null; unreadCount: number }>> {
+    try {
+      // Get all accepted friends for the user
+      const friends = await db
+        .select({
+          id: schema.users.id,
+          username: schema.users.username,
+          email: schema.users.email,
+          name: schema.users.name,
+          avatar: schema.users.avatar,
+          bio: schema.users.bio,
+          location: schema.users.location,
+          isActive: schema.users.isActive,
+          lastLoginDate: schema.users.lastLoginDate,
+          createdAt: schema.users.createdAt,
+          updatedAt: schema.users.updatedAt,
+          learningPace: schema.users.learningPace,
+          studyStreak: schema.users.studyStreak,
+          emailVerified: schema.users.emailVerified,
+          phone: schema.users.phone,
+        })
+        .from(schema.friends)
+        .innerJoin(schema.users, eq(schema.friends.friendId, schema.users.id))
+        .where(and(eq(schema.friends.userId, userId), eq(schema.friends.status, 'accepted')));
+
+      // For each friend, get the last message and unread count
+      const conversations = await Promise.all(
+        friends.map(async (friend) => {
+          try {
+            const lastMessage = await db
+              .select()
+              .from(schema.messages)
+              .where(
+                or(
+                  and(eq(schema.messages.senderId, userId), eq(schema.messages.receiverId, friend.id)),
+                  and(eq(schema.messages.senderId, friend.id), eq(schema.messages.receiverId, userId))
+                )
+              )
+              .orderBy(desc(schema.messages.createdAt))
+              .limit(1);
+
+            const unreadCount = await db
+              .select({ count: count() })
+              .from(schema.messages)
+              .where(
+                and(
+                  eq(schema.messages.senderId, friend.id),
+                  eq(schema.messages.receiverId, userId),
+                  eq(schema.messages.isRead, false)
+                )
+              );
+
+            return {
+              ...friend,
+              lastMessage: lastMessage[0] || null,
+              unreadCount: unreadCount[0]?.count || 0,
+            };
+          } catch (error) {
+            console.error(`Error getting conversation for friend ${friend.id}:`, error);
+            return {
+              ...friend,
+              lastMessage: null,
+              unreadCount: 0,
+            };
+          }
+        })
+      );
+
+      return conversations;
+    } catch (error) {
+      console.error('Error in getConversations:', error);
+      return [];
+    }
   }
 
   async markMessagesAsRead(userId: number, senderId: number): Promise<void> {

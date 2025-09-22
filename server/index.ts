@@ -1,7 +1,10 @@
 import express, { type Request, Response, NextFunction } from "express";
+import { createServer } from "http";
+import { Server as SocketIOServer } from "socket.io";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { initializeDatabase } from "./database";
+import { storage } from "./storage-sqlite";
 import path from "path";
 
 const app = express();
@@ -53,7 +56,88 @@ app.use((req, res, next) => {
   // Initialize database
   await initializeDatabase();
   
-  const server = await registerRoutes(app);
+  const httpServer = createServer(app);
+  const io = new SocketIOServer(httpServer, {
+    cors: {
+      origin: ["http://localhost:3003", "http://127.0.0.1:3003"],
+      methods: ["GET", "POST"],
+      credentials: true
+    },
+    transports: ['websocket', 'polling']
+  });
+
+  // Store user socket connections
+  const userSockets = new Map<number, string>();
+
+  io.on('connection', (socket) => {
+    console.log('🔌 User connected:', socket.id);
+
+    // Handle user authentication
+    socket.on('authenticate', (userId: number) => {
+      userSockets.set(userId, socket.id);
+      console.log(`👤 User ${userId} authenticated with socket ${socket.id}`);
+    });
+
+    // Handle joining a chat room
+    socket.on('join_chat', (friendId: number, userId: number) => {
+      const roomName = `chat_${Math.min(userId, friendId)}_${Math.max(userId, friendId)}`;
+      socket.join(roomName);
+      console.log(`💬 User ${userId} joined chat room: ${roomName}`);
+    });
+
+    // Handle sending messages
+    socket.on('send_message', async (data: { friendId: number; userId: number; content: string; messageType?: string }) => {
+      try {
+        const roomName = `chat_${Math.min(data.userId, data.friendId)}_${Math.max(data.userId, data.friendId)}`;
+        
+        // Save message to database
+        const message = await storage.sendMessage({
+          senderId: data.userId,
+          receiverId: data.friendId,
+          content: data.content,
+          messageType: data.messageType || 'text'
+        });
+        
+        // Broadcast to all users in the room
+        io.to(roomName).emit('new_message', {
+          id: message.id,
+          senderId: data.userId,
+          receiverId: data.friendId,
+          content: data.content,
+          messageType: data.messageType || 'text',
+          timestamp: new Date().toISOString()
+        });
+        
+        console.log(`📨 Message sent in room ${roomName}: ${data.content}`);
+      } catch (error) {
+        console.error('Error sending message:', error);
+        socket.emit('message_error', { error: 'Failed to send message' });
+      }
+    });
+
+    // Handle typing indicators
+    socket.on('typing', (data: { friendId: number; userId: number; isTyping: boolean }) => {
+      const roomName = `chat_${Math.min(data.userId, data.friendId)}_${Math.max(data.userId, data.friendId)}`;
+      socket.to(roomName).emit('user_typing', {
+        userId: data.userId,
+        isTyping: data.isTyping
+      });
+    });
+
+    // Handle disconnection
+    socket.on('disconnect', () => {
+      console.log('🔌 User disconnected:', socket.id);
+      // Remove user from socket map
+      for (const [userId, socketId] of userSockets.entries()) {
+        if (socketId === socket.id) {
+          userSockets.delete(userId);
+          break;
+        }
+      }
+    });
+  });
+
+  const server = await registerRoutes(app, io);
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
@@ -95,10 +179,7 @@ app.use((req, res, next) => {
   // Serve the app on the port specified in the environment variable PORT
   // Default to 3003 for development to avoid port conflicts
   const port = parseInt(process.env.PORT || '3003', 10);
-  server.listen({
-    port,
-    host: "localhost",
-  }, () => {
+  httpServer.listen(port, () => {
     log(`serving on port ${port}`);
     
     // Open browser automatically in development

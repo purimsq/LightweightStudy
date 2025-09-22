@@ -18,6 +18,7 @@ export default function DOCXViewer({ fileUrl, filename, documentId, unitId, isEd
   const [error, setError] = useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [outline, setOutline] = useState<Array<{title: string, id: string, level: number}>>([]);
+  const [activeHeading, setActiveHeading] = useState<string | null>(null);
   const [, setLocation] = useLocation();
 
   // Keyboard navigation for DOCX (smooth scrolling with arrow keys)
@@ -77,7 +78,7 @@ export default function DOCXViewer({ fileUrl, filename, documentId, unitId, isEd
         // Use the extracted HTML content from the server
         const htmlContent = data.content;
         
-        // Extract headings for outline
+        // Extract headings for outline and add IDs to the HTML content
         const tempDiv = document.createElement('div');
         tempDiv.innerHTML = htmlContent;
         const headings = tempDiv.querySelectorAll('h1, h2, h3, h4, h5, h6');
@@ -87,6 +88,14 @@ export default function DOCXViewer({ fileUrl, filename, documentId, unitId, isEd
           const id = `heading-${index}`;
           heading.id = id;
           
+          console.log('🔍 Processing heading:', {
+            index,
+            tagName: heading.tagName,
+            level,
+            id,
+            text: heading.textContent?.slice(0, 50)
+          });
+          
           return {
             title: heading.textContent?.slice(0, 50) + (heading.textContent && heading.textContent.length > 50 ? '...' : '') || `Heading ${index + 1}`,
             id,
@@ -94,9 +103,41 @@ export default function DOCXViewer({ fileUrl, filename, documentId, unitId, isEd
           };
         });
         
+        console.log('🔍 Extracted outline:', extractedOutline);
+        
+        // Update the HTML content with the modified headings (now with IDs)
+        const updatedHtmlContent = tempDiv.innerHTML;
+        
         setOutline(extractedOutline);
-        setHtmlContent(htmlContent);
+        setHtmlContent(updatedHtmlContent);
         setLoading(false);
+        
+        // Set up intersection observer to track active heading
+        setTimeout(() => {
+          console.log('🔍 Setting up intersection observer for', headings.length, 'headings');
+          
+          const observer = new IntersectionObserver(
+            (entries) => {
+              entries.forEach((entry) => {
+                if (entry.isIntersecting) {
+                  console.log('🔍 Active heading changed to:', entry.target.id);
+                  setActiveHeading(entry.target.id);
+                }
+              });
+            },
+            {
+              root: null, // Use viewport as root instead of specific container
+              rootMargin: '-20% 0px -70% 0px',
+              threshold: 0.1
+            }
+          );
+          
+          // Observe all headings
+          headings.forEach((heading) => {
+            console.log('🔍 Observing heading:', heading.id, heading.textContent?.slice(0, 30));
+            observer.observe(heading);
+          });
+        }, 500); // Increased timeout to ensure DOM is ready
       } catch (err) {
         console.error('Error loading DOCX:', err);
         setError('Failed to load DOCX file');
@@ -122,10 +163,53 @@ export default function DOCXViewer({ fileUrl, filename, documentId, unitId, isEd
   };
 
   const scrollToHeading = (id: string) => {
+    console.log('🔍 Attempting to scroll to heading:', id);
     const element = document.getElementById(id);
+    console.log('🔍 Found element:', element);
+    
     if (element) {
-      element.scrollIntoView({ behavior: 'smooth' });
+      // Try multiple scroll approaches
+      try {
+        // Method 1: Direct scrollIntoView with better options
+        element.scrollIntoView({ 
+          behavior: 'smooth', 
+          block: 'start',
+          inline: 'nearest'
+        });
+        console.log('✅ Used scrollIntoView method');
+      } catch (error) {
+        console.log('❌ scrollIntoView failed:', error);
+        
+        // Method 2: Manual scroll calculation
+        try {
+          const scrollContainer = document.querySelector('.prose.prose-lg.max-w-none.prose-stone');
+          if (scrollContainer) {
+            const containerRect = scrollContainer.getBoundingClientRect();
+            const elementRect = element.getBoundingClientRect();
+            const scrollTop = scrollContainer.scrollTop + (elementRect.top - containerRect.top) - 100;
+            
+            scrollContainer.scrollTo({
+              top: scrollTop,
+              behavior: 'smooth'
+            });
+            console.log('✅ Used manual scroll method');
+          }
+        } catch (error2) {
+          console.log('❌ Manual scroll failed:', error2);
+          
+          // Method 3: Window scroll as last resort
+          const elementTop = element.offsetTop;
+          window.scrollTo({
+            top: elementTop - 100,
+            behavior: 'smooth'
+          });
+          console.log('✅ Used window scroll method');
+        }
+      }
+      
       setSidebarOpen(false);
+    } else {
+      console.log('❌ Element not found with ID:', id);
     }
   };
 
@@ -184,18 +268,37 @@ export default function DOCXViewer({ fileUrl, filename, documentId, unitId, isEd
             <h3 className="font-medium text-stone-800">Document Outline</h3>
           </div>
         </div>
-        <div className="p-4 space-y-2 max-h-[calc(100vh-140px)] overflow-y-auto">
+        <div className="p-4 space-y-1 max-h-[calc(100vh-140px)] overflow-y-auto">
           {outline.length > 0 ? (
             outline.map((item, index) => (
               <button
                 key={index}
-                onClick={() => scrollToHeading(item.id)}
-                className={`w-full text-left p-2 rounded-lg transition-colors hover:bg-stone-100 text-stone-700 ${
+                onClick={() => {
+                  console.log('🔍 Outline item clicked:', item.title, 'ID:', item.id);
+                  scrollToHeading(item.id);
+                }}
+                className={`w-full text-left p-3 rounded-lg transition-all duration-200 hover:bg-blue-50 hover:text-blue-700 hover:shadow-sm border-l-2 ${
+                  activeHeading === item.id 
+                    ? 'bg-blue-100 text-blue-800 border-blue-400 shadow-sm' 
+                    : 'text-stone-700 border-transparent hover:border-blue-300'
+                } ${
+                  item.level === 0 ? 'ml-2 text-sm font-semibold' : 
                   item.level === 1 ? 'ml-4 text-sm' : 
-                  item.level === 2 ? 'ml-8 text-sm' : 'font-medium'
+                  item.level === 2 ? 'ml-6 text-xs' : 
+                  'ml-8 text-xs'
                 }`}
+                title={`Jump to: ${item.title}`}
               >
-                {item.title}
+                <div className="flex items-center space-x-2">
+                  <div className={`w-2 h-2 rounded-full ${
+                    activeHeading === item.id 
+                      ? 'bg-blue-600' 
+                      : item.level === 0 ? 'bg-blue-500' : 
+                        item.level === 1 ? 'bg-blue-400' : 
+                        'bg-blue-300'
+                  }`}></div>
+                  <span className="truncate">{item.title}</span>
+                </div>
               </button>
             ))
           ) : (

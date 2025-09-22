@@ -7,7 +7,7 @@ import multer from "multer";
 import path from "path";
 import fs from "fs";
 import * as mammoth from "mammoth";
-// PDF processing - server-side text extraction using ghostscript
+// Document processing
 import { execSync, spawn, exec as execCallback } from "child_process";
 import { promisify } from 'util';
 const exec = promisify(execCallback);
@@ -50,12 +50,12 @@ const storage_multer = multer.diskStorage({
 const upload = multer({ 
   storage: storage_multer,
   fileFilter: (req, file, cb) => {
-    // Allow PDF and DOCX files
-    const allowedTypes = ['application/pdf', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
+    // Allow only DOCX files
+    const allowedTypes = ['application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'application/msword'];
     if (allowedTypes.includes(file.mimetype)) {
       cb(null, true);
     } else {
-      cb(new Error('Only PDF and DOCX files are allowed'));
+      cb(new Error('Only Word documents (.docx and .doc) are allowed'));
     }
   },
   limits: {
@@ -85,7 +85,7 @@ const musicUpload = multer({
   }
 });
 
-export async function registerRoutes(app: Express): Promise<Server> {
+export async function registerRoutes(app: Express, io?: any): Promise<Server> {
   
   // Register authentication routes
   app.use('/api/auth', authRoutes);
@@ -285,83 +285,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // PDF-specific extraction endpoint for the PDF viewer
-  app.get('/api/documents/:filename/extract-pdf', async (req, res) => {
-    try {
-      const filename = decodeURIComponent(req.params.filename);
-      const filePath = path.join(uploadsDir, filename);
-      
-      if (!fs.existsSync(filePath)) {
-        return res.status(404).json({ error: 'File not found' });
-      }
-      
-      const ext = path.extname(filename).toLowerCase();
-      
-      if (ext !== '.pdf') {
-        return res.status(400).json({ error: 'File is not a PDF' });
-      }
-      
-      console.log(`Extracting PDF text for viewer: ${filename}`);
-      
-      // Try ghostscript-based text extraction
-      let extractedText = '';
-      try {
-        // Use gs (ghostscript) to extract text from PDF
-        const gsCommand = `gs -dNOPAUSE -dBATCH -sDEVICE=txtwrite -sOutputFile=- "${filePath}"`;
-        extractedText = execSync(gsCommand, { encoding: 'utf8', timeout: 30000 });
-        console.log(`Ghostscript extracted ${extractedText.length} characters`);
-      } catch (gsError) {
-        console.log('Ghostscript extraction failed:', gsError);
-        throw new Error('PDF text extraction failed - file may be scanned or corrupted');
-      }
-      
-      if (extractedText && extractedText.trim().length > 50) {
-        // Clean up the extracted text to remove Ghostscript noise
-        let cleanText = extractedText
-          // Remove Ghostscript headers
-          .replace(/GPL Ghostscript[\s\S]*?All rights reserved\.[\s\S]*?COPYING for details\./g, '')
-          .replace(/This software is supplied[\s\S]*?details\./g, '')
-          .replace(/Processing pages[\s\S]*?Page \d+/g, '')
-          .replace(/Loading font[\s\S]*?from[\s\S]*?\n/g, '')
-          .replace(/>>showpage.*?<</g, '')
-          .replace(/Error:.*?\n/g, '')
-          .replace(/Copyright.*?\n/g, '')
-          .replace(/Artifex Software.*?\n/g, '')
-          // Remove any remaining technical patterns
-          .replace(/^\s*GPL.*$/gm, '')
-          .replace(/^\s*This software.*$/gm, '')
-          .replace(/^\s*Loading.*$/gm, '')
-          .replace(/^\s*Processing.*$/gm, '')
-          .replace(/^\s*Error:.*$/gm, '')
-          // Clean up spacing
-          .replace(/\n\s*\n\s*\n/g, '\n\n')
-          .replace(/\s+/g, ' ')
-          .trim();
-        
-        // If text is still mostly technical noise, throw error
-        if (cleanText.toLowerCase().includes('ghostscript') || 
-            cleanText.toLowerCase().includes('artifex') ||
-            cleanText.length < 100) {
-          throw new Error('PDF contains scanned images or is not text-based');
-        }
-        
-        res.json({
-          success: true,
-          content: cleanText,
-          message: 'PDF text extracted successfully'
-        });
-      } else {
-        throw new Error('No substantial text content found in PDF');
-      }
-      
-    } catch (error) {
-      console.error('PDF extraction error:', error);
-      res.status(500).json({ 
-        error: error instanceof Error ? error.message : 'PDF extraction failed',
-        content: null
-      });
-    }
-  });
 
   // Users - Updated to use authentication
   app.get("/api/users/current", async (req, res) => {
@@ -432,19 +355,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/friends/request", authenticateToken, async (req: AuthenticatedRequest, res) => {
-    try {
-      const { friendId } = req.body;
-      if (!friendId) {
-        return res.status(400).json({ message: "Friend ID is required" });
-      }
-      
-      const friendRequest = await storage.sendFriendRequest(req.user!.id, friendId);
-      res.status(201).json(friendRequest);
-    } catch (error) {
-      res.status(500).json({ message: "Failed to send friend request", error: error instanceof Error ? error.message : "Unknown error" });
-    }
-  });
+            app.post("/api/friends/request", authenticateToken, async (req: AuthenticatedRequest, res) => {
+              try {
+                const { friendId } = req.body;
+                if (!friendId) {
+                  return res.status(400).json({ message: "Friend ID is required" });
+                }
+                
+                const friendRequest = await storage.sendFriendRequest(req.user!.id, friendId);
+                
+                // Emit real-time notification to the friend
+                if (io) {
+                  io.emit('friend_request_received', {
+                    fromUserId: req.user!.id,
+                    fromUsername: req.user!.username,
+                    fromName: req.user!.name,
+                    friendId: friendId
+                  });
+                  console.log(`📨 Friend request notification sent to user ${friendId}`);
+                }
+                
+                res.status(201).json(friendRequest);
+              } catch (error) {
+                res.status(500).json({ message: "Failed to send friend request", error: error instanceof Error ? error.message : "Unknown error" });
+              }
+            });
 
   app.post("/api/friends/accept", authenticateToken, async (req: AuthenticatedRequest, res) => {
     try {
@@ -454,6 +389,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       const friend = await storage.acceptFriendRequest(req.user!.id, friendId);
+      
+      // Emit real-time notification to both users
+      if (io) {
+        // Notify the person who accepted
+        io.emit('friend_request_accepted', {
+          fromUserId: req.user!.id,
+          fromUsername: req.user!.username,
+          fromName: req.user!.name,
+          friendId: friendId
+        });
+        
+        // Notify the person who was accepted
+        io.emit('friend_request_accepted', {
+          fromUserId: friendId,
+          fromUsername: req.user!.username,
+          fromName: req.user!.name,
+          friendId: req.user!.id
+        });
+        
+        console.log(`📨 Friend request acceptance notification sent to both users`);
+      }
+      
       res.json(friend);
     } catch (error) {
       res.status(500).json({ message: "Failed to accept friend request", error: error instanceof Error ? error.message : "Unknown error" });

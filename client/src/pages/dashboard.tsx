@@ -1,14 +1,23 @@
 import { useQuery } from "@tanstack/react-query";
+import { useState, useEffect } from "react";
 import ProgressCards from "@/components/dashboard/progress-cards";
 import UnitCards from "@/components/dashboard/unit-cards";
 import QuickActions from "@/components/dashboard/quick-actions";
 import { Card, CardContent } from "@/components/ui/card";
-import { History } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { History, TestTube } from "lucide-react";
 import { format } from "date-fns";
 import { useAuth } from "@/contexts/AuthContext";
+import { useDashboardStore } from "@/stores/pageStateStore";
 
 export default function Dashboard() {
   const { user } = useAuth();
+
+  // Use Zustand store for persistent state
+  const { counter, setCounter } = useDashboardStore();
+
+  // Debug log to see if component is mounting/unmounting
+  console.log('🏠 Dashboard component rendered, counter:', counter);
   
   const { data: userData } = useQuery({
     queryKey: ["/api/users/current"],
@@ -36,6 +45,48 @@ export default function Dashboard() {
           </div>
           <p className="text-neutral-600">Ready for another productive study session?</p>
         </div>
+
+        {/* Page State Test Section */}
+        <Card className="mb-6 border-blue-200 bg-blue-50">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2 mb-3">
+              <TestTube className="w-5 h-5 text-blue-600" />
+              <h3 className="font-semibold text-blue-800">Page State Test</h3>
+            </div>
+            <p className="text-sm text-blue-700 mb-3">
+              This counter persists across page navigation! Try clicking it, then navigate to another page and come back.
+            </p>
+            <div className="flex items-center gap-3">
+              <Button 
+                onClick={() => setCounter(c => c + 1)}
+                size="sm"
+                variant="outline"
+              >
+                Count: {counter}
+              </Button>
+              <Button 
+                onClick={() => setCounter(0)}
+                size="sm"
+                variant="outline"
+              >
+                Reset
+              </Button>
+              <Button
+                onClick={() => {
+                  console.log('🧪 Manual test - current counter:', counter);
+                  console.log('🧪 Manual test - localStorage value:', localStorage.getItem('dashboard-counter'));
+                }}
+                size="sm"
+                variant="outline"
+              >
+                Test
+              </Button>
+              <span className="text-xs text-blue-600">
+                {counter > 0 ? '✅ State restored' : '🔄 Fresh state'}
+              </span>
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Progress Cards */}
         <ProgressCards />

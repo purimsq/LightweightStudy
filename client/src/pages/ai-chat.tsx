@@ -7,10 +7,11 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Send, Bot, User, AlertCircle, CheckCircle, Lightbulb, Shield, Zap, Coffee, ChevronDown } from "lucide-react";
+import { Send, Bot, User, AlertCircle, CheckCircle, Lightbulb, Shield, Zap, Coffee, ChevronDown, Clock } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
+import { useAIChatStore } from "@/stores/pageStateStore";
 
 interface Message {
   role: "user" | "assistant";
@@ -91,11 +92,13 @@ function QuickPrompts({ onPromptClick }: { onPromptClick: (prompt: string) => vo
 }
 
 export default function AIChat() {
-  const [messages, setMessages] = useState<Message[]>([]);
   const [inputValue, setInputValue] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  
+  // Use Zustand store for persistent state
+  const { messages, setMessages, addMessage } = useAIChatStore();
 
   // Check AI service health
   const { data: aiHealth } = useQuery<AIHealthStatus>({
@@ -115,7 +118,7 @@ export default function AIChat() {
         content: data.response,
         timestamp: new Date().toISOString(),
       };
-      setMessages(prev => [...prev, aiMessage]);
+      addMessage(aiMessage);
     },
     onError: (error) => {
       toast({
@@ -144,7 +147,7 @@ export default function AIChat() {
       timestamp: new Date().toISOString(),
     };
 
-    setMessages(prev => [...prev, userMessage]);
+      addMessage(userMessage);
     setInputValue("");
     chatMutation.mutate(text);
   };
@@ -267,9 +270,12 @@ export default function AIChat() {
                     </div>
                   </div>
                 ) : (
-                  messages.map((message, index) => (
-                    <MessageBubble key={index} message={message} />
-                  ))
+                  <>
+                    {messages.map((message, index) => (
+                      <MessageBubble key={index} message={message} />
+                    ))}
+                    
+                  </>
                 )}
                 {chatMutation.isPending && (
                   <div className="flex items-center space-x-2 text-neutral-500">

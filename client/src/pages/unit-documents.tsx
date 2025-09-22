@@ -206,36 +206,51 @@ function DocumentCard({ document, onDelete }: { document: Document; onDelete: ()
 export default function UnitDocuments() {
   const [location, setLocation] = useLocation();
   const unitId = parseInt(location.split("/")[2]);
+  
+  console.log('🔍 UnitDocuments - location:', location);
+  console.log('🔍 UnitDocuments - unitId:', unitId);
 
   const { data: unit, isLoading: unitLoading } = useQuery({
     queryKey: ["/api/units", unitId],
     queryFn: async () => {
+      console.log('🔍 Fetching unit with ID:', unitId);
       const token = localStorage.getItem('authToken');
       const response = await fetch(`/api/units/${unitId}`, {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
       });
+      console.log('🔍 Unit fetch response status:', response.status);
       if (!response.ok) throw new Error("Failed to fetch unit");
-      return response.json();
+      const data = await response.json();
+      console.log('🔍 Unit data:', data);
+      return data;
     },
   });
 
   const { data: documents = [], isLoading: documentsLoading } = useQuery({
     queryKey: ["/api/documents", { unitId }],
     queryFn: async () => {
+      console.log('🔍 Fetching documents for unit ID:', unitId);
       const token = localStorage.getItem('authToken');
       const response = await fetch(`/api/documents?unitId=${unitId}`, {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
       });
+      console.log('🔍 Documents fetch response status:', response.status);
       if (!response.ok) throw new Error("Failed to fetch documents");
-      return response.json();
+      const data = await response.json();
+      console.log('🔍 Documents data:', data);
+      return data;
     },
   });
 
+  console.log('🔍 UnitDocuments render - unitLoading:', unitLoading, 'documentsLoading:', documentsLoading);
+  console.log('🔍 UnitDocuments render - unit:', unit, 'documents:', documents);
+
   if (unitLoading || documentsLoading) {
+    console.log('🔍 UnitDocuments - showing loading state');
     return (
       <div className="p-6">
         <div className="max-w-4xl mx-auto">

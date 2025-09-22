@@ -1,12 +1,15 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card } from "@/components/ui/card";
-import { CloudUpload, X, File, CheckCircle } from "lucide-react";
+import { CloudUpload, X, File, CheckCircle, Clock } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient } from "@/lib/queryClient";
+// import { usePageState } from "@/contexts/PageStateContext";
+// import { useFileUpload } from "@/hooks/use-background-tasks";
+// import { Progress } from "@/components/ui/progress";
 
 interface DocumentUploadModalProps {
   isOpen: boolean;
@@ -17,8 +20,10 @@ export default function DocumentUploadModal({ isOpen, onClose }: DocumentUploadM
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [selectedUnit, setSelectedUnit] = useState<string>("");
   const [isDragging, setIsDragging] = useState(false);
-  const [isUploading, setIsUploading] = useState(false);
   const { toast } = useToast();
+  
+  // Simple state without page persistence for now
+  const [isUploading, setIsUploading] = useState(false);
 
   const { data: units = [] } = useQuery({
     queryKey: ["/api/units"],
@@ -77,15 +82,14 @@ export default function DocumentUploadModal({ isOpen, onClose }: DocumentUploadM
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(event.target.files || []);
     const validFiles = files.filter(file => 
-      file.type === "application/pdf" || 
       file.type === "application/vnd.openxmlformats-officedocument.wordprocessingml.document" ||
       file.type === "application/msword"
     );
-    
+
     if (validFiles.length !== files.length) {
       toast({
         title: "Invalid file type",
-        description: "Please select only PDF or Word documents",
+        description: "Please select only Word documents (.docx or .doc)",
         variant: "destructive",
       });
     }
@@ -99,15 +103,14 @@ export default function DocumentUploadModal({ isOpen, onClose }: DocumentUploadM
     
     const files = Array.from(event.dataTransfer.files);
     const validFiles = files.filter(file => 
-      file.type === "application/pdf" || 
       file.type === "application/vnd.openxmlformats-officedocument.wordprocessingml.document" ||
       file.type === "application/msword"
     );
-    
+
     if (validFiles.length !== files.length) {
       toast({
         title: "Invalid file type",
-        description: "Please select only PDF or Word documents",
+        description: "Please select only Word documents (.docx or .doc)",
         variant: "destructive",
       });
     }
@@ -159,7 +162,7 @@ export default function DocumentUploadModal({ isOpen, onClose }: DocumentUploadM
             <input
               id="file-input"
               type="file"
-              accept=".pdf,.docx,.doc"
+              accept=".docx,.doc"
               multiple
               className="hidden"
               onChange={handleFileSelect}
@@ -168,7 +171,7 @@ export default function DocumentUploadModal({ isOpen, onClose }: DocumentUploadM
               Choose Files
             </Button>
             <p className="text-xs text-neutral-500 mt-2">
-              Supports PDF and Word documents
+              Supports Word documents (.docx and .doc)
             </p>
           </Card>
 

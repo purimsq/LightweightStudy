@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
@@ -10,12 +10,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/hooks/use-toast";
 import { FileText, Plus, Trash2, Edit, X, Award, Clock, CheckCircle, AlertCircle, Upload, Calendar, Star, BookOpen } from "lucide-react";
 import type { Assignment, Unit } from "@shared/schema";
-import PDFViewer from "@/components/viewers/pdf-viewer";
 import DOCXViewer from "@/components/viewers/docx-viewer";
 import EditableDocument from "@/components/viewers/editable-document";
+import { useAssignmentsStore } from "@/stores/pageStateStore";
 
 export default function AssignmentsPage() {
-  const [showCreateDialog, setShowCreateDialog] = useState(false);
+  // Use Zustand store for persistent state
+  const { showCreateDialog, setShowCreateDialog } = useAssignmentsStore();
 
   const { data: assignments = [], isLoading } = useQuery({
     queryKey: ["/api/assignments"],
@@ -608,19 +609,7 @@ function AssignmentEditor({ assignment, isOpen, onOpenChange }: {
                     (() => {
                       const fileExtension = assignment.attachedFilePath.toLowerCase().split('.').pop();
                       
-                      if (fileExtension === 'pdf') {
-                        return (
-                          <div className="w-full h-full">
-                            <PDFViewer 
-                              fileUrl={assignment.attachedFilePath} 
-                              filename={assignment.title}
-                              documentId={assignment.id.toString()}
-                              isEditing={isEditing}
-                              onContentChange={setEditedContent}
-                            />
-                          </div>
-                        );
-                      } else if (fileExtension === 'docx') {
+                      if (fileExtension === 'docx') {
                         return (
                           <div className="w-full h-full">
                             <DOCXViewer 

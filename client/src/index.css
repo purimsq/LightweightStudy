@@ -2,6 +2,21 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Loading screen fade line animation */
+@keyframes fadeLineMove {
+  0% {
+    transform: translateX(-100%);
+    opacity: 0;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+}
+
 :root {
   --background: hsl(0, 0%, 100%);
   --foreground: hsl(20, 14.3%, 4.1%);
@@ -325,7 +340,7 @@
   margin: 1.5em 0;
 }
 
-/* PDF Page Styling */
+/* Document Page Styling */
 .pdf-page {
   border-bottom: 2px solid #e5e7eb;
   margin-bottom: 2em;

@@ -1,5 +1,5 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription, DialogFooter } from "@/components/ui/dialog";
@@ -320,6 +320,9 @@ function UnitCard({ unit }: { unit: Unit }) {
 }
 
 export default function Units() {
+  // Debug log to see if component is mounting/unmounting
+  console.log('📚 Units component rendered');
+  
   const { data: units = [], isLoading } = useQuery({
     queryKey: ["/api/units"],
   });
