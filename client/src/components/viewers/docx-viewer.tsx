@@ -19,7 +19,10 @@ export default function DOCXViewer({ fileUrl, filename, documentId, unitId, isEd
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [outline, setOutline] = useState<Array<{title: string, id: string, level: number}>>([]);
   const [activeHeading, setActiveHeading] = useState<string | null>(null);
+  const [showFloatingOutline, setShowFloatingOutline] = useState(true);
   const [, setLocation] = useLocation();
+
+  // Floating button always visible when viewing documents
 
   // Keyboard navigation for DOCX (smooth scrolling with arrow keys)
   useEffect(() => {
@@ -47,6 +50,8 @@ export default function DOCXViewer({ fileUrl, filename, documentId, unitId, isEd
       document.removeEventListener('keydown', handleKeyDown);
     };
   }, []);
+
+    // Floating button is now always visible when viewing documents
 
   useEffect(() => {
     const loadDOCX = async () => {
@@ -112,6 +117,11 @@ export default function DOCXViewer({ fileUrl, filename, documentId, unitId, isEd
         setHtmlContent(updatedHtmlContent);
         setLoading(false);
         
+        // Debug logging
+        console.log('✅ DOCX loaded successfully');
+        console.log('📋 Outline generated:', extractedOutline.length, 'items');
+        console.log('📋 Outline items:', extractedOutline);
+        
         // Set up intersection observer to track active heading
         setTimeout(() => {
           console.log('🔍 Setting up intersection observer for', headings.length, 'headings');
@@ -158,8 +168,13 @@ export default function DOCXViewer({ fileUrl, filename, documentId, unitId, isEd
   };
 
   const goBack = () => {
-    console.log('DOCXViewer: goBack clicked, navigating to /assignments');
-    window.location.href = '/assignments';
+    if (unitId) {
+      console.log('DOCXViewer: goBack clicked, navigating to documents for unit:', unitId);
+      setLocation(`/units/${unitId}/documents`);
+    } else {
+      console.log('DOCXViewer: goBack clicked, navigating to study-documents (no unitId)');
+      setLocation('/study-documents');
+    }
   };
 
   const scrollToHeading = (id: string) => {
@@ -334,7 +349,7 @@ export default function DOCXViewer({ fileUrl, filename, documentId, unitId, isEd
                 className="bg-white hover:bg-stone-50 border-stone-200 text-stone-700 hover:text-stone-900"
               >
                 <ArrowLeft className="w-4 h-4 mr-2" />
-                Back to Assignments
+                Back to Documents
               </Button>
               <Button
                 variant="outline"
@@ -403,6 +418,34 @@ export default function DOCXViewer({ fileUrl, filename, documentId, unitId, isEd
           </div>
         </div>
       </div>
+
+      {/* Floating Outline Button */}
+      {showFloatingOutline && (
+        <div className="fixed bottom-20 right-6 z-40">
+          <Button
+            onClick={() => {
+              if (sidebarOpen) {
+                // If sidebar is already open, scroll to top
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+              } else if (outline.length > 0) {
+                // If sidebar is closed and there's an outline, open it
+                setSidebarOpen(true);
+              } else {
+                // If no outline, just scroll to top
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+              }
+            }}
+            className="bg-blue-600 hover:bg-blue-700 text-white shadow-lg hover:shadow-xl transition-all duration-300 rounded-full w-14 h-14 p-0 group"
+            title={outline.length > 0 ? (sidebarOpen ? "Scroll to Top" : "Open Document Outline") : "Scroll to Top"}
+          >
+            {sidebarOpen || outline.length === 0 ? (
+              <ArrowLeft className="w-6 h-6 rotate-90" />
+            ) : (
+              <BookOpen className="w-6 h-6" />
+            )}
+          </Button>
+        </div>
+      )}
     </div>
   );
 }
