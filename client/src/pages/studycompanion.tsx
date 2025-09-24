@@ -15,12 +15,15 @@ import { PasswordStrengthIndicator, defaultPasswordRequirements } from "@/compon
 import React, { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
+import { useSidebar } from "@/contexts/SidebarContext";
 import DataExportDialog from "@/components/data-export-dialog";
 import AccountDeletionDialog from "@/components/account-deletion-dialog";
+import FontSettings from "@/components/font-settings";
 
 export default function StudyCompanion() {
   const { user, updateUser, logout } = useAuth();
   const { toast } = useToast();
+  const { defaultCollapsed, setDefaultCollapsed } = useSidebar();
   const [isEditing, setIsEditing] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [activeTab, setActiveTab] = useState("profile");
@@ -71,8 +74,7 @@ export default function StudyCompanion() {
     },
     appearance: {
       theme: "light",
-      fontSize: "medium",
-      sidebarCollapsed: false
+      fontSize: "medium"
     }
   });
 
@@ -296,19 +298,11 @@ export default function StudyCompanion() {
     }
 
     // Debug: Log what we're sending
-    console.log('🚀 Sending password change request:', {
-      currentPasswordLength: passwordChangeData.currentPassword.length,
-      newPasswordLength: passwordChangeData.newPassword.length,
-      newPassword: passwordChangeData.newPassword, // Log the actual password for debugging
-      requirements: defaultPasswordRequirements.map(req => ({
-        label: req.label,
-        passed: req.test(passwordChangeData.newPassword)
-      }))
-    });
-
-    console.log('🔄 Setting isChangingPassword to true');
+    // Store password values before they might get cleared
+    const currentPassword = passwordChangeData.currentPassword;
+    const newPassword = passwordChangeData.newPassword;
+    
     setIsChangingPassword(true);
-    console.log('🔄 isChangingPassword should now be true');
     try {
       // Add a delay for better UX - show loading state for 2.5 seconds
       await new Promise(resolve => setTimeout(resolve, 2500));
@@ -325,8 +319,8 @@ export default function StudyCompanion() {
           'Authorization': `Bearer ${token}`,
         },
         body: JSON.stringify({
-          currentPassword: passwordChangeData.currentPassword,
-          newPassword: passwordChangeData.newPassword,
+          currentPassword: currentPassword,
+          newPassword: newPassword,
         }),
       });
 
@@ -337,14 +331,6 @@ export default function StudyCompanion() {
           title: "Password Changed",
           description: "Your password has been updated successfully.",
         });
-        setShowPasswordChange(false);
-        setPasswordChangeData({
-          currentPassword: "",
-          newPassword: "",
-          confirmPassword: ""
-        });
-        setPasswordRequirementsMet(false);
-        setCurrentPasswordVerified(false);
       } else {
         console.error('Password change failed:', data);
         toast({
@@ -354,8 +340,11 @@ export default function StudyCompanion() {
         });
       }
       
-      // Reset loading state after the full 2.5 second delay
-      setIsChangingPassword(false);
+        // Reset loading state after the full 2.5 second delay
+        setIsChangingPassword(false);
+        
+        // Don't automatically close the dialog - let user close it manually
+        // The success message will show and user can close when ready
     } catch (error: any) {
       console.error('Password change error:', error);
       toast({
@@ -372,17 +361,14 @@ export default function StudyCompanion() {
 
   // Check password requirements
   useEffect(() => {
+    // Don't update password requirements during loading state
+    if (isChangingPassword) {
+      return;
+    }
+    
     const allRequirementsMet = defaultPasswordRequirements.every(req => req.test(passwordChangeData.newPassword));
-    console.log('🔍 Password requirements check:', {
-      password: passwordChangeData.newPassword,
-      requirements: defaultPasswordRequirements.map(req => ({
-        label: req.label,
-        passed: req.test(passwordChangeData.newPassword)
-      })),
-      allMet: allRequirementsMet
-    });
     setPasswordRequirementsMet(allRequirementsMet);
-  }, [passwordChangeData.newPassword]);
+  }, [passwordChangeData.newPassword, isChangingPassword]);
 
   // Helper function to determine if password change button should be enabled
   const isPasswordChangeButtonEnabled = () => {
@@ -396,8 +382,6 @@ export default function StudyCompanion() {
       minLength: passwordChangeData.newPassword.length >= 8,
       differentPassword: passwordChangeData.currentPassword !== passwordChangeData.newPassword
     };
-    
-    console.log('🔍 Button enabled checks:', checks);
     
     // If we're changing password, the button should be enabled to show loading state
     if (checks.isChangingPassword) return true;
@@ -784,67 +768,51 @@ export default function StudyCompanion() {
 
         {/* Appearance Tab */}
         {activeTab === "appearance" && (
-          <Card>
-            <CardHeader>
-              <CardTitle>Appearance Settings</CardTitle>
-              <CardDescription>Customize the look and feel of your interface</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="space-y-4">
-                <div>
-                  <Label>Theme</Label>
-                  <Select
-                    value={userData.appearance.theme}
-                    onValueChange={(value) => setUserData({
-                      ...userData,
-                      appearance: {...userData.appearance, theme: value}
-                    })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="light">Light</SelectItem>
-                      <SelectItem value="dark">Dark</SelectItem>
-                      <SelectItem value="auto">Auto</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label>Font Size</Label>
-                  <Select
-                    value={userData.appearance.fontSize}
-                    onValueChange={(value) => setUserData({
-                      ...userData,
-                      appearance: {...userData.appearance, fontSize: value}
-                    })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="small">Small</SelectItem>
-                      <SelectItem value="medium">Medium</SelectItem>
-                      <SelectItem value="large">Large</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="flex items-center justify-between">
+          <div className="space-y-6">
+            {/* Font Settings */}
+            <FontSettings />
+            
+            {/* Other Appearance Settings */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Interface Settings</CardTitle>
+                <CardDescription>Customize other interface preferences</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="space-y-4">
                   <div>
-                    <Label>Collapse Sidebar by Default</Label>
-                    <p className="text-sm text-gray-600">Start with the sidebar collapsed</p>
+                    <Label>Theme</Label>
+                    <Select
+                      value={userData.appearance.theme}
+                      onValueChange={(value) => setUserData({
+                        ...userData,
+                        appearance: {...userData.appearance, theme: value}
+                      })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="light">Light</SelectItem>
+                        <SelectItem value="dark">Dark</SelectItem>
+                        <SelectItem value="auto">Auto</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
-                  <Switch
-                    checked={userData.appearance.sidebarCollapsed}
-                    onCheckedChange={(checked) => setUserData({
-                      ...userData,
-                      appearance: {...userData.appearance, sidebarCollapsed: checked}
-                    })}
-                  />
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <Label>Collapse Sidebar by Default</Label>
+                      <p className="text-sm text-gray-600">Start with the sidebar collapsed</p>
+                    </div>
+                    <Switch
+                      checked={defaultCollapsed}
+                      onCheckedChange={setDefaultCollapsed}
+                    />
+                  </div>
                 </div>
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          </div>
         )}
 
         {/* Account Tab */}
@@ -990,16 +958,24 @@ export default function StudyCompanion() {
         />
 
         {/* Password Change Dialog */}
-        <AlertDialog open={showPasswordChange} onOpenChange={setShowPasswordChange}>
+        <AlertDialog open={showPasswordChange} onOpenChange={(open) => {
+          // Prevent closing during password change process
+          if (!open && (isChangingPassword || isVerifyingCurrentPassword)) {
+            return;
+          }
+          setShowPasswordChange(open);
+        }}>
           <AlertDialogContent className="max-w-md">
                 <AlertDialogHeader>
                   <AlertDialogTitle>Change Password</AlertDialogTitle>
                   <AlertDialogDescription>
                     {isChangingPassword 
                       ? "Updating your password securely. Please wait..."
-                      : currentPasswordVerified 
-                        ? "Enter your new password. It must meet all security requirements."
-                        : "First, verify your current password to proceed with changing it."
+                      : currentPasswordVerified && passwordRequirementsMet
+                        ? "Password changed successfully! You can now close this dialog."
+                        : currentPasswordVerified 
+                          ? "Enter your new password. It must meet all security requirements."
+                          : "First, verify your current password to proceed with changing it."
                     }
                   </AlertDialogDescription>
                 </AlertDialogHeader>
@@ -1146,39 +1122,48 @@ export default function StudyCompanion() {
             </div>
 
             <AlertDialogFooter>
-              <AlertDialogCancel onClick={handlePasswordChangeClose} disabled={isChangingPassword || isVerifyingCurrentPassword}>
-                Cancel
-              </AlertDialogCancel>
-              {currentPasswordVerified && (
+              {currentPasswordVerified && passwordRequirementsMet ? (
+                // Show Close button when password change is successful
                 <AlertDialogAction 
-                  onClick={isChangingPassword ? undefined : handlePasswordUpdate} 
-                  disabled={!isPasswordChangeButtonEnabled()}
-                  className={`${isChangingPassword 
-                    ? 'bg-blue-500 cursor-wait' 
-                    : isPasswordChangeButtonEnabled() 
-                      ? 'bg-blue-600 hover:bg-blue-700' 
-                      : 'bg-gray-400 cursor-not-allowed hover:bg-gray-400'
-                  }`}
+                  onClick={handlePasswordChangeClose}
+                  className="bg-green-600 hover:bg-green-700"
                 >
-                  {(() => {
-                    console.log('🎨 Button render - isChangingPassword:', isChangingPassword);
-                    return isChangingPassword ? (
-                      <>
-                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
-                        Updating Password...
-                      </>
-                    ) : (
-                      "Change Password"
-                    );
-                  })()}
+                  Close
                 </AlertDialogAction>
-              )}
-              {currentPasswordVerified && !isPasswordChangeButtonEnabled() && (
-                <div className="text-center text-sm text-gray-600 mt-2">
-                  {!passwordRequirementsMet && "Complete all password requirements above"}
-                  {passwordRequirementsMet && passwordChangeData.newPassword !== passwordChangeData.confirmPassword && "Passwords do not match"}
-                  {passwordRequirementsMet && passwordChangeData.newPassword === passwordChangeData.confirmPassword && passwordChangeData.currentPassword === passwordChangeData.newPassword && "New password must be different from current password"}
-                </div>
+              ) : (
+                <>
+                  <AlertDialogCancel onClick={handlePasswordChangeClose} disabled={isChangingPassword || isVerifyingCurrentPassword}>
+                    Cancel
+                  </AlertDialogCancel>
+                  {currentPasswordVerified && (
+                    <AlertDialogAction 
+                      onClick={isChangingPassword ? undefined : handlePasswordUpdate} 
+                      disabled={!isPasswordChangeButtonEnabled()}
+                      className={`${isChangingPassword 
+                        ? 'bg-blue-500 cursor-wait' 
+                        : isPasswordChangeButtonEnabled() 
+                          ? 'bg-blue-600 hover:bg-blue-700' 
+                          : 'bg-gray-400 cursor-not-allowed hover:bg-gray-400'
+                      }`}
+                    >
+                      {isChangingPassword ? (
+                        <>
+                          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
+                          Updating Password...
+                        </>
+                      ) : (
+                        "Change Password"
+                      )}
+                    </AlertDialogAction>
+                  )}
+                  {currentPasswordVerified && !isPasswordChangeButtonEnabled() && (
+                    <div className="text-center text-sm text-gray-600 mt-2">
+                      {!passwordRequirementsMet && "Complete all password requirements above"}
+                      {passwordRequirementsMet && passwordChangeData.newPassword !== passwordChangeData.confirmPassword && "Passwords do not match"}
+                      {passwordRequirementsMet && passwordChangeData.newPassword === passwordChangeData.confirmPassword && passwordChangeData.currentPassword === passwordChangeData.newPassword && "New password must be different from current password"}
+                    </div>
+                  )}
+                </>
               )}
             </AlertDialogFooter>
           </AlertDialogContent>

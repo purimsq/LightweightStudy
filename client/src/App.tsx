@@ -7,6 +7,7 @@ import { MusicProvider } from "@/contexts/MusicContext";
 import { SidebarProvider } from "@/contexts/SidebarContext";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { SocketProvider } from "@/contexts/SocketContext";
+import { FontProvider } from "@/contexts/FontContext";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import Sidebar from "@/components/layout/sidebar";
 import TopBar from "@/components/layout/top-bar";
@@ -148,18 +149,20 @@ function Router() {
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <SocketProvider>
-          <SidebarProvider>
-            <MusicProvider>
-              <TooltipProvider>
-                <Toaster />
-                <Router />
-              </TooltipProvider>
-            </MusicProvider>
-          </SidebarProvider>
-        </SocketProvider>
-      </AuthProvider>
+      <FontProvider>
+        <AuthProvider>
+          <SocketProvider>
+            <SidebarProvider>
+              <MusicProvider>
+                <TooltipProvider>
+                  <Toaster />
+                  <Router />
+                </TooltipProvider>
+              </MusicProvider>
+            </SidebarProvider>
+          </SocketProvider>
+        </AuthProvider>
+      </FontProvider>
     </QueryClientProvider>
   );
 }
