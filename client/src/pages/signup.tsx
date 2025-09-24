@@ -3,12 +3,12 @@ import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Eye, EyeOff, Loader2, CheckCircle } from "lucide-react";
+import { Eye, EyeOff, Loader2, CheckCircle, X, Check } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
+import { PasswordStrengthIndicator, defaultPasswordRequirements } from "@/components/ui/password-strength-indicator";
 
 export default function Signup() {
   const [, navigate] = useLocation();
@@ -17,17 +17,19 @@ export default function Signup() {
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState({
-    username: "",
     email: "",
     password: "",
     confirmPassword: "",
     name: "",
-    phone: "",
-    bio: "",
-    location: "",
   });
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
+  const [passwordRequirementsMet, setPasswordRequirementsMet] = useState(false);
+  const [emailStatus, setEmailStatus] = useState<{
+    checking: boolean;
+    available: boolean | null;
+    message: string;
+  }>({ checking: false, available: null, message: "" });
 
   // Redirect to dashboard when user becomes authenticated
   useEffect(() => {
@@ -35,6 +37,71 @@ export default function Signup() {
       navigate("/dashboard");
     }
   }, [isAuthenticated, authLoading, navigate]);
+
+  // Check password requirements when password changes
+  useEffect(() => {
+    const allRequirementsMet = defaultPasswordRequirements.every(requirement => 
+      requirement.test(formData.password)
+    );
+    setPasswordRequirementsMet(allRequirementsMet);
+  }, [formData.password]);
+
+  // Check email availability when email changes
+  const checkEmailAvailability = async (email: string) => {
+    if (!email) {
+      setEmailStatus({ checking: false, available: null, message: "" });
+      return;
+    }
+
+    // Validate Gmail format
+    const gmailRegex = /^[a-zA-Z0-9._%+-]+@gmail\.com$/;
+    if (!gmailRegex.test(email)) {
+      setEmailStatus({
+        checking: false,
+        available: false,
+        message: "Only Gmail addresses are allowed"
+      });
+      return;
+    }
+
+    setEmailStatus({ checking: true, available: null, message: "Checking availability..." });
+
+    try {
+      const response = await fetch(`/api/auth/check-email?email=${encodeURIComponent(email)}`);
+      const data = await response.json();
+
+      if (response.ok) {
+        setEmailStatus({
+          checking: false,
+          available: data.available,
+          message: data.message
+        });
+      } else {
+        setEmailStatus({
+          checking: false,
+          available: false,
+          message: data.message || "Failed to check email"
+        });
+      }
+    } catch (error) {
+      setEmailStatus({
+        checking: false,
+        available: false,
+        message: "Failed to check email availability"
+      });
+    }
+  };
+
+  // Debounced email check
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (formData.email) {
+        checkEmailAvailability(formData.email);
+      }
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [formData.email]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -51,17 +118,25 @@ export default function Signup() {
       setError("Passwords do not match");
       return false;
     }
-    if (formData.password.length < 6) {
-      setError("Password must be at least 6 characters long");
+    if (!passwordRequirementsMet) {
+      setError("Password does not meet security requirements");
       return false;
     }
-    if (formData.username.length < 3) {
-      setError("Username must be at least 3 characters long");
+    if (formData.name.trim().length < 2) {
+      setError("Name must be at least 2 characters long");
       return false;
     }
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(formData.email)) {
-      setError("Please enter a valid email address");
+    const gmailRegex = /^[a-zA-Z0-9._%+-]+@gmail\.com$/;
+    if (!gmailRegex.test(formData.email)) {
+      setError("Only Gmail addresses are allowed");
+      return false;
+    }
+    if (emailStatus.available === false) {
+      setError("Email is not available");
+      return false;
+    }
+    if (emailStatus.checking) {
+      setError("Please wait while we check your email availability");
       return false;
     }
     return true;
@@ -78,31 +153,46 @@ export default function Signup() {
     setError("");
 
     try {
-      await signup({
-        username: formData.username,
+      // Send OTP instead of creating account directly
+      const response = await fetch('/api/auth/send-otp', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: formData.email,
+          name: formData.name,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Failed to send OTP');
+      }
+
+      // Store form data for OTP verification
+      const otpData = {
         email: formData.email,
-        password: formData.password,
         name: formData.name,
-        phone: formData.phone || undefined,
-        bio: formData.bio || undefined,
-        location: formData.location || undefined,
-      });
+        password: formData.password,
+      };
+      
+      localStorage.setItem('otpData', JSON.stringify(otpData));
 
-      setSuccess(true);
       toast({
-        title: "Account Created!",
-        description: `Welcome to StudyCompanion!`,
+        title: "OTP Sent!",
+        description: "Please check your email for the verification code.",
+        duration: 5000,
       });
 
-      // Give the auth state a moment to update, then navigate
-      setTimeout(() => {
-        navigate("/dashboard");
-      }, 500);
+      // Navigate to OTP verification page
+      navigate(`/verify-otp/${encodeURIComponent(formData.email)}`);
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : "Signup failed";
+      const errorMessage = error instanceof Error ? error.message : "Failed to send OTP";
       setError(errorMessage);
       toast({
-        title: "Signup Failed",
+        title: "Failed to Send OTP",
         description: errorMessage,
         variant: "destructive",
       });
@@ -286,45 +376,14 @@ export default function Signup() {
                 </Alert>
               )}
 
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="username">Username</Label>
-                  <Input
-                    id="username"
-                    name="username"
-                    type="text"
-                    placeholder="Username"
-                    value={formData.username}
-                    onChange={handleInputChange}
-                    required
-                    disabled={isLoading}
-                    className="h-11"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="name">Full Name</Label>
-                  <Input
-                    id="name"
-                    name="name"
-                    type="text"
-                    placeholder="Full Name"
-                    value={formData.name}
-                    onChange={handleInputChange}
-                    required
-                    disabled={isLoading}
-                    className="h-11"
-                  />
-                </div>
-              </div>
-
               <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
+                <Label htmlFor="name">Full Name</Label>
                 <Input
-                  id="email"
-                  name="email"
-                  type="email"
-                  placeholder="Enter your email"
-                  value={formData.email}
+                  id="name"
+                  name="name"
+                  type="text"
+                  placeholder="Enter your full name"
+                  value={formData.name}
                   onChange={handleInputChange}
                   required
                   disabled={isLoading}
@@ -332,105 +391,129 @@ export default function Signup() {
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="password">Password</Label>
-                  <div className="relative">
-                    <Input
-                      id="password"
-                      name="password"
-                      type={showPassword ? "text" : "password"}
-                      placeholder="Password"
-                      value={formData.password}
-                      onChange={handleInputChange}
-                      required
-                      disabled={isLoading}
-                      className="h-11 pr-10"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
-                      disabled={isLoading}
-                    >
-                      {showPassword ? (
-                        <EyeOff className="w-4 h-4" />
-                      ) : (
-                        <Eye className="w-4 h-4" />
-                      )}
-                    </button>
+              <div className="space-y-2">
+                <Label htmlFor="email">Email (Gmail only)</Label>
+                <Input
+                  id="email"
+                  name="email"
+                  type="email"
+                  placeholder="your.email@gmail.com"
+                  value={formData.email}
+                  onChange={handleInputChange}
+                  required
+                  disabled={isLoading}
+                  className={`h-11 ${
+                    emailStatus.available === false 
+                      ? 'border-red-500 focus:border-red-500 focus:ring-red-500' 
+                      : emailStatus.available === true 
+                      ? 'border-green-500 focus:border-green-500 focus:ring-green-500'
+                      : ''
+                  }`}
+                />
+                {emailStatus.checking && (
+                  <div className="flex items-center text-sm text-blue-600">
+                    <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+                    Checking availability...
                   </div>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="confirmPassword">Confirm Password</Label>
-                  <Input
-                    id="confirmPassword"
-                    name="confirmPassword"
-                    type="password"
-                    placeholder="Confirm Password"
-                    value={formData.confirmPassword}
-                    onChange={handleInputChange}
-                    required
-                    disabled={isLoading}
-                    className="h-11"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="phone">Phone (Optional)</Label>
-                  <Input
-                    id="phone"
-                    name="phone"
-                    type="tel"
-                    placeholder="Phone Number"
-                    value={formData.phone}
-                    onChange={handleInputChange}
-                    disabled={isLoading}
-                    className="h-11"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="location">Location (Optional)</Label>
-                  <Input
-                    id="location"
-                    name="location"
-                    type="text"
-                    placeholder="City, Country"
-                    value={formData.location}
-                    onChange={handleInputChange}
-                    disabled={isLoading}
-                    className="h-11"
-                  />
-                </div>
+                )}
+                {!emailStatus.checking && emailStatus.message && (
+                  <div className={`text-sm flex items-center ${
+                    emailStatus.available === false 
+                      ? 'text-red-600' 
+                      : emailStatus.available === true 
+                      ? 'text-green-600'
+                      : 'text-gray-600'
+                  }`}>
+                    {emailStatus.available === false ? (
+                      <X className="w-3 h-3 mr-1" />
+                    ) : emailStatus.available === true ? (
+                      <Check className="w-3 h-3 mr-1" />
+                    ) : null}
+                    {emailStatus.message}
+                  </div>
+                )}
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="bio">Bio (Optional)</Label>
-                <Textarea
-                  id="bio"
-                  name="bio"
-                  placeholder="Tell us about yourself..."
-                  value={formData.bio}
-                  onChange={handleInputChange}
-                  disabled={isLoading}
-                  rows={3}
-                />
+                <Label htmlFor="password">Password</Label>
+                <div className="relative">
+                  <Input
+                    id="password"
+                    name="password"
+                    type={showPassword ? "text" : "password"}
+                    placeholder="Create a strong password"
+                    value={formData.password}
+                    onChange={handleInputChange}
+                    required
+                    disabled={isLoading}
+                    className="h-11 pr-10"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                    disabled={isLoading}
+                  >
+                    {showPassword ? (
+                      <EyeOff className="w-4 h-4" />
+                    ) : (
+                      <Eye className="w-4 h-4" />
+                    )}
+                  </button>
+                </div>
+                
+                {/* Password Strength Indicator */}
+                {formData.password && (
+                  <PasswordStrengthIndicator
+                    password={formData.password}
+                    requirements={defaultPasswordRequirements}
+                    className="mt-3 p-3 bg-gray-50 rounded-lg border"
+                  />
+                )}
               </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="confirmPassword">Confirm Password</Label>
+                <Input
+                  id="confirmPassword"
+                  name="confirmPassword"
+                  type="password"
+                  placeholder="Confirm your password"
+                  value={formData.confirmPassword}
+                  onChange={handleInputChange}
+                  required
+                  disabled={isLoading}
+                  className="h-11"
+                />
+                {formData.confirmPassword && formData.password !== formData.confirmPassword && (
+                  <p className="text-sm text-red-500 mt-1">Passwords do not match</p>
+                )}
+                {formData.confirmPassword && formData.password === formData.confirmPassword && (
+                  <p className="text-sm text-green-500 mt-1">Passwords match ✓</p>
+                )}
+              </div>
+
 
               <Button
                 type="submit"
-                className="w-full h-11 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
-                disabled={isLoading}
+                className="w-full h-11 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled={isLoading || !passwordRequirementsMet || formData.password !== formData.confirmPassword || emailStatus.available !== true}
               >
                 {isLoading ? (
                   <>
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Creating Account...
+                    Sending OTP...
                   </>
+                ) : !passwordRequirementsMet ? (
+                  "Password Requirements Not Met"
+                ) : formData.password !== formData.confirmPassword ? (
+                  "Passwords Don't Match"
+                ) : emailStatus.available === false ? (
+                  "Email Not Available"
+                ) : emailStatus.checking ? (
+                  "Checking Email..."
                 ) : (
-                  "Create Account"
+                  "Send Verification Code"
                 )}
               </Button>
             </form>

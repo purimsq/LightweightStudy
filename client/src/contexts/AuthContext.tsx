@@ -5,7 +5,7 @@ import { usePageStateStore } from '@/stores/pageStateStore';
 
 export interface User {
   id: number;
-  username: string;
+  username?: string; // Made optional
   email: string;
   name: string;
   phone?: string;
@@ -35,7 +35,7 @@ interface AuthContextType {
 }
 
 interface SignupData {
-  username: string;
+  username?: string; // Made optional
   email: string;
   password: string;
   name: string;

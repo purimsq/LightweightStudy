@@ -5,7 +5,7 @@ import { z } from 'zod';
 // Users table - Core user information
 export const users = sqliteTable('users', {
   id: integer('id').primaryKey({ autoIncrement: true }),
-  username: text('username').notNull().unique(),
+  username: text('username').unique(), // Made optional - no longer required
   email: text('email').notNull().unique(),
   password: text('password').notNull(),
   name: text('name').notNull(),
@@ -222,6 +222,8 @@ export const insertUserSchema = createInsertSchema(users).omit({
   id: true,
   createdAt: true,
   updatedAt: true,
+}).extend({
+  username: z.string().optional(), // Make username optional in validation
 });
 
 export const insertSessionSchema = createInsertSchema(sessions).omit({

@@ -5,7 +5,7 @@ import { type User, type InsertUser, type Session, type InsertSession } from '..
 
 export interface AuthUser {
   id: number;
-  username: string;
+  username?: string; // Made optional
   email: string;
   name: string;
   phone?: string;
@@ -28,7 +28,7 @@ export interface LoginCredentials {
 }
 
 export interface SignupData {
-  username: string;
+  username?: string; // Made optional
   email: string;
   password: string;
   name: string;
@@ -114,15 +114,18 @@ export class AuthService {
    * Sign up a new user
    */
   async signup(data: SignupData): Promise<AuthResponse> {
-    // Check if user already exists
+    // Check if user already exists by email
     const existingUserByEmail = await storage.getUserByEmail(data.email);
     if (existingUserByEmail) {
       throw new Error('User with this email already exists');
     }
 
-    const existingUserByUsername = await storage.getUserByUsername(data.username);
-    if (existingUserByUsername) {
-      throw new Error('Username already taken');
+    // Only check username uniqueness if username is provided
+    if (data.username) {
+      const existingUserByUsername = await storage.getUserByUsername(data.username);
+      if (existingUserByUsername) {
+        throw new Error('Username already taken');
+      }
     }
 
     // Hash the password
@@ -130,7 +133,7 @@ export class AuthService {
 
     // Create user data
     const userData: InsertUser = {
-      username: data.username,
+      username: data.username || null, // Set to null if not provided
       email: data.email,
       password: hashedPassword,
       name: data.name,

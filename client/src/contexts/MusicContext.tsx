@@ -103,6 +103,21 @@ export const MusicProvider: React.FC<MusicProviderProps> = ({ children }) => {
     const handleKeyPress = (event: KeyboardEvent) => {
       // Only handle spacebar for play/pause
       if (event.code === 'Space') {
+        // Check if user is typing in an input field, textarea, or contenteditable element
+        const target = event.target as HTMLElement;
+        const isInputField = target.tagName === 'INPUT' || 
+                           target.tagName === 'TEXTAREA' || 
+                           target.contentEditable === 'true' ||
+                           target.getAttribute('contenteditable') === 'true' ||
+                           target.closest('[contenteditable="true"]') ||
+                           target.closest('input') ||
+                           target.closest('textarea');
+        
+        // Don't interfere with typing in input fields
+        if (isInputField) {
+          return;
+        }
+        
         event.preventDefault(); // Prevent page scrolling
         
         if (currentTrack) {

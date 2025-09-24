@@ -32,6 +32,7 @@ import StudyCompanion from "@/pages/studycompanion";
 import TestPersistence from "@/pages/test-persistence";
 import Login from "@/pages/login";
 import Signup from "@/pages/signup";
+import VerifyOTP from "@/pages/verify-otp";
 import FloatingActionButton from "@/components/ui/floating-action-button";
 import DocumentUploadModal from "@/components/modals/document-upload-modal";
 import BreakReminder from "@/components/modals/break-reminder";
@@ -107,6 +108,7 @@ function Router() {
       {/* Full-screen auth pages without layout */}
       <Route path="/login" component={Login} />
       <Route path="/signup" component={Signup} />
+      <Route path="/verify-otp/:email" component={VerifyOTP} />
       
       {/* Full-screen music pages without layout */}
       <Route path="/music" component={Music} />

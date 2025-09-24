@@ -38,6 +38,33 @@ export class SQLiteStorage {
     return result[0];
   }
 
+  // OTP Management (using a simple in-memory store for now)
+  private otpStore = new Map<string, { otp: string; expiresAt: Date; attempts: number }>();
+
+  async storeOTP(otpData: { email: string; otp: string; expiresAt: Date; attempts: number }): Promise<void> {
+    this.otpStore.set(otpData.email, {
+      otp: otpData.otp,
+      expiresAt: otpData.expiresAt,
+      attempts: otpData.attempts
+    });
+  }
+
+  async getOTP(email: string): Promise<{ otp: string; expiresAt: Date; attempts: number } | undefined> {
+    return this.otpStore.get(email);
+  }
+
+  async deleteOTP(email: string): Promise<void> {
+    this.otpStore.delete(email);
+  }
+
+  async incrementOTPAttempts(email: string): Promise<void> {
+    const otpData = this.otpStore.get(email);
+    if (otpData) {
+      otpData.attempts++;
+      this.otpStore.set(email, otpData);
+    }
+  }
+
   // Sessions
   async createSession(sessionData: schema.InsertSession): Promise<schema.Session> {
     const result = await db.insert(schema.sessions).values(sessionData).returning();
