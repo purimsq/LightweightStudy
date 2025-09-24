@@ -1,4 +1,5 @@
 import type { Express } from "express";
+import express from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage-sqlite";
 import { z } from "zod";
@@ -25,6 +26,12 @@ import { authenticateToken, optionalAuth, type AuthenticatedRequest } from './mi
 const uploadsDir = path.join(process.cwd(), 'uploads');
 if (!fs.existsSync(uploadsDir)) {
   fs.mkdirSync(uploadsDir, { recursive: true });
+}
+
+// Create profile images directory if it doesn't exist
+const profileImagesDir = path.join(process.cwd(), 'uploads', 'profile-images');
+if (!fs.existsSync(profileImagesDir)) {
+  fs.mkdirSync(profileImagesDir, { recursive: true });
 }
 
 // Create music cache directory for yt-dlp downloads
@@ -85,7 +92,42 @@ const musicUpload = multer({
   }
 });
 
+// Configure multer for profile image uploads
+const profileImageStorage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, profileImagesDir);
+  },
+  filename: (req, file, cb) => {
+    // Create unique filename with user ID and timestamp
+    const timestamp = Date.now();
+    const ext = path.extname(file.originalname);
+    const userId = (req as any).user?.id || 'unknown';
+    cb(null, `profile_${userId}_${timestamp}${ext}`);
+  }
+});
+
+const profileImageUpload = multer({
+  storage: profileImageStorage,
+  fileFilter: (req, file, cb) => {
+    // Allow only image files
+    if (file.mimetype.startsWith('image/')) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only image files are allowed'));
+    }
+  },
+  limits: {
+    fileSize: 5 * 1024 * 1024, // 5MB limit for profile images
+    fieldSize: 5 * 1024 * 1024, // 5MB field size limit
+    files: 1, // Allow only 1 file at a time
+    parts: 100 // Reasonable parts limit for image uploads
+  }
+});
+
 export async function registerRoutes(app: Express, io?: any): Promise<Server> {
+  
+  // Serve static files
+  app.use('/uploads', express.static(uploadsDir));
   
   // Register authentication routes
   app.use('/api/auth', authRoutes);
@@ -318,6 +360,63 @@ export async function registerRoutes(app: Express, io?: any): Promise<Server> {
     }
   });
 
+  // Profile image upload endpoint
+  app.post("/api/users/profile-image", authenticateToken, profileImageUpload.single('profileImage'), async (req: AuthenticatedRequest, res) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ message: "No image file provided" });
+      }
+
+      const userId = req.user!.id;
+      const imagePath = `/uploads/profile-images/${req.file.filename}`;
+
+      // Update user's profile image path in database
+      const updatedUser = await storage.updateUser(userId, { profileImagePath: imagePath });
+
+      res.json({
+        message: "Profile image uploaded successfully",
+        profileImagePath: imagePath,
+        user: updatedUser
+      });
+    } catch (error) {
+      console.error("Profile image upload error:", error);
+      res.status(500).json({ 
+        message: "Failed to upload profile image", 
+        error: error instanceof Error ? error.message : "Unknown error" 
+      });
+    }
+  });
+
+  // Delete profile image endpoint
+  app.delete("/api/users/profile-image", authenticateToken, async (req: AuthenticatedRequest, res) => {
+    try {
+      const userId = req.user!.id;
+      const user = await storage.getUser(userId);
+      
+      if (user && user.profileImagePath) {
+        // Delete the file from filesystem
+        const filePath = path.join(process.cwd(), user.profileImagePath);
+        if (fs.existsSync(filePath)) {
+          fs.unlinkSync(filePath);
+        }
+      }
+
+      // Remove profile image path from database
+      const updatedUser = await storage.updateUser(userId, { profileImagePath: null });
+
+      res.json({
+        message: "Profile image deleted successfully",
+        user: updatedUser
+      });
+    } catch (error) {
+      console.error("Profile image deletion error:", error);
+      res.status(500).json({ 
+        message: "Failed to delete profile image", 
+        error: error instanceof Error ? error.message : "Unknown error" 
+      });
+    }
+  });
+
   // Friends
   app.get("/api/friends", authenticateToken, async (req: AuthenticatedRequest, res) => {
     try {
@@ -358,11 +457,40 @@ export async function registerRoutes(app: Express, io?: any): Promise<Server> {
             app.post("/api/friends/request", authenticateToken, async (req: AuthenticatedRequest, res) => {
               try {
                 const { friendId } = req.body;
+                console.log('📤 Friend request attempt:', { fromUserId: req.user!.id, toFriendId: friendId });
+                
                 if (!friendId) {
                   return res.status(400).json({ message: "Friend ID is required" });
                 }
+
+                // Check current status first
+                const currentStatus = await storage.getFriendRequestStatus(req.user!.id, friendId);
+                console.log('🔍 Current friend status:', currentStatus);
+                
+                if (currentStatus === 'accepted') {
+                  return res.status(400).json({ message: "You are already friends with this user" });
+                } else if (currentStatus === 'sent') {
+                  return res.status(400).json({ message: "Friend request already sent" });
+                } else if (currentStatus === 'received') {
+                  return res.status(400).json({ message: "This user has already sent you a friend request" });
+                }
                 
                 const friendRequest = await storage.sendFriendRequest(req.user!.id, friendId);
+                console.log('✅ Friend request created:', friendRequest);
+                
+                // Create notification for the friend who received the request
+                try {
+                  await storage.createNotification({
+                    userId: friendId,
+                    type: 'friend_request',
+                    title: 'New Friend Request',
+                    message: `${req.user!.name} sent you a friend request`,
+                    data: JSON.stringify({ fromUserId: req.user!.id, fromName: req.user!.name })
+                  });
+                } catch (notificationError) {
+                  console.error('Error creating notification:', notificationError);
+                  // Continue with the friend request even if notification fails
+                }
                 
                 // Emit real-time notification to the friend
                 if (io) {
@@ -377,6 +505,7 @@ export async function registerRoutes(app: Express, io?: any): Promise<Server> {
                 
                 res.status(201).json(friendRequest);
               } catch (error) {
+                console.error('❌ Friend request error:', error);
                 res.status(500).json({ message: "Failed to send friend request", error: error instanceof Error ? error.message : "Unknown error" });
               }
             });
@@ -384,11 +513,31 @@ export async function registerRoutes(app: Express, io?: any): Promise<Server> {
   app.post("/api/friends/accept", authenticateToken, async (req: AuthenticatedRequest, res) => {
     try {
       const { friendId } = req.body;
+      console.log('📥 Accept friend request attempt:', { fromUserId: req.user!.id, friendId, body: req.body });
+      
       if (!friendId) {
+        console.log('❌ Missing friendId in request body');
         return res.status(400).json({ message: "Friend ID is required" });
       }
       
       const friend = await storage.acceptFriendRequest(req.user!.id, friendId);
+      
+      // Get the friend's name for the notification
+      const friendUser = await storage.getUser(friendId);
+      
+      // Create notification for the person who sent the request
+      try {
+        await storage.createNotification({
+          userId: friendId,
+          type: 'friend_accepted',
+          title: 'Friend Request Accepted',
+          message: `${req.user!.name} accepted your friend request`,
+          data: JSON.stringify({ fromUserId: req.user!.id, fromName: req.user!.name })
+        });
+      } catch (notificationError) {
+        console.error('Error creating notification:', notificationError);
+        // Continue with the friend request even if notification fails
+      }
       
       // Emit real-time notification to both users
       if (io) {
@@ -425,6 +574,21 @@ export async function registerRoutes(app: Express, io?: any): Promise<Server> {
       }
       
       await storage.rejectFriendRequest(req.user!.id, friendId);
+      
+      // Create notification for the person who sent the request
+      try {
+        await storage.createNotification({
+          userId: friendId,
+          type: 'friend_declined',
+          title: 'Friend Request Declined',
+          message: `${req.user!.name} declined your friend request`,
+          data: JSON.stringify({ fromUserId: req.user!.id, fromName: req.user!.name })
+        });
+      } catch (notificationError) {
+        console.error('Error creating notification:', notificationError);
+        // Continue with the friend request even if notification fails
+      }
+      
       res.json({ message: "Friend request rejected" });
     } catch (error) {
       res.status(500).json({ message: "Failed to reject friend request", error: error instanceof Error ? error.message : "Unknown error" });
@@ -444,14 +608,58 @@ export async function registerRoutes(app: Express, io?: any): Promise<Server> {
   app.get("/api/users/search", authenticateToken, async (req: AuthenticatedRequest, res) => {
     try {
       const { q } = req.query;
-      if (!q || typeof q !== 'string') {
-        return res.status(400).json({ message: "Search query is required" });
-      }
-      
-      const users = await storage.searchUsers(q, req.user!.id);
+      const users = await storage.searchUsers(q as string || '', req.user!.id);
       res.json(users);
     } catch (error) {
       res.status(500).json({ message: "Failed to search users", error: error instanceof Error ? error.message : "Unknown error" });
+    }
+  });
+
+  app.get("/api/friends/status/:friendId", authenticateToken, async (req: AuthenticatedRequest, res) => {
+    try {
+      const friendId = parseInt(req.params.friendId);
+      const status = await storage.getFriendRequestStatus(req.user!.id, friendId);
+      res.json({ status });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to get friend status", error: error instanceof Error ? error.message : "Unknown error" });
+    }
+  });
+
+  // Notifications
+  app.get("/api/notifications", authenticateToken, async (req: AuthenticatedRequest, res) => {
+    try {
+      const notifications = await storage.getNotifications(req.user!.id);
+      res.json(notifications);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to get notifications", error: error instanceof Error ? error.message : "Unknown error" });
+    }
+  });
+
+  app.get("/api/notifications/unread-count", authenticateToken, async (req: AuthenticatedRequest, res) => {
+    try {
+      const count = await storage.getUnreadNotificationCount(req.user!.id);
+      res.json({ count });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to get unread notification count", error: error instanceof Error ? error.message : "Unknown error" });
+    }
+  });
+
+  app.put("/api/notifications/:id/read", authenticateToken, async (req: AuthenticatedRequest, res) => {
+    try {
+      const notificationId = parseInt(req.params.id);
+      await storage.markNotificationAsRead(notificationId);
+      res.json({ message: "Notification marked as read" });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to mark notification as read", error: error instanceof Error ? error.message : "Unknown error" });
+    }
+  });
+
+  app.put("/api/notifications/read-all", authenticateToken, async (req: AuthenticatedRequest, res) => {
+    try {
+      await storage.markAllNotificationsAsRead(req.user!.id);
+      res.json({ message: "All notifications marked as read" });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to mark all notifications as read", error: error instanceof Error ? error.message : "Unknown error" });
     }
   });
 

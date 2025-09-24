@@ -12,6 +12,7 @@ export interface User {
   bio?: string;
   location?: string;
   avatar: string;
+  profileImagePath?: string;
   learningPace: number;
   studyStreak: number;
   lastActiveDate?: string;

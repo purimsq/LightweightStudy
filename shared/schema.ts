@@ -10,6 +10,7 @@ export const users = sqliteTable('users', {
   password: text('password').notNull(),
   name: text('name').notNull(),
   avatar: text('avatar').notNull().default('U'),
+  profileImagePath: text('profile_image_path'), // Path to uploaded profile image
   learningPace: integer('learning_pace').notNull().default(45),
   studyStreak: integer('study_streak').notNull().default(0),
   isActive: integer('is_active', { mode: 'boolean' }).notNull().default(true),
@@ -40,6 +41,18 @@ export const friends = sqliteTable('friends', {
   status: text('status').notNull().default('pending'), // 'pending', 'accepted', 'blocked'
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
   updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
+});
+
+// Notifications table - User notifications
+export const notifications = sqliteTable('notifications', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  userId: integer('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  type: text('type').notNull(), // 'friend_request', 'friend_accepted', 'friend_declined', etc.
+  title: text('title').notNull(),
+  message: text('message').notNull(),
+  data: text('data'), // JSON string for additional data
+  isRead: integer('is_read', { mode: 'boolean' }).notNull().default(false),
+  createdAt: integer('created_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
 });
 
 // Groups table - Group chats
@@ -301,6 +314,11 @@ export const insertFriendSchema = createInsertSchema(friends).omit({
   updatedAt: true,
 });
 
+export const insertNotificationSchema = createInsertSchema(notifications).omit({
+  id: true,
+  createdAt: true,
+});
+
 export const insertMessageSchema = createInsertSchema(messages).omit({
   id: true,
   senderId: true,
@@ -359,6 +377,9 @@ export type InsertQuizAttempt = z.infer<typeof insertQuizAttemptSchema>;
 
 export type Friend = typeof friends.$inferSelect;
 export type InsertFriend = z.infer<typeof insertFriendSchema>;
+
+export type Notification = typeof notifications.$inferSelect;
+export type InsertNotification = z.infer<typeof insertNotificationSchema>;
 
 export type Message = typeof messages.$inferSelect;
 export type InsertMessage = z.infer<typeof insertMessageSchema>;

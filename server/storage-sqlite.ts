@@ -38,6 +38,16 @@ export class SQLiteStorage {
     return result[0];
   }
 
+  async updateUserPassword(userId: number, hashedPassword: string): Promise<void> {
+    await db
+      .update(schema.users)
+      .set({ 
+        password: hashedPassword,
+        updatedAt: new Date()
+      })
+      .where(eq(schema.users.id, userId));
+  }
+
   // OTP Management (using a simple in-memory store for now)
   private otpStore = new Map<string, { otp: string; expiresAt: Date; attempts: number }>();
 
@@ -565,12 +575,17 @@ export class SQLiteStorage {
   }
 
   async acceptFriendRequest(userId: number, friendId: number): Promise<schema.Friend> {
+    console.log(`✅ Accepting friend request: userId=${userId}, friendId=${friendId}`);
+    
     // Update the existing friend request to accepted
+    // friendId sent the request TO userId, so we look for: userId=friendId, friendId=userId
     const result = await db
       .update(schema.friends)
       .set({ status: 'accepted', updatedAt: new Date() })
       .where(and(eq(schema.friends.userId, friendId), eq(schema.friends.friendId, userId)))
       .returning();
+
+    console.log(`📝 Updated friend request result:`, result);
 
     // Create the reverse friendship for the accepting user
     await db
@@ -581,13 +596,19 @@ export class SQLiteStorage {
         status: 'accepted'
       });
 
+    console.log(`🔄 Created reverse friendship: userId=${userId}, friendId=${friendId}`);
     return result[0];
   }
 
   async rejectFriendRequest(userId: number, friendId: number): Promise<void> {
-    await db
+    console.log(`❌ Rejecting friend request: userId=${userId}, friendId=${friendId}`);
+    
+    const result = await db
       .delete(schema.friends)
-      .where(and(eq(schema.friends.userId, friendId), eq(schema.friends.friendId, userId)));
+      .where(and(eq(schema.friends.userId, friendId), eq(schema.friends.friendId, userId)))
+      .returning();
+    
+    console.log(`🗑️ Deleted friend request result:`, result);
   }
 
   async getFriends(userId: number): Promise<Array<schema.User & { friendStatus: string }>> {
@@ -617,6 +638,8 @@ export class SQLiteStorage {
   }
 
   async getPendingFriendRequests(userId: number): Promise<Array<schema.User & { friendStatus: string }>> {
+    console.log(`🔍 Fetching pending friend requests for user ${userId}`);
+    
     const result = await db
       .select({
         id: schema.users.id,
@@ -639,6 +662,8 @@ export class SQLiteStorage {
       .from(schema.friends)
       .innerJoin(schema.users, eq(schema.friends.userId, schema.users.id))
       .where(and(eq(schema.friends.friendId, userId), eq(schema.friends.status, 'pending')));
+    
+    console.log(`📋 Found ${result.length} pending requests for user ${userId}:`, result.map(r => ({ id: r.id, name: r.name, status: r.friendStatus })));
     return result;
   }
 
@@ -723,7 +748,12 @@ export class SQLiteStorage {
       const result = await db
         .select()
         .from(schema.users)
-        .where(ne(schema.users.id, currentUserId)); // Exclude current user
+        .where(
+          and(
+            ne(schema.users.id, currentUserId), // Exclude current user
+            eq(schema.users.isActive, true) // Only active users
+          )
+        );
       return result;
     }
 
@@ -734,6 +764,7 @@ export class SQLiteStorage {
       .where(
         and(
           ne(schema.users.id, currentUserId), // Exclude current user
+          eq(schema.users.isActive, true), // Only active users
           or(
             like(schema.users.username, `%${query}%`),
             like(schema.users.name, `%${query}%`),
@@ -750,13 +781,51 @@ export class SQLiteStorage {
       .from(schema.friends)
       .where(
         and(
-          eq(schema.friends.status, 'accepted'),
-          // Check both directions of friendship
-          // This is a simplified check - you might want to use OR for both directions
+          or(
+            and(eq(schema.friends.userId, userId1), eq(schema.friends.friendId, userId2)),
+            and(eq(schema.friends.userId, userId2), eq(schema.friends.friendId, userId1))
+          ),
+          eq(schema.friends.status, 'accepted')
         )
       )
       .limit(1);
     return result.length > 0;
+  }
+
+  async getFriendRequestStatus(userId: number, friendId: number): Promise<'none' | 'sent' | 'received' | 'accepted'> {
+    console.log(`🔍 Getting friend request status: userId=${userId}, friendId=${friendId}`);
+    
+    const result = await db
+      .select()
+      .from(schema.friends)
+      .where(
+        or(
+          and(eq(schema.friends.userId, userId), eq(schema.friends.friendId, friendId)),
+          and(eq(schema.friends.userId, friendId), eq(schema.friends.friendId, userId))
+        )
+      )
+      .limit(1);
+
+    console.log(`📊 Friend request status query result:`, result);
+
+    if (result.length === 0) {
+      console.log(`❌ No friend request found - returning 'none'`);
+      return 'none';
+    }
+
+    const request = result[0];
+    console.log(`📋 Found friend request:`, request);
+    
+    if (request.status === 'accepted') {
+      console.log(`✅ Status: accepted`);
+      return 'accepted';
+    } else if (request.userId === userId) {
+      console.log(`📤 Status: sent (userId matches)`);
+      return 'sent';
+    } else {
+      console.log(`📥 Status: received (userId doesn't match)`);
+      return 'received';
+    }
   }
 
   // Messages
@@ -958,6 +1027,109 @@ export class SQLiteStorage {
 
   async deleteGroup(groupId: number): Promise<void> {
     await db.delete(schema.groups).where(eq(schema.groups.id, groupId));
+  }
+
+  // Notifications
+  async createNotification(notification: schema.InsertNotification): Promise<schema.Notification> {
+    const [result] = await db.insert(schema.notifications).values(notification).returning();
+    return result;
+  }
+
+  async getNotifications(userId: number, limit: number = 50): Promise<schema.Notification[]> {
+    return await db
+      .select()
+      .from(schema.notifications)
+      .where(eq(schema.notifications.userId, userId))
+      .orderBy(desc(schema.notifications.createdAt))
+      .limit(limit);
+  }
+
+  async getUnreadNotificationCount(userId: number): Promise<number> {
+    const result = await db
+      .select({ count: count() })
+      .from(schema.notifications)
+      .where(and(
+        eq(schema.notifications.userId, userId),
+        eq(schema.notifications.isRead, false)
+      ));
+    
+    return result[0]?.count || 0;
+  }
+
+  async markNotificationAsRead(notificationId: number): Promise<void> {
+    await db
+      .update(schema.notifications)
+      .set({ isRead: true })
+      .where(eq(schema.notifications.id, notificationId));
+  }
+
+  async markAllNotificationsAsRead(userId: number): Promise<void> {
+    await db
+      .update(schema.notifications)
+      .set({ isRead: true })
+      .where(eq(schema.notifications.userId, userId));
+  }
+
+  // Data export methods
+  async getUserDocuments(userId: number): Promise<any[]> {
+    return await db
+      .select()
+      .from(schema.documents)
+      .where(eq(schema.documents.userId, userId));
+  }
+
+  async getUserUnits(userId: number): Promise<any[]> {
+    return await db
+      .select()
+      .from(schema.units)
+      .where(eq(schema.units.userId, userId));
+  }
+
+  async getUserProgress(userId: number): Promise<any[]> {
+    return await db
+      .select()
+      .from(schema.unitProgress)
+      .where(eq(schema.unitProgress.userId, userId));
+  }
+
+  async getUserFriends(userId: number): Promise<any[]> {
+    return await db
+      .select()
+      .from(schema.friends)
+      .where(eq(schema.friends.userId, userId));
+  }
+
+  // Account deletion method
+  async deleteUserAccount(userId: number): Promise<void> {
+    console.log(`🗑️ Starting complete account deletion for user ${userId}`);
+    
+    // Delete in order to respect foreign key constraints
+    // 1. Delete notifications
+    await db.delete(schema.notifications).where(eq(schema.notifications.userId, userId));
+    console.log(`🗑️ Deleted notifications for user ${userId}`);
+    
+    // 2. Delete friends relationships (both directions)
+    await db.delete(schema.friends).where(eq(schema.friends.userId, userId));
+    await db.delete(schema.friends).where(eq(schema.friends.friendId, userId));
+    console.log(`🗑️ Deleted friend relationships for user ${userId}`);
+    
+    // 3. Delete unit progress
+    await db.delete(schema.unitProgress).where(eq(schema.unitProgress.userId, userId));
+    console.log(`🗑️ Deleted unit progress for user ${userId}`);
+    
+    // 4. Delete documents
+    await db.delete(schema.documents).where(eq(schema.documents.userId, userId));
+    console.log(`🗑️ Deleted documents for user ${userId}`);
+    
+    // 5. Delete units
+    await db.delete(schema.units).where(eq(schema.units.userId, userId));
+    console.log(`🗑️ Deleted units for user ${userId}`);
+    
+    // 6. Finally delete the user
+    await db.delete(schema.users).where(eq(schema.users.id, userId));
+    console.log(`🗑️ Deleted user account ${userId}`);
+    
+    console.log(`✅ Complete account deletion finished for user ${userId}`);
   }
 }
 

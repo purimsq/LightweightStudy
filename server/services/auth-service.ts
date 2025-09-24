@@ -51,7 +51,7 @@ export class AuthService {
   /**
    * Hash a password using bcrypt
    */
-  private async hashPassword(password: string): Promise<string> {
+  async hashPassword(password: string): Promise<string> {
     return bcrypt.hash(password, SALT_ROUNDS);
   }
 
@@ -59,7 +59,10 @@ export class AuthService {
    * Compare a password with its hash
    */
   private async comparePassword(password: string, hash: string): Promise<boolean> {
-    return bcrypt.compare(password, hash);
+    console.log('🔐 comparePassword called with:', { passwordLength: password?.length, hashLength: hash?.length });
+    const result = await bcrypt.compare(password, hash);
+    console.log('🔐 bcrypt.compare result:', result);
+    return result;
   }
 
   /**
@@ -316,6 +319,15 @@ export class AuthService {
   private sanitizeUser(user: User): AuthUser {
     const { password, ...sanitizedUser } = user;
     return sanitizedUser as AuthUser;
+  }
+  /**
+   * Verify a password against a user's stored password hash
+   */
+  async verifyPassword(password: string, hash: string): Promise<boolean> {
+    console.log('🔐 verifyPassword called with:', { passwordLength: password?.length, hashLength: hash?.length, hashPrefix: hash?.substring(0, 10) });
+    const result = await this.comparePassword(password, hash);
+    console.log('🔐 verifyPassword result:', result);
+    return result;
   }
 }
 

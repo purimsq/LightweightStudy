@@ -1,1344 +1,992 @@
 import { useState, useEffect } from "react";
-import { MessageCircle, Users, Search, Send, Plus, UserPlus, Check, X, Settings, MoreVertical, Phone, Video, Info, User } from "lucide-react";
+import { 
+  MessageCircle, 
+  Search, 
+  Send, 
+  Phone, 
+  Video, 
+  MoreVertical, 
+  Users, 
+  UserPlus,
+  Settings,
+  Archive,
+  Star,
+  Filter,
+  Paperclip,
+  Smile,
+  Mic,
+  ChevronDown,
+  Clock,
+  Check,
+  CheckCheck,
+  Bell,
+  Loader2,
+  X
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Separator } from "@/components/ui/separator";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { cn } from "@/lib/utils";
+import { useSidebar } from "@/contexts/SidebarContext";
 import { useAuth } from "@/contexts/AuthContext";
-import { useSocket } from "@/contexts/SocketContext";
 import { useToast } from "@/hooks/use-toast";
 
+// Mock data for the new design
+const mockConversations = [
+  {
+    id: 1,
+    name: "Alex Johnson",
+    username: "alexj",
+    avatar: null,
+    lastMessage: "Hey, how's the project going?",
+    timestamp: "2:30 PM",
+    unreadCount: 2,
+    isOnline: true,
+    isPinned: true,
+    isArchived: false,
+    lastSeen: "Online"
+  },
+  {
+    id: 2,
+    name: "Study Group",
+    username: "study_group",
+    avatar: null,
+    lastMessage: "Sarah: Meeting moved to 3 PM",
+    timestamp: "1:45 PM",
+    unreadCount: 5,
+    isOnline: false,
+    isPinned: false,
+    isArchived: false,
+    lastSeen: "3 members online"
+  },
+  {
+    id: 3,
+    name: "Emma Wilson",
+    username: "emmaw",
+    avatar: null,
+    lastMessage: "Thanks for the notes!",
+    timestamp: "12:20 PM",
+    unreadCount: 0,
+    isOnline: true,
+    isPinned: false,
+    isArchived: false,
+    lastSeen: "Online"
+  },
+  {
+    id: 4,
+    name: "Professor Smith",
+    username: "prof_smith",
+    avatar: null,
+    lastMessage: "Please submit your assignment by Friday",
+    timestamp: "Yesterday",
+    unreadCount: 1,
+    isOnline: false,
+    isPinned: true,
+    isArchived: false,
+    lastSeen: "Last seen 2 hours ago"
+  },
+  {
+    id: 5,
+    name: "Mike Chen",
+    username: "mikec",
+    avatar: null,
+    lastMessage: "See you at the library",
+    timestamp: "Yesterday",
+    unreadCount: 0,
+    isOnline: false,
+    isPinned: false,
+    isArchived: true,
+    lastSeen: "Last seen yesterday"
+  }
+];
+
+const mockMessages = [
+  {
+    id: 1,
+    senderId: 1,
+    content: "Hey, how's the project going?",
+    timestamp: "2:30 PM",
+    isRead: false,
+    isDelivered: true
+  },
+  {
+    id: 2,
+    senderId: 0, // Current user
+    content: "Going well! Just finishing up the final touches.",
+    timestamp: "2:32 PM",
+    isRead: true,
+    isDelivered: true
+  },
+  {
+    id: 3,
+    senderId: 1,
+    content: "That's great! When do you think you'll be done?",
+    timestamp: "2:33 PM",
+    isRead: false,
+    isDelivered: true
+  },
+  {
+    id: 4,
+    senderId: 0,
+    content: "Probably by tomorrow evening. Want to review it together?",
+    timestamp: "2:35 PM",
+    isRead: true,
+    isDelivered: true
+  },
+  {
+    id: 5,
+    senderId: 1,
+    content: "Absolutely! Let's schedule a call for tomorrow.",
+    timestamp: "2:36 PM",
+    isRead: false,
+    isDelivered: true
+  }
+];
+
+// Types
 interface User {
   id: number;
-  username: string;
   name: string;
-  avatar: string;
+  email: string;
+  username?: string;
+  avatar?: string;
+  bio?: string;
+  location?: string;
   isActive: boolean;
   lastLoginDate?: string;
-  friendStatus?: string;
-}
-
-interface Message {
-  id: number;
-  senderId: number;
-  receiverId: number;
-  content: string;
-  messageType: string;
-  isRead: boolean;
   createdAt: string;
 }
 
-interface Conversation {
+interface FriendRequest {
   id: number;
-  username: string;
-  name: string;
-  avatar: string;
-  isActive: boolean;
-  lastMessage?: Message;
-  unreadCount: number;
-}
-
-interface Group {
-  id: number;
-  name: string;
-  description?: string;
-  avatar?: string;
-  createdBy: number;
-  isActive: boolean;
-  memberCount: number;
-  lastMessage?: Message;
+  userId: number;
+  friendId: number;
+  status: 'pending' | 'accepted' | 'declined';
+  createdAt: string;
+  updatedAt: string;
+  user?: User;
 }
 
 export default function MessagesPage() {
+  const { isCollapsed } = useSidebar();
   const { user } = useAuth();
-  const { socket, isConnected } = useSocket();
-  const queryClient = useQueryClient();
   const { toast } = useToast();
-  const [activeTab, setActiveTab] = useState<'conversations' | 'requests' | 'friends' | 'search' | 'groups'>('conversations');
-  const [selectedFriend, setSelectedFriend] = useState<User | null>(null);
-  const [selectedGroup, setSelectedGroup] = useState<Group | null>(null);
-  const [newMessage, setNewMessage] = useState('');
-  const [searchQuery, setSearchQuery] = useState('');
-  const [showAddFriend, setShowAddFriend] = useState(false);
-  const [showCreateGroup, setShowCreateGroup] = useState(false);
-  const [groupName, setGroupName] = useState('');
-  const [groupDescription, setGroupDescription] = useState('');
-  const [selectedMembers, setSelectedMembers] = useState<number[]>([]);
-  const [showUserProfile, setShowUserProfile] = useState(false);
-  const [profileUser, setProfileUser] = useState<User | null>(null);
-  const [sentRequests, setSentRequests] = useState<Set<number>>(new Set());
-  const [typingUsers, setTypingUsers] = useState<Set<number>>(new Set());
-  const [isTyping, setIsTyping] = useState(false);
-  const [requestFilter, setRequestFilter] = useState<'sent' | 'received'>('received');
+  
+  // State
+  const [selectedConversation, setSelectedConversation] = useState(mockConversations[0]);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [newMessage, setNewMessage] = useState("");
+  const [showArchived, setShowArchived] = useState(false);
+  
+  // New Chat Modal State
+  const [isNewChatOpen, setIsNewChatOpen] = useState(false);
+  const [searchUsers, setSearchUsers] = useState<User[]>([]);
+  const [userSearchQuery, setUserSearchQuery] = useState("");
+  const [isSearchingUsers, setIsSearchingUsers] = useState(false);
+  const [friendRequestStatus, setFriendRequestStatus] = useState<Record<number, 'none' | 'sent' | 'received' | 'accepted'>>({});
+  
+  // Friend Requests Modal State
+  const [isFriendRequestsOpen, setIsFriendRequestsOpen] = useState(false);
+  const [pendingRequests, setPendingRequests] = useState<FriendRequest[]>([]);
+  const [isLoadingRequests, setIsLoadingRequests] = useState(false);
+  
+  // Notifications State
+  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+  const [notifications, setNotifications] = useState<any[]>([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [isLoadingNotifications, setIsLoadingNotifications] = useState(false);
 
-  // Real-time message handling
-  useEffect(() => {
-    if (!socket || !user) return;
-
-    // Join chat room when a friend is selected
-    if (selectedFriend) {
-      socket.emit('join_chat', selectedFriend.id, user.id);
+  // API Functions
+  const searchUsersAPI = async (query: string) => {
+    if (!query.trim()) {
+      setSearchUsers([]);
+      return;
     }
 
-    // Listen for new messages
-    socket.on('new_message', (message: any) => {
-      if (selectedFriend && message.senderId === selectedFriend.id) {
-        // Add message to local state immediately for real-time updates
-        queryClient.setQueryData(['/api/messages', selectedFriend.id], (oldData: any) => {
-          if (!oldData) return [message];
-          return [...oldData, message];
-        });
-      }
-      // Refresh conversations list
-      queryClient.invalidateQueries({ queryKey: ["/api/messages/conversations", user?.id] });
-    });
-
-    // Listen for typing indicators
-    socket.on('user_typing', (data: { userId: number; isTyping: boolean }) => {
-      if (selectedFriend && data.userId === selectedFriend.id) {
-        setTypingUsers(prev => {
-          const newSet = new Set(prev);
-          if (data.isTyping) {
-            newSet.add(data.userId);
-          } else {
-            newSet.delete(data.userId);
+    try {
+      setIsSearchingUsers(true);
+      const token = localStorage.getItem('authToken');
+      const response = await fetch(`/api/users/search?q=${encodeURIComponent(query)}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      if (response.ok) {
+        const users = await response.json();
+        setSearchUsers(users);
+        
+        // Fetch friend request status for each user
+        for (const user of users) {
+          try {
+            const statusResponse = await fetch(`/api/friends/status/${user.id}`, {
+              headers: {
+                'Authorization': `Bearer ${token}`,
+              },
+            });
+            if (statusResponse.ok) {
+              const { status } = await statusResponse.json();
+              setFriendRequestStatus(prev => ({ ...prev, [user.id]: status }));
+            }
+          } catch (error) {
+            console.error('Error fetching friend status:', error);
           }
-          return newSet;
-        });
-      }
-    });
-
-    // Listen for friend request notifications
-    socket.on('friend_request_received', (data: any) => {
-      console.log('📨 Friend request received:', data);
-      // Refresh friend requests data
-      queryClient.invalidateQueries({ queryKey: ["/api/friends/pending", user?.id] });
-      queryClient.invalidateQueries({ queryKey: ["/api/friends/all", user?.id] });
-      queryClient.invalidateQueries({ queryKey: ["/api/friends/sent", user?.id] });
-      
-      // Show notification
-      toast.success(`New friend request from ${data.fromName}!`);
-    });
-
-    // Listen for friend request acceptance notifications
-    socket.on('friend_request_accepted', (data: any) => {
-      console.log('📨 Friend request accepted:', data);
-      // Refresh all friend-related data
-      queryClient.invalidateQueries({ queryKey: ["/api/friends", user?.id] });
-      queryClient.invalidateQueries({ queryKey: ["/api/friends/pending", user?.id] });
-      queryClient.invalidateQueries({ queryKey: ["/api/friends/all", user?.id] });
-      queryClient.invalidateQueries({ queryKey: ["/api/friends/sent", user?.id] });
-      queryClient.invalidateQueries({ queryKey: ["/api/messages/conversations", user?.id] });
-      
-      // Show notification
-      toast.success(`You are now friends with ${data.fromName}!`);
-    });
-
-    return () => {
-      socket.off('new_message');
-      socket.off('user_typing');
-      socket.off('friend_request_received');
-      socket.off('friend_request_accepted');
-    };
-  }, [socket, user, selectedFriend, queryClient]);
-
-  // Fetch conversations
-  const { data: conversations = [] } = useQuery({
-    queryKey: ["/api/messages/conversations", user?.id],
-    enabled: !!user,
-  });
-
-  // Fetch friends
-  const { data: friends = [] } = useQuery({
-    queryKey: ["/api/friends", user?.id],
-    enabled: !!user,
-  });
-
-  // Fetch pending friend requests
-  const { data: pendingRequests = [] } = useQuery({
-    queryKey: ["/api/friends/pending", user?.id],
-    enabled: !!user,
-  });
-
-  // Fetch all friend requests
-  const { data: allFriendRequests = [] } = useQuery({
-    queryKey: ["/api/friends/all", user?.id],
-    enabled: !!user,
-  });
-
-  // Fetch groups
-  const { data: groups = [] } = useQuery({
-    queryKey: ["/api/groups", user?.id],
-    enabled: !!user,
-  });
-
-  // Fetch messages for selected friend
-  const { data: messages = [] } = useQuery({
-    queryKey: selectedGroup ? ["/api/groups", selectedGroup.id, "messages", user?.id] : ["/api/messages", selectedFriend?.id, user?.id],
-    enabled: (!!selectedFriend || !!selectedGroup) && !!user,
-  });
-
-  // Search users
-  const { data: searchResults = [] } = useQuery({
-    queryKey: ["/api/users/search", user?.id, searchQuery],
-    queryFn: async () => {
-      const token = localStorage.getItem('authToken');
-      const url = `/api/users/search?q=${encodeURIComponent(searchQuery)}`;
-      console.log(`🌐 Search Query Request: ${url}`);
-      
-      const res = await fetch(url, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-        credentials: "include",
-      });
-
-      console.log(`📡 Search Query Response: ${res.status} ${res.statusText} for ${url}`);
-
-      if (!res.ok) {
-        throw new Error(`Search failed: ${res.statusText}`);
-      }
-
-      const data = await res.json();
-      console.log(`📄 Search Query Data for ${url}:`, data);
-      return data;
-    },
-    enabled: (activeTab === 'search' || searchQuery.length > 0) && !!user, // Search when on search tab or when there's a query
-  });
-
-  // Get all friend requests to check status
-  const { data: allRequests = [] } = useQuery({
-    queryKey: ["/api/friends/all", user?.id],
-    enabled: !!user,
-  });
-
-  // Send message mutation
-  const sendMessageMutation = useMutation({
-    mutationFn: async (content: string) => {
-      const token = localStorage.getItem('authToken');
-      const url = selectedGroup 
-        ? `/api/groups/${selectedGroup.id}/messages`
-        : '/api/messages';
-      
-      const body = selectedGroup
-        ? { content, messageType: 'text' }
-        : { receiverId: selectedFriend?.id, content, messageType: 'text' };
-
-      const response = await fetch(url, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-        body: JSON.stringify(body),
-      });
-      if (!response.ok) throw new Error('Failed to send message');
-      return response.json();
-    },
-    onSuccess: () => {
-      setNewMessage('');
-      if (selectedGroup) {
-        queryClient.invalidateQueries({ queryKey: ["/api/groups", selectedGroup.id, "messages"] });
-        queryClient.invalidateQueries({ queryKey: ["/api/groups", user?.id] });
+        }
       } else {
-        queryClient.invalidateQueries({ queryKey: ["/api/messages", selectedFriend?.id] });
-        queryClient.invalidateQueries({ queryKey: ["/api/messages/conversations", user?.id] });
+        throw new Error('Failed to search users');
       }
-    },
-  });
-
-  // Create group mutation
-  const createGroupMutation = useMutation({
-    mutationFn: async () => {
-      const token = localStorage.getItem('authToken');
-      const response = await fetch('/api/groups', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          name: groupName,
-          description: groupDescription,
-          memberIds: selectedMembers
-        }),
+    } catch (error) {
+      console.error('Error searching users:', error);
+      toast({
+        title: "Error",
+        description: "Failed to search users",
+        variant: "destructive",
       });
-      if (!response.ok) throw new Error('Failed to create group');
-      return response.json();
-    },
-    onSuccess: () => {
-      setGroupName('');
-      setGroupDescription('');
-      setSelectedMembers([]);
-      setShowCreateGroup(false);
-      queryClient.invalidateQueries({ queryKey: ["/api/groups", user?.id] });
-    },
-  });
+    } finally {
+      setIsSearchingUsers(false);
+    }
+  };
 
-  // Send friend request mutation
-  const sendFriendRequestMutation = useMutation({
-    mutationFn: async (friendId: number) => {
-      console.log('🚀 Friend request mutation started for user ID:', friendId);
+  const sendFriendRequest = async (friendId: number) => {
+    try {
       const token = localStorage.getItem('authToken');
-      console.log('🔑 Token exists:', !!token);
-      
       const response = await fetch('/api/friends/request', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
         },
         body: JSON.stringify({ friendId }),
       });
-      
-      console.log('📡 Friend request response:', response.status, response.statusText);
-      
-      if (!response.ok) {
-        const errorData = await response.json();
-        console.error('❌ Friend request failed:', errorData);
-        throw new Error(`Failed to send friend request: ${errorData.message || response.statusText}`);
-      }
-      
-      const data = await response.json();
-      console.log('✅ Friend request success:', data);
-      return data;
-    },
-    onSuccess: (data, variables) => {
-      queryClient.invalidateQueries({ queryKey: ["/api/friends", user?.id] });
-      queryClient.invalidateQueries({ queryKey: ["/api/friends/pending", user?.id] });
-      queryClient.invalidateQueries({ queryKey: ["/api/friends/sent", user?.id] });
-      queryClient.invalidateQueries({ queryKey: ["/api/friends/all", user?.id] });
-      setSentRequests(prev => new Set([...prev, variables]));
-      toast.success('Friend request sent!');
-    },
-    onError: (error) => {
-      console.error('Friend request error:', error);
-      toast.error('Failed to send friend request. Please try again.');
-    },
-  });
 
-  // Accept friend request mutation
-  const acceptFriendRequestMutation = useMutation({
-    mutationFn: async (friendId: number) => {
+      if (response.ok) {
+        toast({
+          title: "Friend Request Sent",
+          description: "Your friend request has been sent successfully!",
+        });
+        
+        // Update the button status
+        setFriendRequestStatus(prev => ({ ...prev, [friendId]: 'sent' }));
+      } else {
+        const error = await response.json();
+        throw new Error(error.message || 'Failed to send friend request');
+      }
+    } catch (error) {
+      console.error('Error sending friend request:', error);
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to send friend request",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const fetchPendingRequests = async () => {
+    try {
+      setIsLoadingRequests(true);
+      const token = localStorage.getItem('authToken');
+      const response = await fetch('/api/friends/pending', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      if (response.ok) {
+        const requests = await response.json();
+        setPendingRequests(requests);
+      } else {
+        throw new Error('Failed to fetch pending requests');
+      }
+    } catch (error) {
+      console.error('Error fetching pending requests:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load friend requests",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoadingRequests(false);
+    }
+  };
+
+  const acceptFriendRequest = async (friendId: number) => {
+    try {
       const token = localStorage.getItem('authToken');
       const response = await fetch('/api/friends/accept', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
         },
         body: JSON.stringify({ friendId }),
       });
-      if (!response.ok) throw new Error('Failed to accept friend request');
-      return response.json();
-    },
-    onSuccess: (data, friendId) => {
-      queryClient.invalidateQueries({ queryKey: ["/api/friends", user?.id] });
-      queryClient.invalidateQueries({ queryKey: ["/api/friends/pending", user?.id] });
-      queryClient.invalidateQueries({ queryKey: ["/api/friends/sent", user?.id] });
-      queryClient.invalidateQueries({ queryKey: ["/api/friends/all", user?.id] });
-      queryClient.invalidateQueries({ queryKey: ["/api/messages/conversations", user?.id] });
       
-      // Automatically switch to conversations tab and select the new friend
-      setActiveTab('conversations');
-      
-      // Find the new friend in the updated conversations list
-      setTimeout(() => {
-        queryClient.invalidateQueries({ queryKey: ["/api/messages/conversations", user?.id] });
-        // The conversations will be refreshed and the new friend should appear
-      }, 100);
-      
-      toast.success('Friend request accepted! You can now start chatting.');
-    },
-    onError: (error) => {
-      console.error('Accept friend request error:', error);
-      toast.error('Failed to accept friend request. Please try again.');
-    },
-  });
+      if (response.ok) {
+        toast({
+          title: "Friend Request Accepted",
+          description: "You are now friends!",
+        });
+        
+        // Remove from pending requests
+        setPendingRequests(prev => prev.filter(req => req.id !== friendId));
+      } else {
+        const error = await response.json();
+        throw new Error(error.message || 'Failed to accept friend request');
+      }
+    } catch (error) {
+      console.error('Error accepting friend request:', error);
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to accept friend request",
+        variant: "destructive",
+      });
+    }
+  };
 
-  // Reject friend request mutation
-  const rejectFriendRequestMutation = useMutation({
-    mutationFn: async (friendId: number) => {
+  const declineFriendRequest = async (friendId: number) => {
+    try {
       const token = localStorage.getItem('authToken');
       const response = await fetch('/api/friends/reject', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
         },
         body: JSON.stringify({ friendId }),
       });
-      if (!response.ok) throw new Error('Failed to reject friend request');
-      return response.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/friends/pending", user?.id] });
-      queryClient.invalidateQueries({ queryKey: ["/api/friends/sent", user?.id] });
-      queryClient.invalidateQueries({ queryKey: ["/api/friends/all", user?.id] });
-      toast.success('Friend request rejected');
-    },
-    onError: (error) => {
-      console.error('Reject friend request error:', error);
-      toast.error('Failed to reject friend request. Please try again.');
-    },
-  });
 
-  // Delete friend request mutation
-  const deleteFriendRequestMutation = useMutation({
-    mutationFn: async (friendId: number) => {
+      if (response.ok) {
+        toast({
+          title: "Friend Request Declined",
+          description: "Friend request has been declined",
+        });
+        
+        // Remove from pending requests
+        setPendingRequests(prev => prev.filter(req => req.id !== friendId));
+      } else {
+        const error = await response.json();
+        throw new Error(error.message || 'Failed to decline friend request');
+      }
+    } catch (error) {
+      console.error('Error declining friend request:', error);
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to decline friend request",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Notification API Functions
+  const fetchNotifications = async () => {
+    try {
+      setIsLoadingNotifications(true);
       const token = localStorage.getItem('authToken');
-      const response = await fetch(`/api/friends/request/${friendId}`, {
-        method: 'DELETE',
+      const response = await fetch('/api/notifications', {
         headers: {
           'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
         },
       });
-      if (!response.ok) throw new Error('Failed to delete friend request');
-      return response.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/friends/pending", user?.id] });
-      queryClient.invalidateQueries({ queryKey: ["/api/friends/sent", user?.id] });
-      queryClient.invalidateQueries({ queryKey: ["/api/friends/all", user?.id] });
-      toast.success('Friend request deleted');
-    },
-    onError: (error) => {
-      console.error('Delete friend request error:', error);
-      toast.error('Failed to delete friend request. Please try again.');
+      
+      if (response.ok) {
+        const notificationsData = await response.json();
+        setNotifications(notificationsData);
+      } else {
+        throw new Error('Failed to fetch notifications');
+      }
+    } catch (error) {
+      console.error('Error fetching notifications:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load notifications",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoadingNotifications(false);
+    }
+  };
+
+  const fetchUnreadCount = async () => {
+    try {
+      const token = localStorage.getItem('authToken');
+      const response = await fetch('/api/notifications/unread-count', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      if (response.ok) {
+        const { count } = await response.json();
+        setUnreadCount(count);
+      }
+    } catch (error) {
+      console.error('Error fetching unread count:', error);
+    }
+  };
+
+  const markNotificationAsRead = async (notificationId: number) => {
+    try {
+      const token = localStorage.getItem('authToken');
+      const response = await fetch(`/api/notifications/${notificationId}/read`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
     },
   });
 
-  const handleSendMessage = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (newMessage.trim() && selectedFriend && user) {
-      // Send message via socket for real-time delivery
-      if (socket) {
-        socket.emit('send_message', {
-          friendId: selectedFriend.id,
-          userId: user.id,
-          content: newMessage.trim(),
-          messageType: 'text'
-        });
+      if (response.ok) {
+        // Update local state
+        setNotifications(prev => 
+          prev.map(notif => 
+            notif.id === notificationId ? { ...notif, isRead: true } : notif
+          )
+        );
+        setUnreadCount(prev => Math.max(0, prev - 1));
       }
-      
-      // Also save to database
-      sendMessageMutation.mutate(newMessage.trim());
-      setNewMessage('');
+    } catch (error) {
+      console.error('Error marking notification as read:', error);
     }
   };
 
-  const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      handleSendMessage(e);
-    }
-    // Allow all other keys including space to work normally
-  };
-
-  const handleTyping = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setNewMessage(e.target.value);
-    
-    if (socket && selectedFriend && user) {
-      if (e.target.value.length > 0 && !isTyping) {
-        setIsTyping(true);
-        socket.emit('typing', {
-          friendId: selectedFriend.id,
-          userId: user.id,
-          isTyping: true
-        });
-      } else if (e.target.value.length === 0 && isTyping) {
-        setIsTyping(false);
-        socket.emit('typing', {
-          friendId: selectedFriend.id,
-          userId: user.id,
-          isTyping: false
-        });
+  // Effects
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      if (userSearchQuery.trim()) {
+        searchUsersAPI(userSearchQuery);
+      } else {
+        setSearchUsers([]);
       }
+    }, 300);
+
+    return () => clearTimeout(timeoutId);
+  }, [userSearchQuery]);
+
+  useEffect(() => {
+    if (isFriendRequestsOpen) {
+      fetchPendingRequests();
     }
-  };
+  }, [isFriendRequestsOpen]);
 
-  const handleSendFriendRequest = (friendId: number) => {
-    console.log('🔗 Sending friend request to user ID:', friendId);
-    sendFriendRequestMutation.mutate(friendId);
-  };
+  useEffect(() => {
+    if (isNotificationsOpen) {
+      fetchNotifications();
+    }
+  }, [isNotificationsOpen]);
 
-  const handleAcceptFriendRequest = (friendId: number) => {
-    acceptFriendRequestMutation.mutate(friendId);
-  };
+  useEffect(() => {
+    // Fetch unread count on component mount
+    fetchUnreadCount();
+  }, []);
 
-  const handleRejectFriendRequest = (friendId: number) => {
-    rejectFriendRequestMutation.mutate(friendId);
-  };
+  const filteredConversations = mockConversations.filter(conv => {
+    const matchesSearch = conv.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                         conv.username.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesArchive = showArchived ? conv.isArchived : !conv.isArchived;
+    return matchesSearch && matchesArchive;
+  });
+
+  const pinnedConversations = filteredConversations.filter(conv => conv.isPinned);
+  const regularConversations = filteredConversations.filter(conv => !conv.isPinned);
 
   const getInitials = (name: string) => {
-    if (!name || typeof name !== 'string') return '?';
     return name.split(' ').map(n => n[0]).join('').toUpperCase();
   };
 
-  const handleViewProfile = (user: User) => {
-    setProfileUser(user);
-    setShowUserProfile(true);
-  };
-
-  const formatTime = (dateString: string) => {
-    const date = new Date(dateString);
-    const now = new Date();
-    const diffInHours = (now.getTime() - date.getTime()) / (1000 * 60 * 60);
-    
-    if (diffInHours < 1) {
-      return 'Just now';
-    } else if (diffInHours < 24) {
-      return `${Math.floor(diffInHours)}h ago`;
-    } else {
-      return date.toLocaleDateString();
+  const handleSendMessage = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (newMessage.trim()) {
+      // TODO: Implement message sending
+      console.log('Sending message:', newMessage);
+      setNewMessage("");
     }
   };
-
-  if (selectedFriend || selectedGroup) {
-    const chatName = selectedGroup ? selectedGroup.name : selectedFriend?.name;
-    const chatAvatar = selectedGroup ? selectedGroup.avatar : selectedFriend?.avatar;
-    const isGroup = !!selectedGroup;
     
     return (
-      <div className="flex flex-col h-screen">
-        {/* Chat Header */}
-        <div className="bg-white border-b p-4 flex items-center justify-between">
+    <div className="min-h-screen bg-gray-50">
+      {/* Header */}
+      <div className={`bg-white border-b border-gray-200 transition-all duration-300 ease-in-out ${
+        isCollapsed ? 'px-8 py-6' : 'p-6'
+      }`}>
+        <div className="flex items-center justify-between">
           <div className="flex items-center space-x-3">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => {
-                setSelectedFriend(null);
-                setSelectedGroup(null);
-              }}
-              className="p-2"
-            >
-              ←
-            </Button>
-            <div className="w-10 h-10 bg-primary rounded-full flex items-center justify-center text-white font-medium">
-              {isGroup ? getInitials(selectedGroup.name) : getInitials(selectedFriend?.name || '')}
+            <div className="w-10 h-10 bg-blue-500 rounded-lg flex items-center justify-center">
+              <MessageCircle className="w-5 h-5 text-white" />
             </div>
             <div>
-              <h2 className="font-semibold">{chatName}</h2>
-              <p className="text-sm text-gray-500">
-                {isGroup 
-                  ? `${selectedGroup.memberCount} members` 
-                  : selectedFriend?.isActive ? 'Online' : 'Offline'
-                }
-              </p>
+              <h1 className="text-2xl font-bold text-gray-900">Messages</h1>
+              <p className="text-sm text-gray-500">Stay connected with your study community</p>
             </div>
           </div>
+           <div className="flex items-center space-x-3">
+             <Dialog open={isNewChatOpen} onOpenChange={setIsNewChatOpen}>
+               <DialogTrigger asChild>
+                 <Button variant="outline" size="sm">
+                   <UserPlus className="w-4 h-4 mr-2" />
+                   New Chat
+            </Button>
+               </DialogTrigger>
+               <DialogContent className="max-w-md">
+                 <DialogHeader>
+                   <DialogTitle>Start New Chat</DialogTitle>
+                 </DialogHeader>
+                 <div className="space-y-4">
+                   <div>
+                     <Input
+                       placeholder="Search users..."
+                       value={userSearchQuery}
+                       onChange={(e) => setUserSearchQuery(e.target.value)}
+                       className="w-full"
+                     />
+          </div>
+                   <div className="space-y-2 max-h-60 overflow-y-auto">
+                     {isSearchingUsers ? (
+                       <div className="flex items-center justify-center py-8">
+                         <Loader2 className="w-6 h-6 animate-spin" />
+        </div>
+                     ) : searchUsers.length === 0 ? (
+                       <p className="text-gray-500 text-center py-8">
+                         {userSearchQuery ? "No users found" : "Search for users to start a chat"}
+                       </p>
+                     ) : (
+                       searchUsers.map((user) => (
+                         <div key={user.id} className="flex items-center justify-between p-3 border rounded-xl bg-gray-50">
+                           <div className="flex items-center space-x-3">
+                             <Avatar className="w-10 h-10">
+                               <AvatarFallback className="bg-blue-500 text-white">
+                                 {user.name.charAt(0).toUpperCase()}
+                               </AvatarFallback>
+                             </Avatar>
+                             <div>
+                               <p className="font-semibold text-gray-900">{user.name}</p>
+                               <p className="text-sm text-gray-600">{user.email}</p>
+                </div>
+              </div>
+            <Button
+                             size="sm"
+                             onClick={() => sendFriendRequest(user.id)}
+                             disabled={friendRequestStatus[user.id] === 'sent' || friendRequestStatus[user.id] === 'accepted' || friendRequestStatus[user.id] === 'received'}
+                             className={
+                               friendRequestStatus[user.id] === 'sent' 
+                                 ? "bg-gray-400 text-white cursor-not-allowed" 
+                                 : friendRequestStatus[user.id] === 'accepted'
+                                 ? "bg-green-500 text-white cursor-not-allowed"
+                                 : friendRequestStatus[user.id] === 'received'
+                                 ? "bg-orange-500 text-white cursor-not-allowed"
+                                 : "bg-blue-500 hover:bg-blue-600 text-white"
+                             }
+                           >
+                             {friendRequestStatus[user.id] === 'sent' 
+                               ? 'Requested' 
+                               : friendRequestStatus[user.id] === 'accepted'
+                               ? 'Friends'
+                               : friendRequestStatus[user.id] === 'received'
+                               ? 'Respond'
+                               : 'Add Friend'
+                             }
+            </Button>
+          </div>
+                       ))
+                     )}
+      </div>
+                 </div>
+               </DialogContent>
+             </Dialog>
+
+             <Dialog open={isFriendRequestsOpen} onOpenChange={setIsFriendRequestsOpen}>
+               <DialogTrigger asChild>
+                 <Button variant="outline" size="sm" className="relative">
+                   <Users className="w-4 h-4 mr-2" />
+                   Friend Requests
+                   {pendingRequests.length > 0 && (
+                     <Badge className="absolute -top-2 -right-2 bg-red-500 text-white text-xs px-1.5 py-0.5">
+                       {pendingRequests.length}
+                     </Badge>
+                   )}
+                 </Button>
+               </DialogTrigger>
+               <DialogContent className="max-w-md">
+                 <DialogHeader>
+                   <DialogTitle>Friend Requests</DialogTitle>
+                 </DialogHeader>
+                 <div className="space-y-4">
+                   {isLoadingRequests ? (
+                     <div className="flex items-center justify-center py-8">
+                       <Loader2 className="w-6 h-6 animate-spin" />
+            </div>
+                   ) : pendingRequests.length === 0 ? (
+                     <p className="text-gray-500 text-center py-8">No pending friend requests</p>
+                   ) : (
+                     pendingRequests.map((request) => (
+                       <div key={request.id} className="flex items-center justify-between p-4 border rounded-xl bg-gray-50">
+                         <div className="flex items-center space-x-3">
+                           <Avatar className="w-12 h-12">
+                             <AvatarFallback className="bg-blue-500 text-white">
+                               {request.name?.charAt(0).toUpperCase() || 'U'}
+                             </AvatarFallback>
+                           </Avatar>
+            <div>
+                             <p className="font-semibold text-gray-900">{request.name}</p>
+                             <p className="text-sm text-gray-600">{request.email}</p>
+              </div>
+            </div>
+                         <div className="flex space-x-2">
+          <Button
+                             size="sm"
+                             onClick={() => acceptFriendRequest(request.id)}
+                             className="bg-green-500 hover:bg-green-600 text-white"
+                           >
+                             Accept
+          </Button>
+          <Button
+                             size="sm"
+                             variant="outline"
+                             onClick={() => declineFriendRequest(request.id)}
+                           >
+                             Decline
+          </Button>
+        </div>
+              </div>
+                     ))
+                   )}
+                            </div>
+               </DialogContent>
+             </Dialog>
+
+             <Dialog open={isNotificationsOpen} onOpenChange={setIsNotificationsOpen}>
+               <DialogTrigger asChild>
+                 <Button variant="outline" size="sm" className="relative">
+                   <Bell className="w-4 h-4 mr-2" />
+                   Notifications
+                   {unreadCount > 0 && (
+                     <Badge className="absolute -top-2 -right-2 bg-blue-500 text-white text-xs px-1.5 py-0.5">
+                       {unreadCount}
+                     </Badge>
+                   )}
+                </Button>
+               </DialogTrigger>
+               <DialogContent className="max-w-md">
+                 <DialogHeader>
+                   <DialogTitle>Notifications</DialogTitle>
+                 </DialogHeader>
+                 <div className="space-y-4">
+                   {isLoadingNotifications ? (
+                     <div className="flex items-center justify-center py-8">
+                       <Loader2 className="w-6 h-6 animate-spin" />
+              </div>
+                   ) : notifications.length === 0 ? (
+                     <p className="text-gray-500 text-center py-8">No notifications</p>
+                   ) : (
+                     notifications.map((notification) => (
+                       <div 
+                         key={notification.id} 
+                         className={`flex items-start space-x-3 p-3 border rounded-xl cursor-pointer hover:bg-gray-50 ${
+                           !notification.isRead ? 'bg-blue-50 border-blue-200' : 'bg-gray-50'
+                         }`}
+                         onClick={() => markNotificationAsRead(notification.id)}
+                       >
+                         <div className="flex-1">
+                           <p className="font-semibold text-gray-900">{notification.title}</p>
+                           <p className="text-sm text-gray-600">{notification.message}</p>
+                          <p className="text-xs text-gray-400 mt-1">
+                             {new Date(notification.createdAt).toLocaleString()}
+                          </p>
+                        </div>
+                         {!notification.isRead && (
+                           <div className="w-2 h-2 bg-blue-500 rounded-full mt-2"></div>
+              )}
+            </div>
+                     ))
+                   )}
+                    </div>
+               </DialogContent>
+             </Dialog>
+             <Button variant="outline" size="sm">
+               <Users className="w-4 h-4 mr-2" />
+               Create Group
+             </Button>
+                                  </div>
+                                  </div>
+                                </div>
+
+      {/* Main Content */}
+      <div className={`max-w-6xl mx-auto p-6 transition-all duration-300 ease-in-out ${isCollapsed ? 'max-w-7xl' : ''}`}>
+        {selectedConversation ? (
+          /* Chat View */
+          <div className={`bg-white rounded-lg shadow-sm border border-gray-200 flex flex-col transition-all duration-300 ease-in-out ${
+            isCollapsed ? 'h-[calc(100vh-180px)]' : 'h-[calc(100vh-200px)]'
+          }`}>
+        {/* Chat Header */}
+            <div className="p-4 border-b border-gray-200 flex items-center justify-between">
+          <div className="flex items-center space-x-3">
+                                      <Button
+              variant="ghost"
+                                        size="sm"
+                  onClick={() => setSelectedConversation(null)}
+              className="p-2"
+                                      >
+              ←
+                                      </Button>
+                <div className="relative">
+                  <Avatar className="w-10 h-10">
+                    <AvatarImage src={selectedConversation.avatar || undefined} />
+                    <AvatarFallback className="bg-blue-500 text-white">
+                      {getInitials(selectedConversation.name)}
+                    </AvatarFallback>
+                  </Avatar>
+                  {selectedConversation.isOnline && (
+                    <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 border-2 border-white rounded-full" />
+                  )}
+                                </div>
+            <div>
+                  <h2 className="font-semibold text-gray-900">{selectedConversation.name}</h2>
+                  <p className="text-sm text-gray-500">{selectedConversation.lastSeen}</p>
+                          </div>
+                          </div>
           <div className="flex items-center space-x-2">
             <Button variant="ghost" size="sm">
               <Phone className="w-4 h-4" />
-            </Button>
+                          </Button>
             <Button variant="ghost" size="sm">
               <Video className="w-4 h-4" />
             </Button>
             <Button variant="ghost" size="sm">
-              <MoreVertical className="w-4 h-4" />
-            </Button>
-          </div>
-        </div>
+                  <Settings className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      </div>
 
         {/* Messages */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-4">
-          {messages.map((message: Message) => (
+            <ScrollArea className="flex-1 p-4">
+                <div className="space-y-4">
+                {mockMessages.map((message) => (
             <div
               key={message.id}
-              className={`flex ${message.senderId === user?.id ? 'justify-end' : 'justify-start'}`}
-            >
-              <div className="max-w-xs lg:max-w-md">
-                {isGroup && message.senderId !== user?.id && (
-                  <p className="text-xs text-gray-500 mb-1 px-2">
-                    {message.senderId === user?.id ? 'You' : `User ${message.senderId}`}
-                  </p>
-                )}
-                <div
-                  className={`px-4 py-2 rounded-lg ${
-                    message.senderId === user?.id
-                      ? 'bg-primary text-white'
-                      : 'bg-gray-100 text-gray-900'
-                  }`}
-                >
+                    className={cn(
+                      "flex",
+                      message.senderId === 0 ? "justify-end" : "justify-start"
+                    )}
+                  >
+                    <div className={cn(
+                      "max-w-xs lg:max-w-md px-4 py-2 rounded-lg",
+                      message.senderId === 0
+                        ? "bg-blue-500 text-white"
+                        : "bg-gray-100 text-gray-900"
+                    )}>
                   <p className="text-sm">{message.content}</p>
-                  <p className={`text-xs mt-1 ${
-                    message.senderId === user?.id ? 'text-primary-100' : 'text-gray-500'
-                  }`}>
-                    {formatTime(message.createdAt || message.timestamp)}
-                  </p>
-                </div>
-              </div>
-            </div>
+                      <div className={cn(
+                        "flex items-center justify-end mt-1 text-xs",
+                        message.senderId === 0 ? "text-blue-100" : "text-gray-500"
+                      )}>
+                        <span>{message.timestamp}</span>
+                        {message.senderId === 0 && (
+                          <div className="ml-1">
+                            {message.isRead ? (
+                              <CheckCheck className="w-3 h-3" />
+                            ) : message.isDelivered ? (
+                              <Check className="w-3 h-3" />
+                            ) : (
+                              <Clock className="w-3 h-3" />
+                            )}
+                        </div>
+                        )}
+                            </div>
+                          </div>
+                        </div>
           ))}
-          
-          {/* Typing indicator */}
-          {typingUsers.size > 0 && (
-            <div className="flex justify-start">
-              <div className="bg-gray-100 text-gray-900 px-4 py-2 rounded-lg">
-                <p className="text-sm italic">
-                  {Array.from(typingUsers).map(userId => {
-                    const typingUser = conversations.find((c: any) => c.id === userId);
-                    return typingUser ? typingUser.name : 'Someone';
-                  }).join(', ')} {typingUsers.size === 1 ? 'is' : 'are'} typing...
-                </p>
-              </div>
-            </div>
-          )}
-        </div>
+                      </div>
+            </ScrollArea>
 
         {/* Message Input */}
-        <form onSubmit={handleSendMessage} className="bg-white border-t p-4">
-          <div className="flex space-x-2">
+            <div className="p-4 border-t border-gray-200">
+              <form onSubmit={handleSendMessage} className="flex items-center space-x-3">
+                <Button variant="ghost" size="sm" type="button">
+                  <Paperclip className="w-4 h-4" />
+                </Button>
+                <div className="flex-1 relative">
                 <Input
                   value={newMessage}
-                  onChange={handleTyping}
-                  onKeyPress={handleKeyPress}
-                  placeholder="Type a message... (Press Enter to send)"
-                  className="flex-1"
-                />
-            <Button
-              type="submit"
-              disabled={!newMessage.trim() || sendMessageMutation.isPending}
-              className="bg-primary hover:bg-primary/90"
-            >
-              <Send className="w-4 h-4" />
+                    onChange={(e) => setNewMessage(e.target.value)}
+                    placeholder="Type a message..."
+                    className="pr-20"
+                  />
+                  <Button variant="ghost" size="sm" className="absolute right-1 top-1/2 transform -translate-y-1/2">
+                    <Smile className="w-4 h-4" />
             </Button>
-          </div>
-        </form>
-      </div>
-    );
-  }
-
-  return (
-    <div className="p-6">
-      <div className="max-w-6xl mx-auto">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center space-x-2">
-            <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-              <MessageCircle className="w-4 h-4 text-white" />
-            </div>
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">Messages</h1>
-              <div className="flex items-center space-x-2">
-                <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'}`}></div>
-                <span className="text-sm text-gray-500">
-                  {isConnected ? 'Connected' : 'Disconnected'}
-                </span>
-              </div>
-            </div>
-          </div>
-          <Button
-            onClick={() => setActiveTab('requests')}
-            className="bg-primary hover:bg-primary/90 text-white"
-          >
-            <UserPlus className="w-4 h-4 mr-2" />
-            Requests
-            {allFriendRequests.length > 0 && (
-              <Badge variant="secondary" className="ml-2">
-                {allFriendRequests.length}
-              </Badge>
-            )}
-          </Button>
-        </div>
-
-        {/* Tabs */}
-        <div className="flex space-x-1 mb-6">
-          <Button
-            variant={activeTab === 'conversations' ? 'default' : 'ghost'}
-            onClick={() => setActiveTab('conversations')}
-            className="flex items-center space-x-2"
-          >
-            <MessageCircle className="w-4 h-4" />
-            <span>Chats</span>
-            {(conversations.length + groups.length) > 0 && (
-              <Badge variant="secondary" className="ml-2">
-                {conversations.length + groups.length}
-              </Badge>
-            )}
-          </Button>
-          <Button
-            variant={activeTab === 'groups' ? 'default' : 'ghost'}
-            onClick={() => setActiveTab('groups')}
-            className="flex items-center space-x-2"
-          >
-            <Users className="w-4 h-4" />
-            <span>Groups</span>
-            {groups.length > 0 && (
-              <Badge variant="secondary" className="ml-2">
-                {groups.length}
-              </Badge>
-            )}
-          </Button>
-          <Button
-            variant={activeTab === 'friends' ? 'default' : 'ghost'}
-            onClick={() => setActiveTab('friends')}
-            className="flex items-center space-x-2"
-          >
-            <Users className="w-4 h-4" />
-            <span>Friends</span>
-            {friends.length > 0 && (
-              <Badge variant="secondary" className="ml-2">
-                {friends.length}
-              </Badge>
-            )}
-          </Button>
-          <Button
-            variant={activeTab === 'search' ? 'default' : 'ghost'}
-            onClick={() => setActiveTab('search')}
-            className="flex items-center space-x-2"
-          >
-            <Search className="w-4 h-4" />
-            <span>Search</span>
-          </Button>
-        </div>
-
-        {/* Content */}
-        <Card className="p-6">
-          {activeTab === 'conversations' && (
-            <div>
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-semibold text-gray-900 flex items-center">
-                  <MessageCircle className="w-5 h-5 mr-2" />
-                  All Chats
-                </h2>
-                <Button
-                  onClick={() => setShowCreateGroup(true)}
-                  className="bg-primary hover:bg-primary/90 text-white"
-                >
-                  <Plus className="w-4 h-4 mr-2" />
-                  New Group
+                    </div>
+                <Button variant="ghost" size="sm" type="button">
+                  <Mic className="w-4 h-4" />
                 </Button>
-              </div>
-              
-              {(conversations.length === 0 && groups.length === 0) ? (
-                <div className="text-center py-8 text-gray-500">
-                  <MessageCircle className="w-12 h-12 mx-auto mb-4 text-gray-300" />
-                  <p>No chats yet</p>
-                  <p className="text-sm">Add friends or create a group to start chatting!</p>
+                <Button type="submit" disabled={!newMessage.trim()}>
+                  <Send className="w-4 h-4" />
+                </Button>
+        </form>
                 </div>
-              ) : (
-                <div className="space-y-4">
-                  {/* Individual Conversations */}
-                  {conversations.map((conversation: Conversation) => (
-                    <div
-                      key={`conv-${conversation.id}`}
-                      onClick={() => {
-                        setSelectedFriend(conversation);
-                        setSelectedGroup(null);
-                      }}
-                      className="p-4 rounded-lg border cursor-pointer transition-all hover:shadow-md hover:bg-gray-50"
-                    >
-                      <div className="flex items-center space-x-4">
-                        <div className="w-12 h-12 bg-primary rounded-full flex items-center justify-center text-white font-medium">
+            </div>
+        ) : (
+          /* Conversations List View */
+          <div className="space-y-6">
+            {/* Search and Filters */}
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+              <div className="flex flex-col sm:flex-row gap-4">
+                <div className="flex-1 relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <Input
+                    placeholder="Search conversations..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-10"
+                  />
+                      </div>
+                       <div className="flex space-x-2">
+                               <Button
+                    variant={!showArchived ? "default" : "outline"}
+                                   size="sm"
+                    onClick={() => setShowArchived(false)}
+                                 >
+                    Active
+                                 </Button>
+                                 <Button
+                    variant={showArchived ? "default" : "outline"}
+                                   size="sm"
+                    onClick={() => setShowArchived(true)}
+                                 >
+                    Archived
+                                 </Button>
+                               </div>
+                       </div>
+                    </div>
+
+            {/* Conversations Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {/* Pinned Conversations */}
+              {pinnedConversations.map((conversation) => (
+                <div
+                  key={conversation.id}
+                  onClick={() => setSelectedConversation(conversation)}
+                  className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 cursor-pointer hover:shadow-md transition-shadow"
+                >
+                  <div className="flex items-start space-x-3">
+                    <div className="relative">
+                      <Avatar className="w-12 h-12">
+                        <AvatarImage src={conversation.avatar || undefined} />
+                        <AvatarFallback className="bg-blue-500 text-white">
                           {getInitials(conversation.name)}
-                        </div>
+                        </AvatarFallback>
+                      </Avatar>
+                      {conversation.isOnline && (
+                        <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 border-2 border-white rounded-full" />
+                      )}
+                      <div className="absolute -top-1 -right-1">
+                        <Star className="w-4 h-4 text-yellow-500 fill-current" />
+            </div>
+              </div>
+                    
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center justify-between">
-                            <h3 className="font-semibold text-gray-900">{conversation.name}</h3>
-                            <div className="flex items-center space-x-2">
+                        <h3 className="font-semibold text-gray-900 truncate">
+                          {conversation.name}
+                        </h3>
+                        <div className="flex items-center space-x-1">
                               {conversation.unreadCount > 0 && (
-                                <Badge variant="destructive" className="text-xs">
+                            <Badge variant="destructive" className="text-xs px-1.5 py-0.5">
                                   {conversation.unreadCount}
                                 </Badge>
                               )}
-                              <span className="text-sm text-gray-500">
-                                {conversation.lastMessage ? formatTime(conversation.lastMessage.createdAt) : ''}
+                          <span className="text-xs text-gray-500">
+                            {conversation.timestamp}
                               </span>
-                            </div>
-                          </div>
-                          <p className="text-gray-600 text-sm mt-1 truncate">
-                            {conversation.lastMessage?.content || 'No messages yet'}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-
-                  {/* Group Conversations */}
-                  {groups.map((group: Group) => (
-                    <div
-                      key={`group-${group.id}`}
-                      onClick={() => {
-                        setSelectedGroup(group);
-                        setSelectedFriend(null);
-                      }}
-                      className="p-4 rounded-lg border cursor-pointer transition-all hover:shadow-md hover:bg-gray-50"
-                    >
-                      <div className="flex items-center space-x-4">
-                        <div className="w-12 h-12 bg-green-500 rounded-full flex items-center justify-center text-white font-medium">
-                          {getInitials(group.name)}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center justify-between">
-                            <h3 className="font-semibold text-gray-900">{group.name}</h3>
-                            <div className="flex items-center space-x-2">
-                              <span className="text-sm text-gray-500">
-                                {group.lastMessage ? formatTime(group.lastMessage.createdAt) : ''}
-                              </span>
-                            </div>
-                          </div>
-                          <p className="text-gray-600 text-sm mt-1 truncate">
-                            {group.lastMessage?.content || 'No messages yet'}
+              </div>
+              </div>
+                      <p className="text-sm text-gray-600 truncate mt-1">
+                        {conversation.lastMessage}
                           </p>
                           <p className="text-xs text-gray-400 mt-1">
-                            {group.memberCount} members
+                        {conversation.lastSeen}
                           </p>
-                        </div>
-                      </div>
+            </div>
+                    </div>
                     </div>
                   ))}
-                </div>
-              )}
-            </div>
-          )}
 
-          {activeTab === 'groups' && (
-            <div>
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-semibold text-gray-900 flex items-center">
-                  <Users className="w-5 h-5 mr-2" />
-                  Groups
-                </h2>
-                <Button
-                  onClick={() => setShowCreateGroup(true)}
-                  className="bg-primary hover:bg-primary/90 text-white"
+              {/* Regular Conversations */}
+              {regularConversations.map((conversation) => (
+                <div
+                  key={conversation.id}
+                  onClick={() => setSelectedConversation(conversation)}
+                  className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 cursor-pointer hover:shadow-md transition-shadow"
                 >
-                  <Plus className="w-4 h-4 mr-2" />
-                  Create Group
-                </Button>
-              </div>
-              
-              {groups.length === 0 ? (
-                <div className="text-center py-8 text-gray-500">
-                  <Users className="w-12 h-12 mx-auto mb-4 text-gray-300" />
-                  <p>No groups yet</p>
-                  <p className="text-sm">Create a group to start chatting with multiple friends!</p>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  {groups.map((group: Group) => (
-                    <div
-                      key={group.id}
-                      onClick={() => {
-                        setSelectedGroup(group);
-                        setSelectedFriend(null);
-                      }}
-                      className="p-4 rounded-lg border cursor-pointer transition-all hover:shadow-md hover:bg-gray-50"
-                    >
-                      <div className="flex items-center space-x-4">
-                        <div className="w-12 h-12 bg-green-500 rounded-full flex items-center justify-center text-white font-medium">
-                          {getInitials(group.name)}
-                        </div>
+                  <div className="flex items-start space-x-3">
+                    <div className="relative">
+                      <Avatar className="w-12 h-12">
+                        <AvatarImage src={conversation.avatar || undefined} />
+                        <AvatarFallback className="bg-gray-500 text-white">
+                          {getInitials(conversation.name)}
+                        </AvatarFallback>
+                      </Avatar>
+                      {conversation.isOnline && (
+                        <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 border-2 border-white rounded-full" />
+                      )}
+                    </div>
+                    
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center justify-between">
-                            <h3 className="font-semibold text-gray-900">{group.name}</h3>
-                            <div className="flex items-center space-x-2">
-                              <span className="text-sm text-gray-500">
-                                {group.lastMessage ? formatTime(group.lastMessage.createdAt) : ''}
-                              </span>
-                            </div>
-                          </div>
-                          <p className="text-gray-600 text-sm mt-1 truncate">
-                            {group.description || 'No description'}
-                          </p>
-                          <p className="text-xs text-gray-400 mt-1">
-                            {group.memberCount} members
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-
-                {activeTab === 'requests' && (
-                  <div>
-                    <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-                      <UserPlus className="w-5 h-5 mr-2" />
-                      Friend Requests
-                    </h2>
-                    
-                    {/* Tabs for Sent and Received */}
-                    <div className="flex space-x-4 mb-6">
-                      <button
-                        onClick={() => setRequestFilter('received')}
-                        className={`px-4 py-2 rounded-lg font-medium ${
-                          requestFilter === 'received'
-                            ? 'bg-primary text-white'
-                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                        }`}
-                      >
-                        Received ({allFriendRequests.filter((r: any) => r.requestType === 'received').length})
-                      </button>
-                      <button
-                        onClick={() => setRequestFilter('sent')}
-                        className={`px-4 py-2 rounded-lg font-medium ${
-                          requestFilter === 'sent'
-                            ? 'bg-primary text-white'
-                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                        }`}
-                      >
-                        Sent ({allFriendRequests.filter((r: any) => r.requestType === 'sent').length})
-                      </button>
-                    </div>
-                    
-                    {/* Filtered Requests */}
-                    {(() => {
-                      const filteredRequests = allFriendRequests.filter((r: any) => r.requestType === requestFilter);
-                      return filteredRequests.length > 0 ? (
-                        <div className="space-y-2">
-                          {filteredRequests.map((request: any) => (
-                            <Card key={`${request.requestType}-${request.id}`} className="p-4">
-                              <div className="flex items-center justify-between">
-                                <div className="flex items-center space-x-3">
-                                  <div className="w-10 h-10 bg-primary rounded-full flex items-center justify-center text-white font-medium">
-                                    {getInitials(request.name)}
-                                  </div>
-                                  <div>
-                                    <h4 className="font-medium">{request.name}</h4>
-                                    <p className="text-sm text-gray-500">@{request.username}</p>
-                                    <p className="text-xs text-gray-400">
-                                      {request.requestType === 'sent' ? 'You sent a request' : 'Sent you a request'}
-                                    </p>
-                                  </div>
-                                </div>
-                                <div className="flex items-center space-x-2">
-                                  {/* Status Badge */}
-                                  <Badge 
-                                    variant={request.friendStatus === 'accepted' ? 'default' : 
-                                            request.friendStatus === 'rejected' ? 'destructive' : 
-                                            'secondary'}
-                                    className={
-                                      request.friendStatus === 'accepted' ? 'bg-green-100 text-green-800' :
-                                      request.friendStatus === 'rejected' ? 'bg-red-100 text-red-800' :
-                                      'bg-yellow-100 text-yellow-800'
-                                    }
-                                  >
-                                    {request.friendStatus === 'accepted' ? 'Accepted' :
-                                     request.friendStatus === 'rejected' ? 'Rejected' :
-                                     'Pending'}
-                                  </Badge>
-                                  
-                                  {/* Action Buttons */}
-                                  {request.requestType === 'received' && request.friendStatus === 'pending' && (
-                                    <div className="flex space-x-1">
-                                      <Button
-                                        size="sm"
-                                        onClick={() => handleAcceptFriendRequest(request.id)}
-                                        disabled={acceptFriendRequestMutation.isPending}
-                                        className="bg-green-600 hover:bg-green-700 text-white"
-                                      >
-                                        <Check className="w-4 h-4 mr-1" />
-                                        Accept
-                                      </Button>
-                                      <Button
-                                        size="sm"
-                                        variant="outline"
-                                        onClick={() => handleRejectFriendRequest(request.id)}
-                                        disabled={rejectFriendRequestMutation.isPending}
-                                        className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                                      >
-                                        <X className="w-4 h-4 mr-1" />
-                                        Reject
-                                      </Button>
-                                    </div>
-                                  )}
-                                  
-                                  {/* Delete Button */}
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    onClick={() => deleteFriendRequestMutation.mutate(request.id)}
-                                    disabled={deleteFriendRequestMutation.isPending}
-                                    className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                                  >
-                                    <X className="w-4 h-4" />
-                                  </Button>
-                                </div>
-                              </div>
-                            </Card>
-                          ))}
-                        </div>
-                      ) : (
-                        <div className="text-center py-8 text-gray-500">
-                          <UserPlus className="w-12 h-12 mx-auto mb-4 text-gray-300" />
-                          <p>No {requestFilter} friend requests</p>
-                          <p className="text-sm">
-                            {requestFilter === 'sent' 
-                              ? 'Send friend requests to start connecting!' 
-                              : 'You haven\'t received any friend requests yet.'}
-                          </p>
-                        </div>
-                      );
-                    })()}
-                  </div>
-                )}
-
-            {activeTab === 'friends' && (
-            <div>
-              <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-                <Users className="w-5 h-5 mr-2" />
-                Friends
-              </h2>
-              
-              {pendingRequests.length > 0 && (
-                <div className="mb-6">
-                  <h3 className="text-md font-medium text-gray-700 mb-3">Pending Requests</h3>
-                  <div className="space-y-3">
-                    {pendingRequests.map((request: User) => (
-                      <div key={request.id} className="flex items-center justify-between p-3 bg-yellow-50 rounded-lg">
-                        <div className="flex items-center space-x-3">
-                          <div className="w-10 h-10 bg-primary rounded-full flex items-center justify-center text-white font-medium">
-                            {getInitials(request.name)}
-                          </div>
-                          <div>
-                            <h4 className="font-medium">{request.name}</h4>
-                            <p className="text-sm text-gray-500">@{request.username}</p>
-                          </div>
-                        </div>
-                        <div className="flex space-x-2">
-                          <Button
-                            size="sm"
-                            onClick={() => handleAcceptFriendRequest(request.id)}
-                            disabled={acceptFriendRequestMutation.isPending}
-                            className="bg-green-600 hover:bg-green-700"
-                          >
-                            <Check className="w-4 h-4" />
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => handleRejectFriendRequest(request.id)}
-                            disabled={rejectFriendRequestMutation.isPending}
-                          >
-                            <X className="w-4 h-4" />
-                          </Button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {friends.length === 0 ? (
-                <div className="text-center py-8 text-gray-500">
-                  <Users className="w-12 h-12 mx-auto mb-4 text-gray-300" />
-                  <p>No friends yet</p>
-                  <p className="text-sm">Search for users to add as friends!</p>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  {friends.map((friend: User) => (
-                    <div
-                      key={friend.id}
-                      onClick={() => setSelectedFriend(friend)}
-                      className="p-4 rounded-lg border cursor-pointer transition-all hover:shadow-md hover:bg-gray-50"
-                    >
-                      <div className="flex items-center space-x-4">
-                        <div className="w-12 h-12 bg-primary rounded-full flex items-center justify-center text-white font-medium">
-                          {getInitials(friend.name)}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center justify-between">
-                            <h3 className="font-semibold text-gray-900">{friend.name}</h3>
-                            <div className="flex items-center space-x-2">
-                              <div className={`w-2 h-2 rounded-full ${friend.isActive ? 'bg-green-500' : 'bg-gray-400'}`} />
-                              <span className="text-sm text-gray-500">
-                                {friend.isActive ? 'Online' : 'Offline'}
-                              </span>
-                            </div>
-                          </div>
-                          <p className="text-gray-600 text-sm">@{friend.username}</p>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-
-          {activeTab === 'search' && (
-            <div>
-              <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-                <Search className="w-5 h-5 mr-2" />
-                Search Users
-              </h2>
-              
-              <div className="mb-4">
-                <Input
-                  placeholder="Search by username, name, or email... (or leave empty to see all users)"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full"
-                />
-              </div>
-
-              {searchResults.length === 0 ? (
-                <div className="text-center py-8 text-gray-500">
-                  <Search className="w-12 h-12 mx-auto mb-4 text-gray-300" />
-                  <p>No users found</p>
-                  <p className="text-sm">Try a different search term or check if there are other users in the app</p>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  <div className="text-sm text-gray-600 mb-4">
-                    {searchQuery ? `Found ${searchResults.length} user(s) matching "${searchQuery}"` : `All users (${searchResults.length} total)`}
-                  </div>
-                  {searchResults.map((user: User) => (
-                    <div key={user.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                      <div className="flex items-center space-x-3">
-                        <div className="w-10 h-10 bg-primary rounded-full flex items-center justify-center text-white font-medium">
-                          {getInitials(user.name)}
-                        </div>
-                        <div>
-                          <h4 className="font-medium">{user.name}</h4>
-                          <p className="text-sm text-gray-500">@{user.username}</p>
-                          <p className="text-sm text-gray-400">{user.email}</p>
-                        </div>
-                      </div>
-                       <div className="flex space-x-2">
-                         {(() => {
-                           const isFriend = friends.some((f: any) => f.id === user.id);
-                           const sentRequest = allRequests.find((r: any) => r.id === user.id && r.requestType === 'sent');
-                           const receivedRequest = allRequests.find((r: any) => r.id === user.id && r.requestType === 'received');
-                           
-                           if (isFriend) {
-                             return (
-                               <Button
-                                 onClick={() => {
-                                   setSelectedFriend(user);
-                                   setActiveTab('conversations');
-                                 }}
-                                 className="bg-blue-600 hover:bg-blue-700 text-white"
-                               >
-                                 <MessageCircle className="w-4 h-4 mr-2" />
-                                 Message
-                               </Button>
-                             );
-                           } else if (sentRequest) {
-                             return (
-                               <Button
-                                 disabled={true}
-                                 className="bg-green-600 cursor-not-allowed"
-                               >
-                                 <UserPlus className="w-4 h-4 mr-2" />
-                                 Request Sent
-                               </Button>
-                             );
-                           } else if (receivedRequest) {
-                             return (
-                               <div className="flex space-x-1">
-                                 <Button
-                                   size="sm"
-                                   onClick={() => handleAcceptFriendRequest(user.id)}
-                                   disabled={acceptFriendRequestMutation.isPending}
-                                   className="bg-green-600 hover:bg-green-700 text-white"
-                                 >
-                                   <Check className="w-4 h-4 mr-1" />
-                                   Accept
-                                 </Button>
-                                 <Button
-                                   size="sm"
-                                   variant="outline"
-                                   onClick={() => handleRejectFriendRequest(user.id)}
-                                   disabled={rejectFriendRequestMutation.isPending}
-                                   className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                                 >
-                                   <X className="w-4 h-4 mr-1" />
-                                   Reject
-                                 </Button>
-                               </div>
-                             );
-                           } else {
-                             return (
-                               <>
-                                 <Button
-                                   variant="outline"
-                                   onClick={() => handleViewProfile(user)}
-                                 >
-                                   <Info className="w-4 h-4 mr-2" />
-                                   View Profile
-                                 </Button>
-                                 <Button
-                                   onClick={() => handleSendFriendRequest(user.id)}
-                                   disabled={sendFriendRequestMutation.isPending}
-                                   className="bg-primary hover:bg-primary/90"
-                                 >
-                                   <UserPlus className="w-4 h-4 mr-2" />
-                                   {sendFriendRequestMutation.isPending ? 'Sending...' : 'Add Friend'}
-                                 </Button>
-                               </>
-                             );
-                           }
-                         })()}
-                       </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-        </Card>
-
-        {/* Create Group Dialog */}
-        <Dialog open={showCreateGroup} onOpenChange={setShowCreateGroup}>
-          <DialogContent className="sm:max-w-md">
-            <DialogHeader>
-              <DialogTitle>Create New Group</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4">
-              <div>
-                <Label htmlFor="groupName">Group Name</Label>
-                <Input
-                  id="groupName"
-                  value={groupName}
-                  onChange={(e) => setGroupName(e.target.value)}
-                  placeholder="Enter group name"
-                />
-              </div>
-              <div>
-                <Label htmlFor="groupDescription">Description (Optional)</Label>
-                <Textarea
-                  id="groupDescription"
-                  value={groupDescription}
-                  onChange={(e) => setGroupDescription(e.target.value)}
-                  placeholder="Enter group description"
-                />
-              </div>
-              <div>
-                <Label>Add Members</Label>
-                <div className="max-h-40 overflow-y-auto space-y-2 mt-2">
-                  {friends.map((friend: User) => (
-                    <div key={friend.id} className="flex items-center space-x-2">
-                      <input
-                        type="checkbox"
-                        id={`member-${friend.id}`}
-                        checked={selectedMembers.includes(friend.id)}
-                        onChange={(e) => {
-                          if (e.target.checked) {
-                            setSelectedMembers([...selectedMembers, friend.id]);
-                          } else {
-                            setSelectedMembers(selectedMembers.filter(id => id !== friend.id));
-                          }
-                        }}
-                        className="rounded"
-                      />
-                      <label htmlFor={`member-${friend.id}`} className="flex items-center space-x-2 cursor-pointer">
-                        <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center text-white text-sm font-medium">
-                          {getInitials(friend.name)}
-                        </div>
-                        <span className="text-sm">{friend.name}</span>
-                      </label>
-                    </div>
-                  ))}
-                </div>
-                {friends.length === 0 && (
-                  <p className="text-sm text-gray-500">Add friends first to create a group</p>
-                )}
-              </div>
-              <div className="flex justify-end space-x-2">
-                <Button
-                  variant="outline"
-                  onClick={() => setShowCreateGroup(false)}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  onClick={() => createGroupMutation.mutate()}
-                  disabled={!groupName.trim() || createGroupMutation.isPending}
-                  className="bg-primary hover:bg-primary/90"
-                >
-                  {createGroupMutation.isPending ? 'Creating...' : 'Create Group'}
-                </Button>
-              </div>
-            </div>
-            </DialogContent>
-          </Dialog>
-
-          {/* User Profile Dialog */}
-          <Dialog open={showUserProfile} onOpenChange={setShowUserProfile}>
-            <DialogContent className="max-w-md">
-              <DialogHeader>
-                <DialogTitle>User Profile</DialogTitle>
-              </DialogHeader>
-              {profileUser && (
-                <div className="space-y-4">
-                  <div className="flex flex-col items-center space-y-4">
-                    <div className="w-20 h-20 bg-primary rounded-full flex items-center justify-center text-white text-2xl font-medium">
-                      {getInitials(profileUser.name)}
-                    </div>
-                    <div className="text-center">
-                      <h3 className="text-xl font-semibold">{profileUser.name}</h3>
-                      <p className="text-gray-500">@{profileUser.username}</p>
-                      <p className="text-sm text-gray-400">{profileUser.email}</p>
-                    </div>
-                  </div>
-                  
-                  <div className="space-y-3">
-                    <div className="flex justify-between">
-                      <span className="text-sm font-medium">Status:</span>
-                      <Badge variant={profileUser.isActive ? "default" : "secondary"}>
-                        {profileUser.isActive ? "Online" : "Offline"}
-                      </Badge>
-                    </div>
-                    
-                    {profileUser.lastLoginDate && (
-                      <div className="flex justify-between">
-                        <span className="text-sm font-medium">Last Active:</span>
-                        <span className="text-sm text-gray-500">
-                          {new Date(profileUser.lastLoginDate).toLocaleDateString()}
+                        <h3 className="font-semibold text-gray-900 truncate">
+                          {conversation.name}
+                        </h3>
+                        <div className="flex items-center space-x-1">
+                          {conversation.unreadCount > 0 && (
+                            <Badge variant="destructive" className="text-xs px-1.5 py-0.5">
+                              {conversation.unreadCount}
+                            </Badge>
+                          )}
+                          <span className="text-xs text-gray-500">
+                            {conversation.timestamp}
                         </span>
                       </div>
-                    )}
-                    
-                    {profileUser.bio && (
-                      <div>
-                        <span className="text-sm font-medium">Bio:</span>
-                        <p className="text-sm text-gray-600 mt-1">{profileUser.bio}</p>
                       </div>
-                    )}
-                    
-                    {profileUser.location && (
-                      <div className="flex justify-between">
-                        <span className="text-sm font-medium">Location:</span>
-                        <span className="text-sm text-gray-500">{profileUser.location}</span>
+                      <p className="text-sm text-gray-600 truncate mt-1">
+                        {conversation.lastMessage}
+                          </p>
+                          <p className="text-xs text-gray-400 mt-1">
+                        {conversation.lastSeen}
+                          </p>
                       </div>
-                    )}
                   </div>
-                  
-                  <div className="flex space-x-2 pt-4">
-                    <Button
-                      onClick={() => {
-                        handleSendFriendRequest(profileUser.id);
-                        setShowUserProfile(false);
-                      }}
-                      disabled={sendFriendRequestMutation.isPending || sentRequests.has(profileUser.id)}
-                      className={sentRequests.has(profileUser.id) ? "flex-1 bg-green-600 hover:bg-green-700" : "flex-1 bg-primary hover:bg-primary/90"}
-                    >
+                    </div>
+                  ))}
+
+              {/* Empty State */}
+              {filteredConversations.length === 0 && (
+                <div className="col-span-full">
+                  <div className="text-center py-12 bg-white rounded-lg shadow-sm border border-gray-200">
+                    <MessageCircle className="w-16 h-16 mx-auto text-gray-300 mb-4" />
+                    <h3 className="text-lg font-medium text-gray-900 mb-2">
+                      {searchQuery ? "No conversations found" : "No conversations yet"}
+                    </h3>
+                    <p className="text-gray-500 mb-4">
+                      {searchQuery ? "Try a different search term" : "Start a new conversation to get started"}
+                    </p>
+                    {!searchQuery && (
+                      <Button>
                       <UserPlus className="w-4 h-4 mr-2" />
-                      {sentRequests.has(profileUser.id) ? 'Request Sent' : sendFriendRequestMutation.isPending ? 'Sending...' : 'Add Friend'}
+                        Start New Chat
                     </Button>
-                    <Button
-                      variant="outline"
-                      onClick={() => setShowUserProfile(false)}
-                      className="flex-1"
-                    >
-                      Close
-                    </Button>
+              )}
                   </div>
                 </div>
               )}
-            </DialogContent>
-          </Dialog>
+              </div>
+                      </div>
+                    )}
         </div>
       </div>
     );

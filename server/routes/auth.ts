@@ -225,35 +225,6 @@ router.put('/profile', authenticateToken, async (req: any, res) => {
   }
 });
 
-/**
- * PUT /api/auth/change-password
- * Change user password
- */
-router.put('/change-password', authenticateToken, async (req: any, res) => {
-  try {
-    const { currentPassword, newPassword } = req.body;
-    const userId = req.user.id;
-
-    if (!currentPassword || !newPassword) {
-      return res.status(400).json({ 
-        message: 'Current password and new password are required' 
-      });
-    }
-
-    if (newPassword.length < 6) {
-      return res.status(400).json({ 
-        message: 'New password must be at least 6 characters long' 
-      });
-    }
-
-    await authService.changePassword(userId, currentPassword, newPassword);
-
-    res.json({ message: 'Password changed successfully' });
-  } catch (error: any) {
-    console.error('Password change error:', error);
-    res.status(400).json({ message: error.message });
-  }
-});
 
 /**
  * DELETE /api/auth/account
@@ -457,6 +428,301 @@ router.post('/resend-otp', async (req, res) => {
   } catch (error: any) {
     console.error('OTP resend error:', error);
     res.status(500).json({ message: 'Failed to resend OTP' });
+  }
+});
+
+// Password verification endpoint for profile editing
+router.post('/verify-password', authenticateToken, async (req: any, res: any) => {
+  try {
+    const { password } = req.body;
+    const userId = req.user.id;
+
+    console.log('🔐 Password verification attempt:', { userId, passwordLength: password?.length });
+
+    if (!password) {
+      console.log('❌ No password provided');
+      return res.status(400).json({ message: 'Password is required' });
+    }
+
+    // Get the user from database
+    const user = await storage.getUser(userId);
+    if (!user) {
+      console.log('❌ User not found:', userId);
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    console.log('👤 User found:', { id: user.id, email: user.email });
+
+    // Verify the password
+    console.log('🔍 Calling verifyPassword with:', { passwordLength: password.length, hashLength: user.password?.length });
+    const isPasswordValid = await authService.verifyPassword(password, user.password);
+    console.log('✅ Password verification result:', isPasswordValid);
+    
+    if (!isPasswordValid) {
+      console.log('❌ Invalid password');
+      return res.status(401).json({ message: 'Invalid password' });
+    }
+
+    console.log('✅ Password verified successfully');
+    res.json({ message: 'Password verified successfully' });
+  } catch (error: any) {
+    console.error('❌ Password verification error:', error);
+    res.status(500).json({ 
+      message: 'Password verification failed', 
+      error: error.message 
+    });
+  }
+});
+
+// Data export endpoint
+router.post('/export-data', authenticateToken, async (req: any, res: any) => {
+  try {
+    const { password } = req.body;
+    const userId = req.user.id;
+
+    console.log('📊 Data export request:', { userId, passwordLength: password?.length });
+
+    if (!password) {
+      console.log('❌ No password provided for data export');
+      return res.status(400).json({ message: 'Password is required' });
+    }
+
+    // Get the user from database
+    const user = await storage.getUser(userId);
+    if (!user) {
+      console.log('❌ User not found for data export:', userId);
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    console.log('👤 User found for data export:', { id: user.id, email: user.email });
+
+    // Verify the password
+    console.log('🔍 Verifying password for data export');
+    const isPasswordValid = await authService.verifyPassword(password, user.password);
+    console.log('✅ Password verification result for data export:', isPasswordValid);
+    
+    if (!isPasswordValid) {
+      console.log('❌ Invalid password for data export');
+      return res.status(401).json({ message: 'Invalid password' });
+    }
+
+    // Generate user data export
+    console.log('📦 Generating data export for user:', userId);
+    const userData = {
+      profile: {
+        id: user.id,
+        username: user.username,
+        email: user.email,
+        name: user.name,
+        phone: user.phone,
+        bio: user.bio,
+        location: user.location,
+        avatar: user.avatar,
+        profileImagePath: user.profileImagePath,
+        learningPace: user.learningPace,
+        studyStreak: user.studyStreak,
+        isActive: user.isActive,
+        emailVerified: user.emailVerified,
+        createdAt: user.createdAt,
+        updatedAt: user.updatedAt,
+      },
+      // Add other user data like documents, units, progress, etc.
+      documents: await storage.getUserDocuments(userId),
+      units: await storage.getUserUnits(userId),
+      progress: await storage.getUserProgress(userId),
+      friends: await storage.getUserFriends(userId),
+      notifications: await storage.getNotifications(userId, 100), // Last 100 notifications
+      exportDate: new Date().toISOString(),
+    };
+
+    // Send email with data export
+    console.log('📧 Sending data export email to:', user.email);
+    const emailSent = await emailService.sendDataExportEmail(user.email, userData, user.name);
+    
+    if (emailSent) {
+      console.log('✅ Data export email sent successfully');
+      res.json({ 
+        message: 'Data export sent successfully to your email address',
+        email: user.email 
+      });
+    } else {
+      console.log('❌ Failed to send data export email');
+      res.status(500).json({ message: 'Failed to send data export email' });
+    }
+  } catch (error: any) {
+    console.error('❌ Data export error:', error);
+    res.status(500).json({ 
+      message: 'Data export failed', 
+      error: error.message 
+    });
+  }
+});
+
+// Change password endpoint
+router.post('/change-password', authenticateToken, async (req: any, res: any) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+    const userId = req.user.id;
+
+    console.log('🔐 Password change request:', { userId, currentPasswordLength: currentPassword?.length, newPasswordLength: newPassword?.length });
+
+    if (!currentPassword || !newPassword) {
+      console.log('❌ Missing password fields');
+      return res.status(400).json({ message: 'Current password and new password are required' });
+    }
+
+    // Debug: Log the actual password and test each requirement
+    console.log('🔍 Backend password validation:', {
+      newPassword: newPassword, // Log the actual password for debugging
+      length: newPassword.length,
+      hasUppercase: /[A-Z]/.test(newPassword),
+      hasLowercase: /[a-z]/.test(newPassword),
+      hasNumber: /\d/.test(newPassword),
+      hasSpecial: /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(newPassword)
+    });
+
+    // Validate new password strength (matching frontend requirements)
+    // Use individual checks instead of complex regex to match frontend exactly
+    if (newPassword.length < 8) {
+      console.log('❌ Password too short');
+      return res.status(400).json({ 
+        message: 'New password must be at least 8 characters long' 
+      });
+    }
+    
+    if (!/[A-Z]/.test(newPassword)) {
+      console.log('❌ Missing uppercase');
+      return res.status(400).json({ 
+        message: 'New password must contain at least one uppercase letter' 
+      });
+    }
+    
+    if (!/[a-z]/.test(newPassword)) {
+      console.log('❌ Missing lowercase');
+      return res.status(400).json({ 
+        message: 'New password must contain at least one lowercase letter' 
+      });
+    }
+    
+    if (!/\d/.test(newPassword)) {
+      console.log('❌ Missing number');
+      return res.status(400).json({ 
+        message: 'New password must contain at least one number' 
+      });
+    }
+    
+    if (!/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(newPassword)) {
+      console.log('❌ Missing special character');
+      return res.status(400).json({ 
+        message: 'New password must contain at least one special character' 
+      });
+    }
+    
+    console.log('✅ All password requirements met');
+
+    // Get the user from database
+    const user = await storage.getUser(userId);
+    if (!user) {
+      console.log('❌ User not found for password change:', userId);
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    console.log('👤 User found for password change:', { id: user.id, email: user.email });
+
+    // Verify the current password
+    console.log('🔍 Verifying current password');
+    const isCurrentPasswordValid = await authService.verifyPassword(currentPassword, user.password);
+    console.log('✅ Current password verification result:', isCurrentPasswordValid);
+    
+    if (!isCurrentPasswordValid) {
+      console.log('❌ Invalid current password');
+      return res.status(401).json({ message: 'Invalid current password' });
+    }
+
+    // Check if new password is different from current password
+    if (currentPassword === newPassword) {
+      console.log('❌ New password is the same as current password');
+      return res.status(400).json({ message: 'New password must be different from your current password' });
+    }
+
+    // Hash the new password
+    console.log('🔐 Hashing new password');
+    const hashedNewPassword = await authService.hashPassword(newPassword);
+
+    // Update the user's password in the database
+    console.log('💾 Updating user password in database');
+    await storage.updateUserPassword(userId, hashedNewPassword);
+    
+    console.log('✅ Password changed successfully');
+    res.json({ 
+      message: 'Password changed successfully' 
+    });
+  } catch (error: any) {
+    console.error('❌ Password change error:', error);
+    res.status(500).json({ 
+      message: 'Password change failed', 
+      error: error.message 
+    });
+  }
+});
+
+// Account deletion endpoint
+router.delete('/account', authenticateToken, async (req: any, res: any) => {
+  try {
+    const { password, confirmation } = req.body;
+    const userId = req.user.id;
+
+    console.log('🗑️ Account deletion request:', { userId, passwordLength: password?.length, confirmation });
+
+    if (!password) {
+      console.log('❌ No password provided for account deletion');
+      return res.status(400).json({ message: 'Password is required' });
+    }
+
+    if (!confirmation) {
+      console.log('❌ No confirmation provided for account deletion');
+      return res.status(400).json({ message: 'Confirmation is required' });
+    }
+
+    if (confirmation !== 'Delete') {
+      console.log('❌ Invalid confirmation for account deletion:', confirmation);
+      return res.status(400).json({ message: 'Confirmation must be exactly "Delete"' });
+    }
+
+    // Get the user from database
+    const user = await storage.getUser(userId);
+    if (!user) {
+      console.log('❌ User not found for account deletion:', userId);
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    console.log('👤 User found for account deletion:', { id: user.id, email: user.email });
+
+    // Verify the password
+    console.log('🔍 Verifying password for account deletion');
+    const isPasswordValid = await authService.verifyPassword(password, user.password);
+    console.log('✅ Password verification result for account deletion:', isPasswordValid);
+    
+    if (!isPasswordValid) {
+      console.log('❌ Invalid password for account deletion');
+      return res.status(401).json({ message: 'Invalid password' });
+    }
+
+    // Delete user account and all associated data
+    console.log('🗑️ Deleting user account and all data:', userId);
+    await storage.deleteUserAccount(userId);
+    
+    console.log('✅ User account deleted successfully');
+    res.json({ 
+      message: 'Account deleted successfully',
+      email: user.email 
+    });
+  } catch (error: any) {
+    console.error('❌ Account deletion error:', error);
+    res.status(500).json({ 
+      message: 'Account deletion failed', 
+      error: error.message 
+    });
   }
 });
 

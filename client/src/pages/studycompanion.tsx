@@ -9,9 +9,14 @@ import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import React, { useState } from "react";
+import ProfileImageUpload from "@/components/profile-image-upload";
+import PasswordAuthDialog from "@/components/password-auth-dialog";
+import { PasswordStrengthIndicator, defaultPasswordRequirements } from "@/components/ui/password-strength-indicator";
+import React, { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
+import DataExportDialog from "@/components/data-export-dialog";
+import AccountDeletionDialog from "@/components/account-deletion-dialog";
 
 export default function StudyCompanion() {
   const { user, updateUser, logout } = useAuth();
@@ -20,6 +25,26 @@ export default function StudyCompanion() {
   const [showPassword, setShowPassword] = useState(false);
   const [activeTab, setActiveTab] = useState("profile");
   const [isUpdating, setIsUpdating] = useState(false);
+  const [showPasswordAuth, setShowPasswordAuth] = useState(false);
+  const [showDataExport, setShowDataExport] = useState(false);
+  const [showAccountDeletion, setShowAccountDeletion] = useState(false);
+  
+  // Password change states
+  const [showPasswordChange, setShowPasswordChange] = useState(false);
+  const [passwordChangeData, setPasswordChangeData] = useState({
+    currentPassword: "",
+    newPassword: "",
+    confirmPassword: ""
+  });
+  const [showPasswordFields, setShowPasswordFields] = useState({
+    current: false,
+    new: false,
+    confirm: false
+  });
+  const [passwordRequirementsMet, setPasswordRequirementsMet] = useState(false);
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
+  const [currentPasswordVerified, setCurrentPasswordVerified] = useState(false);
+  const [isVerifyingCurrentPassword, setIsVerifyingCurrentPassword] = useState(false);
 
   // Use real user data from auth context
   const [userData, setUserData] = useState({
@@ -30,6 +55,7 @@ export default function StudyCompanion() {
     location: user?.location || "",
     joinDate: user?.createdAt ? new Date(user.createdAt).toLocaleDateString('en-US', { month: 'long', year: 'numeric' }) : "",
     avatar: user?.avatar || "U",
+    profileImagePath: user?.profileImagePath || null,
     studyMode: true,
     notifications: {
       email: true,
@@ -62,9 +88,17 @@ export default function StudyCompanion() {
         location: user.location || "",
         joinDate: user.createdAt ? new Date(user.createdAt).toLocaleDateString('en-US', { month: 'long', year: 'numeric' }) : "",
         avatar: user.avatar || "U",
+        profileImagePath: user.profileImagePath || null,
       }));
     }
   }, [user]);
+
+  const handleImageUpdate = (imagePath: string | null) => {
+    setUserData(prev => ({
+      ...prev,
+      profileImagePath: imagePath
+    }));
+  };
 
   const handleSave = async () => {
     if (!user) return;
@@ -131,6 +165,254 @@ export default function StudyCompanion() {
     });
   };
 
+  const handleEditProfile = () => {
+    setShowPasswordAuth(true);
+  };
+
+  const handlePasswordAuthSuccess = () => {
+    setIsEditing(true);
+    toast({
+      title: "Authentication Successful",
+      description: "You can now edit your profile information.",
+    });
+  };
+
+  const handlePasswordAuthClose = () => {
+    setShowPasswordAuth(false);
+  };
+
+  // Password change functions
+  const handleChangePassword = () => {
+    setShowPasswordChange(true);
+    // Reset password fields
+    setPasswordChangeData({
+      currentPassword: "",
+      newPassword: "",
+      confirmPassword: ""
+    });
+    setPasswordRequirementsMet(false);
+    setCurrentPasswordVerified(false);
+  };
+
+  const handlePasswordChangeClose = () => {
+    setShowPasswordChange(false);
+    setPasswordChangeData({
+      currentPassword: "",
+      newPassword: "",
+      confirmPassword: ""
+    });
+    setPasswordRequirementsMet(false);
+    setCurrentPasswordVerified(false);
+  };
+
+  const handleVerifyCurrentPassword = async () => {
+    if (!passwordChangeData.currentPassword.trim()) {
+      toast({
+        title: "Password Required",
+        description: "Please enter your current password to verify.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsVerifyingCurrentPassword(true);
+    try {
+      // Add a small delay for better UX
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      const token = localStorage.getItem('authToken');
+      if (!token) {
+        throw new Error('No authentication token found');
+      }
+      
+      const response = await fetch('/api/auth/verify-password', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({ password: passwordChangeData.currentPassword }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setCurrentPasswordVerified(true);
+        toast({
+          title: "Password Verified",
+          description: "You can now enter your new password.",
+        });
+      } else {
+        console.error('Password verification failed:', data);
+        toast({
+          title: "Verification Failed",
+          description: data.message || "Invalid password. Please try again.",
+          variant: "destructive",
+        });
+      }
+    } catch (error: any) {
+      console.error('Password verification error:', error);
+      toast({
+        title: "Verification Error",
+        description: error.message === 'No authentication token found' 
+          ? "Please log in again to verify your password." 
+          : "An unexpected error occurred. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsVerifyingCurrentPassword(false);
+    }
+  };
+
+  const handlePasswordUpdate = async () => {
+    if (!user || !currentPasswordVerified) return;
+
+    // Validate passwords
+    if (passwordChangeData.newPassword !== passwordChangeData.confirmPassword) {
+      toast({
+        title: "Password Mismatch",
+        description: "New password and confirm password do not match.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (passwordChangeData.currentPassword === passwordChangeData.newPassword) {
+      toast({
+        title: "Same Password",
+        description: "New password must be different from your current password.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!passwordRequirementsMet) {
+      toast({
+        title: "Password Requirements Not Met",
+        description: "Please ensure your password meets all requirements.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Debug: Log what we're sending
+    console.log('🚀 Sending password change request:', {
+      currentPasswordLength: passwordChangeData.currentPassword.length,
+      newPasswordLength: passwordChangeData.newPassword.length,
+      newPassword: passwordChangeData.newPassword, // Log the actual password for debugging
+      requirements: defaultPasswordRequirements.map(req => ({
+        label: req.label,
+        passed: req.test(passwordChangeData.newPassword)
+      }))
+    });
+
+    console.log('🔄 Setting isChangingPassword to true');
+    setIsChangingPassword(true);
+    console.log('🔄 isChangingPassword should now be true');
+    try {
+      // Add a delay for better UX - show loading state for 2.5 seconds
+      await new Promise(resolve => setTimeout(resolve, 2500));
+      
+      const token = localStorage.getItem('authToken');
+      if (!token) {
+        throw new Error('No authentication token found');
+      }
+
+      const response = await fetch('/api/auth/change-password', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          currentPassword: passwordChangeData.currentPassword,
+          newPassword: passwordChangeData.newPassword,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        toast({
+          title: "Password Changed",
+          description: "Your password has been updated successfully.",
+        });
+        setShowPasswordChange(false);
+        setPasswordChangeData({
+          currentPassword: "",
+          newPassword: "",
+          confirmPassword: ""
+        });
+        setPasswordRequirementsMet(false);
+        setCurrentPasswordVerified(false);
+      } else {
+        console.error('Password change failed:', data);
+        toast({
+          title: "Password Change Failed",
+          description: data.message || "Failed to change password. Please try again.",
+          variant: "destructive",
+        });
+      }
+      
+      // Reset loading state after the full 2.5 second delay
+      setIsChangingPassword(false);
+    } catch (error: any) {
+      console.error('Password change error:', error);
+      toast({
+        title: "Password Change Error",
+        description: error.message === 'No authentication token found' 
+          ? "Please log in again to change your password." 
+          : "An unexpected error occurred. Please try again.",
+        variant: "destructive",
+      });
+      // Reset loading state on error too
+      setIsChangingPassword(false);
+    }
+  };
+
+  // Check password requirements
+  useEffect(() => {
+    const allRequirementsMet = defaultPasswordRequirements.every(req => req.test(passwordChangeData.newPassword));
+    console.log('🔍 Password requirements check:', {
+      password: passwordChangeData.newPassword,
+      requirements: defaultPasswordRequirements.map(req => ({
+        label: req.label,
+        passed: req.test(passwordChangeData.newPassword)
+      })),
+      allMet: allRequirementsMet
+    });
+    setPasswordRequirementsMet(allRequirementsMet);
+  }, [passwordChangeData.newPassword]);
+
+  // Helper function to determine if password change button should be enabled
+  const isPasswordChangeButtonEnabled = () => {
+    const checks = {
+      currentPasswordVerified,
+      isChangingPassword,
+      passwordRequirementsMet,
+      passwordsMatch: passwordChangeData.newPassword === passwordChangeData.confirmPassword,
+      newPasswordExists: !!passwordChangeData.newPassword,
+      confirmPasswordExists: !!passwordChangeData.confirmPassword,
+      minLength: passwordChangeData.newPassword.length >= 8,
+      differentPassword: passwordChangeData.currentPassword !== passwordChangeData.newPassword
+    };
+    
+    console.log('🔍 Button enabled checks:', checks);
+    
+    // If we're changing password, the button should be enabled to show loading state
+    if (checks.isChangingPassword) return true;
+    
+    // Otherwise, check all requirements
+    if (!checks.currentPasswordVerified) return false;
+    if (!checks.passwordRequirementsMet) return false;
+    if (!checks.passwordsMatch) return false;
+    if (!checks.newPasswordExists) return false;
+    if (!checks.confirmPasswordExists) return false;
+    if (!checks.minLength) return false;
+    if (!checks.differentPassword) return false;
+    return true;
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-cream via-white to-gray-50">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -175,23 +457,22 @@ export default function StudyCompanion() {
             <Card>
               <CardHeader>
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-4">
-                    <div className="relative">
-                      <div className="w-20 h-20 bg-gradient-to-br from-purple-600 to-pink-600 rounded-full flex items-center justify-center text-white text-2xl font-bold">
-                        {userData.avatar}
-                      </div>
-                      <button className="absolute -bottom-1 -right-1 w-6 h-6 bg-white rounded-full flex items-center justify-center shadow-md hover:bg-gray-50">
-                        <Camera className="w-3 h-3 text-gray-600" />
-                      </button>
-                    </div>
-                    <div>
+                  <div className="flex items-start space-x-6">
+                    <ProfileImageUpload
+                      currentImage={userData.profileImagePath}
+                      currentAvatar={userData.avatar}
+                      userName={userData.name}
+                      onImageUpdate={handleImageUpdate}
+                      disabled={false}
+                    />
+                    <div className="pt-2">
                       <h2 className="text-2xl font-bold text-gray-900">{userData.name}</h2>
                       <p className="text-gray-600">{userData.email}</p>
                       <p className="text-sm text-gray-500">Member since {userData.joinDate}</p>
                     </div>
                   </div>
                   <Button
-                    onClick={() => setIsEditing(!isEditing)}
+                    onClick={isEditing ? () => setIsEditing(false) : handleEditProfile}
                     variant={isEditing ? "outline" : "default"}
                     className="flex items-center space-x-2"
                   >
@@ -456,12 +737,30 @@ export default function StudyCompanion() {
               <CardContent className="space-y-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <Label>Download My Data</Label>
-                    <p className="text-sm text-gray-600">Export all your data in a portable format</p>
+                    <Label>Change Password</Label>
+                    <p className="text-sm text-gray-600">Update your account password for better security</p>
                   </div>
-                  <Button variant="outline" className="flex items-center space-x-2">
+                  <Button 
+                    variant="outline" 
+                    className="flex items-center space-x-2"
+                    onClick={handleChangePassword}
+                  >
+                    <Lock className="w-4 h-4" />
+                    <span>Change Password</span>
+                  </Button>
+                </div>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label>Export My Data</Label>
+                    <p className="text-sm text-gray-600">Request a complete backup of your data via email</p>
+                  </div>
+                  <Button 
+                    variant="outline" 
+                    className="flex items-center space-x-2"
+                    onClick={() => setShowDataExport(true)}
+                  >
                     <Download className="w-4 h-4" />
-                    <span>Download</span>
+                    <span>Export Data</span>
                   </Button>
                 </div>
                 <div className="flex items-center justify-between">
@@ -469,7 +768,11 @@ export default function StudyCompanion() {
                     <Label>Delete Account</Label>
                     <p className="text-sm text-gray-600">Permanently delete your account and all data</p>
                   </div>
-                  <Button variant="destructive" className="flex items-center space-x-2">
+                  <Button 
+                    variant="destructive" 
+                    className="flex items-center space-x-2"
+                    onClick={() => setShowAccountDeletion(true)}
+                  >
                     <Trash2 className="w-4 h-4" />
                     <span>Delete Account</span>
                   </Button>
@@ -658,6 +961,228 @@ export default function StudyCompanion() {
           </div>
         )}
       </div>
-    </div>
-  );
-}
+
+        {/* Password Authentication Dialog */}
+        <PasswordAuthDialog
+          isOpen={showPasswordAuth}
+          onClose={handlePasswordAuthClose}
+          onSuccess={handlePasswordAuthSuccess}
+          title="Confirm Password to Edit Profile"
+          description="Please enter your current password to edit your profile information"
+        />
+
+        {/* Data Export Dialog */}
+        <DataExportDialog
+          isOpen={showDataExport}
+          onClose={() => setShowDataExport(false)}
+          onSuccess={() => {
+            toast({
+              title: "Data Export Requested",
+              description: "Your data export has been sent to your email address.",
+            });
+          }}
+        />
+
+        {/* Account Deletion Dialog */}
+        <AccountDeletionDialog
+          isOpen={showAccountDeletion}
+          onClose={() => setShowAccountDeletion(false)}
+        />
+
+        {/* Password Change Dialog */}
+        <AlertDialog open={showPasswordChange} onOpenChange={setShowPasswordChange}>
+          <AlertDialogContent className="max-w-md">
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Change Password</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    {isChangingPassword 
+                      ? "Updating your password securely. Please wait..."
+                      : currentPasswordVerified 
+                        ? "Enter your new password. It must meet all security requirements."
+                        : "First, verify your current password to proceed with changing it."
+                    }
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+            
+            <div className="space-y-4 py-4">
+              {/* Current Password */}
+              <div className="space-y-2">
+                <Label htmlFor="current-password">Current Password</Label>
+                <div className="relative">
+                  <Input
+                    id="current-password"
+                    type={showPasswordFields.current ? "text" : "password"}
+                    placeholder="Enter your current password"
+                    value={passwordChangeData.currentPassword}
+                    onChange={(e) => setPasswordChangeData({
+                      ...passwordChangeData,
+                      currentPassword: e.target.value
+                    })}
+                    disabled={isChangingPassword || currentPasswordVerified}
+                    className="pr-10"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPasswordFields({
+                      ...showPasswordFields,
+                      current: !showPasswordFields.current
+                    })}
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                    disabled={isChangingPassword || currentPasswordVerified}
+                  >
+                    {showPasswordFields.current ? (
+                      <EyeOff className="w-4 h-4" />
+                    ) : (
+                      <Eye className="w-4 h-4" />
+                    )}
+                  </button>
+                </div>
+                {!currentPasswordVerified && (
+                  <Button
+                    onClick={handleVerifyCurrentPassword}
+                    disabled={!passwordChangeData.currentPassword.trim() || isVerifyingCurrentPassword}
+                    size="sm"
+                    className="w-full"
+                  >
+                    {isVerifyingCurrentPassword ? (
+                      <>
+                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
+                        Verifying...
+                      </>
+                    ) : (
+                      "Verify Password"
+                    )}
+                  </Button>
+                )}
+                {currentPasswordVerified && (
+                  <div className="flex items-center text-green-600 text-sm">
+                    <CheckCircle className="w-4 h-4 mr-2" />
+                    Password verified successfully
+                  </div>
+                )}
+              </div>
+
+              {/* New Password Fields - Only show after verification */}
+              {currentPasswordVerified && (
+                <>
+                  {/* New Password */}
+                  <div className="space-y-2">
+                    <Label htmlFor="new-password">New Password</Label>
+                    <div className="relative">
+                      <Input
+                        id="new-password"
+                        type={showPasswordFields.new ? "text" : "password"}
+                        placeholder="Enter your new password"
+                        value={passwordChangeData.newPassword}
+                        onChange={(e) => setPasswordChangeData({
+                          ...passwordChangeData,
+                          newPassword: e.target.value
+                        })}
+                        disabled={isChangingPassword}
+                        className="pr-10"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPasswordFields({
+                          ...showPasswordFields,
+                          new: !showPasswordFields.new
+                        })}
+                        className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                        disabled={isChangingPassword}
+                      >
+                        {showPasswordFields.new ? (
+                          <EyeOff className="w-4 h-4" />
+                        ) : (
+                          <Eye className="w-4 h-4" />
+                        )}
+                      </button>
+                    </div>
+                    {passwordChangeData.newPassword && (
+                      <PasswordStrengthIndicator
+                        password={passwordChangeData.newPassword}
+                        requirements={defaultPasswordRequirements}
+                      />
+                    )}
+                  </div>
+
+                  {/* Confirm Password */}
+                  <div className="space-y-2">
+                    <Label htmlFor="confirm-password">Confirm New Password</Label>
+                    <div className="relative">
+                      <Input
+                        id="confirm-password"
+                        type={showPasswordFields.confirm ? "text" : "password"}
+                        placeholder="Confirm your new password"
+                        value={passwordChangeData.confirmPassword}
+                        onChange={(e) => setPasswordChangeData({
+                          ...passwordChangeData,
+                          confirmPassword: e.target.value
+                        })}
+                        disabled={isChangingPassword}
+                        className="pr-10"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPasswordFields({
+                          ...showPasswordFields,
+                          confirm: !showPasswordFields.confirm
+                        })}
+                        className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                        disabled={isChangingPassword}
+                      >
+                        {showPasswordFields.confirm ? (
+                          <EyeOff className="w-4 h-4" />
+                        ) : (
+                          <Eye className="w-4 h-4" />
+                        )}
+                      </button>
+                    </div>
+                    {passwordChangeData.confirmPassword && passwordChangeData.newPassword !== passwordChangeData.confirmPassword && (
+                      <p className="text-sm text-red-600">Passwords do not match</p>
+                    )}
+                  </div>
+                </>
+              )}
+            </div>
+
+            <AlertDialogFooter>
+              <AlertDialogCancel onClick={handlePasswordChangeClose} disabled={isChangingPassword || isVerifyingCurrentPassword}>
+                Cancel
+              </AlertDialogCancel>
+              {currentPasswordVerified && (
+                <AlertDialogAction 
+                  onClick={isChangingPassword ? undefined : handlePasswordUpdate} 
+                  disabled={!isPasswordChangeButtonEnabled()}
+                  className={`${isChangingPassword 
+                    ? 'bg-blue-500 cursor-wait' 
+                    : isPasswordChangeButtonEnabled() 
+                      ? 'bg-blue-600 hover:bg-blue-700' 
+                      : 'bg-gray-400 cursor-not-allowed hover:bg-gray-400'
+                  }`}
+                >
+                  {(() => {
+                    console.log('🎨 Button render - isChangingPassword:', isChangingPassword);
+                    return isChangingPassword ? (
+                      <>
+                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
+                        Updating Password...
+                      </>
+                    ) : (
+                      "Change Password"
+                    );
+                  })()}
+                </AlertDialogAction>
+              )}
+              {currentPasswordVerified && !isPasswordChangeButtonEnabled() && (
+                <div className="text-center text-sm text-gray-600 mt-2">
+                  {!passwordRequirementsMet && "Complete all password requirements above"}
+                  {passwordRequirementsMet && passwordChangeData.newPassword !== passwordChangeData.confirmPassword && "Passwords do not match"}
+                  {passwordRequirementsMet && passwordChangeData.newPassword === passwordChangeData.confirmPassword && passwordChangeData.currentPassword === passwordChangeData.newPassword && "New password must be different from current password"}
+                </div>
+              )}
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      </div>
+    );
+  }
