@@ -171,7 +171,18 @@ export default function DOCXViewer({ fileUrl, filename, documentId, unitId, isEd
 
   const goBack = () => {
     if (backButtonPath) {
-      setLocation(backButtonPath);
+      try {
+        setLocation(backButtonPath);
+        
+        // Add a fallback after a short delay to ensure navigation happens
+        setTimeout(() => {
+          window.location.href = backButtonPath;
+        }, 100);
+        
+      } catch (error) {
+        // Fallback to window.location if setLocation fails
+        window.location.href = backButtonPath;
+      }
     } else if (unitId) {
       setLocation(`/units/${unitId}/documents`);
     } else {
@@ -335,7 +346,11 @@ export default function DOCXViewer({ fileUrl, filename, documentId, unitId, isEd
               <Button 
                 variant="outline" 
                 size="sm" 
-                onClick={goBack}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  goBack();
+                }}
                 className="bg-white hover:bg-stone-50 border-stone-200 text-stone-700 hover:text-stone-900"
               >
                 <ArrowLeft className="w-4 h-4 mr-2" />
