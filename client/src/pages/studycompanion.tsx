@@ -16,6 +16,7 @@ import React, { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { useSidebar } from "@/contexts/SidebarContext";
+import { useTheme } from "@/contexts/ThemeContext";
 import DataExportDialog from "@/components/data-export-dialog";
 import AccountDeletionDialog from "@/components/account-deletion-dialog";
 import FontSettings from "@/components/font-settings";
@@ -24,6 +25,7 @@ export default function StudyCompanion() {
   const { user, updateUser, logout } = useAuth();
   const { toast } = useToast();
   const { defaultCollapsed, setDefaultCollapsed } = useSidebar();
+  const { theme, setTheme } = useTheme();
   const [isEditing, setIsEditing] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [activeTab, setActiveTab] = useState("profile");
@@ -73,7 +75,6 @@ export default function StudyCompanion() {
       allowMessages: true
     },
     appearance: {
-      theme: "light",
       fontSize: "medium"
     }
   });
@@ -783,11 +784,8 @@ export default function StudyCompanion() {
                   <div>
                     <Label>Theme</Label>
                     <Select
-                      value={userData.appearance.theme}
-                      onValueChange={(value) => setUserData({
-                        ...userData,
-                        appearance: {...userData.appearance, theme: value}
-                      })}
+                      value={theme}
+                      onValueChange={setTheme}
                     >
                       <SelectTrigger>
                         <SelectValue />
@@ -795,14 +793,15 @@ export default function StudyCompanion() {
                       <SelectContent>
                         <SelectItem value="light">Light</SelectItem>
                         <SelectItem value="dark">Dark</SelectItem>
-                        <SelectItem value="auto">Auto</SelectItem>
+                        <SelectItem value="glassmorphism">Glassmorphism</SelectItem>
+                        <SelectItem value="auto">Auto (System)</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
                   <div className="flex items-center justify-between">
                     <div>
                       <Label>Collapse Sidebar by Default</Label>
-                      <p className="text-sm text-gray-600">Start with the sidebar collapsed</p>
+                      <p className="text-sm text-muted-foreground">Start with the sidebar collapsed</p>
                     </div>
                     <Switch
                       checked={defaultCollapsed}

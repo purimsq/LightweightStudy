@@ -103,6 +103,8 @@ export default function AssignmentViewer() {
                 fileUrl={assignment.attachedFilePath} 
                 filename={assignment.attachedFileName || "document.docx"}
                 documentId={assignment.id.toString()}
+                backButtonText="Back to Assignments"
+                backButtonPath="/assignments"
               />
             ) : (
               // Show text content or editable area for other file types

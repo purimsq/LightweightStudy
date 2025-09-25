@@ -10,9 +10,11 @@ interface DOCXViewerProps {
   unitId?: number;
   isEditing?: boolean;
   onContentChange?: (content: string) => void;
+  backButtonText?: string;
+  backButtonPath?: string;
 }
 
-export default function DOCXViewer({ fileUrl, filename, documentId, unitId, isEditing, onContentChange }: DOCXViewerProps) {
+export default function DOCXViewer({ fileUrl, filename, documentId, unitId, isEditing, onContentChange, backButtonText, backButtonPath }: DOCXViewerProps) {
   const [htmlContent, setHtmlContent] = useState<string>("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -168,19 +170,17 @@ export default function DOCXViewer({ fileUrl, filename, documentId, unitId, isEd
   };
 
   const goBack = () => {
-    if (unitId) {
-      console.log('DOCXViewer: goBack clicked, navigating to documents for unit:', unitId);
+    if (backButtonPath) {
+      setLocation(backButtonPath);
+    } else if (unitId) {
       setLocation(`/units/${unitId}/documents`);
     } else {
-      console.log('DOCXViewer: goBack clicked, navigating to study-documents (no unitId)');
       setLocation('/study-documents');
     }
   };
 
   const scrollToHeading = (id: string) => {
-    console.log('🔍 Attempting to scroll to heading:', id);
     const element = document.getElementById(id);
-    console.log('🔍 Found element:', element);
     
     if (element) {
       // Try multiple scroll approaches
@@ -191,9 +191,7 @@ export default function DOCXViewer({ fileUrl, filename, documentId, unitId, isEd
           block: 'start',
           inline: 'nearest'
         });
-        console.log('✅ Used scrollIntoView method');
       } catch (error) {
-        console.log('❌ scrollIntoView failed:', error);
         
         // Method 2: Manual scroll calculation
         try {
@@ -207,10 +205,8 @@ export default function DOCXViewer({ fileUrl, filename, documentId, unitId, isEd
               top: scrollTop,
               behavior: 'smooth'
             });
-            console.log('✅ Used manual scroll method');
           }
         } catch (error2) {
-          console.log('❌ Manual scroll failed:', error2);
           
           // Method 3: Window scroll as last resort
           const elementTop = element.offsetTop;
@@ -218,13 +214,10 @@ export default function DOCXViewer({ fileUrl, filename, documentId, unitId, isEd
             top: elementTop - 100,
             behavior: 'smooth'
           });
-          console.log('✅ Used window scroll method');
         }
       }
       
       setSidebarOpen(false);
-    } else {
-      console.log('❌ Element not found with ID:', id);
     }
   };
 
@@ -342,14 +335,11 @@ export default function DOCXViewer({ fileUrl, filename, documentId, unitId, isEd
               <Button 
                 variant="outline" 
                 size="sm" 
-                onClick={() => {
-                  console.log('DOCXViewer: Button clicked!');
-                  goBack();
-                }}
+                onClick={goBack}
                 className="bg-white hover:bg-stone-50 border-stone-200 text-stone-700 hover:text-stone-900"
               >
                 <ArrowLeft className="w-4 h-4 mr-2" />
-                Back to Documents
+                {backButtonText || "Back to Documents"}
               </Button>
               <Button
                 variant="outline"

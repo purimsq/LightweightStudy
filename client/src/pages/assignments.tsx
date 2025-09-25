@@ -617,6 +617,8 @@ function AssignmentEditor({ assignment, isOpen, onOpenChange }: {
                               filename={assignment.title}
                               documentId={assignment.id.toString()}
                               isEditing={isEditing}
+                              backButtonText="Back to Assignments"
+                              backButtonPath="/assignments"
                               onContentChange={setEditedContent}
                             />
                           </div>

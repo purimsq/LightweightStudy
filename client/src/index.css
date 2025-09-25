@@ -50,25 +50,153 @@
 }
 
 .dark {
-  --background: hsl(240, 10%, 3.9%);
-  --foreground: hsl(0, 0%, 98%);
-  --muted: hsl(240, 3.7%, 15.9%);
-  --muted-foreground: hsl(240, 5%, 64.9%);
-  --popover: hsl(240, 10%, 3.9%);
-  --popover-foreground: hsl(0, 0%, 98%);
-  --card: hsl(240, 10%, 3.9%);
-  --card-foreground: hsl(0, 0%, 98%);
-  --border: hsl(240, 3.7%, 15.9%);
-  --input: hsl(240, 3.7%, 15.9%);
-  --primary: hsl(37, 25%, 68%);
-  --primary-foreground: hsl(0, 0%, 100%);
-  --secondary: hsl(240, 3.7%, 15.9%);
-  --secondary-foreground: hsl(0, 0%, 98%);
-  --accent: hsl(35, 43%, 67%);
-  --accent-foreground: hsl(240, 10%, 3.9%);
-  --destructive: hsl(0, 62.8%, 30.6%);
-  --destructive-foreground: hsl(0, 0%, 98%);
-  --ring: hsl(240, 4.9%, 83.9%);
+  /* Base colors - Grey palette with softer whites */
+  --background: hsl(220, 13%, 9%);           /* Very dark grey-blue */
+  --foreground: hsl(220, 9%, 85%);           /* Soft off-white */
+  --muted: hsl(220, 13%, 18%);               /* Dark grey */
+  --muted-foreground: hsl(220, 9%, 70%);     /* Light grey */
+  
+  /* Surface colors */
+  --popover: hsl(220, 13%, 12%);             /* Dark grey */
+  --popover-foreground: hsl(220, 9%, 85%);   /* Soft off-white */
+  --card: hsl(220, 13%, 12%);                /* Dark grey */
+  --card-foreground: hsl(220, 9%, 85%);      /* Soft off-white */
+  
+  /* Interactive elements */
+  --border: hsl(220, 13%, 25%);              /* Medium grey */
+  --input: hsl(220, 13%, 15%);               /* Dark grey */
+  
+  /* Primary colors - Warm accent */
+  --primary: hsl(37, 25%, 68%);              /* Keep warm beige */
+  --primary-foreground: hsl(220, 13%, 9%);
+  
+  /* Secondary colors */
+  --secondary: hsl(220, 13%, 18%);           /* Dark grey */
+  --secondary-foreground: hsl(220, 9%, 80%); /* Soft white */
+  
+  /* Accent colors - Blue for outlines */
+  --accent: hsl(217, 91%, 60%);              /* Bright blue */
+  --accent-foreground: hsl(220, 13%, 9%);
+  
+  /* Status colors */
+  --destructive: hsl(0, 84%, 60%);           /* Red */
+  --destructive-foreground: hsl(220, 9%, 85%); /* Soft off-white */
+  
+  /* Focus ring */
+  --ring: hsl(217, 91%, 60%);                /* Blue for focus */
+  
+  /* Custom study app colors - Dark theme variants */
+  --cream: hsl(220, 13%, 15%);               /* Dark grey */
+  --warm-gray: hsl(220, 9%, 70%);            /* Light grey */
+  --light-beige: hsl(37, 25%, 68%);          /* Keep warm accent */
+  --neutral-50: hsl(220, 13%, 9%);           /* Very dark */
+  --neutral-100: hsl(220, 13%, 12%);         /* Dark */
+  --neutral-200: hsl(220, 13%, 18%);         /* Medium dark */
+  --neutral-600: hsl(220, 9%, 80%);          /* Soft white */
+}
+
+/* Glassmorphism Theme */
+.glassmorphism {
+  /* Background image with enhanced blending */
+  background-image: 
+    radial-gradient(circle at 20% 80%, rgba(252, 248, 240, 0.1) 0%, transparent 50%),
+    radial-gradient(circle at 80% 20%, rgba(245, 222, 179, 0.08) 0%, transparent 50%),
+    radial-gradient(circle at 40% 40%, rgba(248, 240, 232, 0.05) 0%, transparent 70%),
+    url('/images/Light-morphism.jpeg');
+  background-size: cover, cover, cover, cover;
+  background-position: center, center, center, center;
+  background-attachment: fixed, fixed, fixed, fixed;
+  background-repeat: no-repeat, no-repeat, no-repeat, no-repeat;
+  
+  /* Enhanced depth and atmosphere */
+  position: relative;
+  overflow-x: hidden;
+  
+  /* Base colors - Warm tones matching the background */
+  --background: rgba(248, 240, 232, 0.25);   /* Warm cream/beige for better blend */
+  --foreground: rgba(40, 30, 20, 1);         /* Dark warm brown for maximum text contrast */
+  --muted: rgba(248, 240, 232, 0.3);         /* Warm muted background */
+  --muted-foreground: rgba(60, 50, 40, 0.95); /* Warm dark muted text */
+  
+  /* Surface colors - Warm glass effect */
+  --popover: rgba(252, 248, 240, 0.35);      /* Warm cream popover */
+  --popover-foreground: rgba(40, 30, 20, 1); /* Maximum contrast text */
+  --card: rgba(252, 248, 240, 0.3);          /* Warm cream card background */
+  --card-foreground: rgba(40, 30, 20, 1);    /* Maximum contrast text */
+  
+  /* Interactive elements */
+  --border: rgba(252, 248, 240, 0.5);        /* Warm visible borders */
+  --input: rgba(252, 248, 240, 0.3);         /* Warm input backgrounds */
+  
+  /* Primary colors - Warm contrast */
+  --primary: rgba(139, 69, 19, 0.9);         /* Warm brown primary */
+  --primary-foreground: rgba(252, 248, 240, 1); /* Warm cream text */
+  
+  /* Secondary colors */
+  --secondary: rgba(252, 248, 240, 0.2);     /* Warm secondary */
+  --secondary-foreground: rgba(40, 30, 20, 1); /* Maximum contrast */
+  
+  /* Accent colors */
+  --accent: rgba(160, 82, 45, 0.9);          /* Warm brown accent */
+  --accent-foreground: rgba(252, 248, 240, 1); /* Warm cream text */
+  
+  /* Status colors */
+  --destructive: rgba(139, 0, 0, 0.9);       /* More opaque destructive */
+  --destructive-foreground: rgba(252, 248, 240, 1); /* Warm cream text */
+  
+  /* Focus ring */
+  --ring: rgba(160, 82, 45, 0.8);            /* More visible focus ring */
+  
+  /* Custom study app colors - Warm variants matching background */
+  --cream: rgba(252, 248, 240, 0.4);         /* Warm cream */
+  --warm-gray: rgba(120, 100, 80, 0.8);      /* Warm gray */
+  --light-beige: rgba(245, 222, 179, 0.5);   /* Light beige */
+  --neutral-50: rgba(252, 248, 240, 0.2);    /* Warm neutral */
+  --neutral-100: rgba(252, 248, 240, 0.3);   /* Warm neutral */
+  --neutral-200: rgba(252, 248, 240, 0.4);   /* Warm neutral */
+  --neutral-600: rgba(40, 30, 20, 1);        /* Warm dark text */
+}
+
+/* Glassmorphism ambient lighting effects */
+.glassmorphism::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: 
+    radial-gradient(ellipse at top left, rgba(252, 248, 240, 0.15) 0%, transparent 50%),
+    radial-gradient(ellipse at top right, rgba(245, 222, 179, 0.1) 0%, transparent 50%),
+    radial-gradient(ellipse at bottom center, rgba(248, 240, 232, 0.08) 0%, transparent 60%);
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* Glassmorphism floating particles effect */
+.glassmorphism::after {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-image: 
+    radial-gradient(2px 2px at 20px 30px, rgba(252, 248, 240, 0.3), transparent),
+    radial-gradient(2px 2px at 40px 70px, rgba(245, 222, 179, 0.2), transparent),
+    radial-gradient(1px 1px at 90px 40px, rgba(248, 240, 232, 0.4), transparent),
+    radial-gradient(1px 1px at 130px 80px, rgba(252, 248, 240, 0.2), transparent),
+    radial-gradient(2px 2px at 160px 30px, rgba(245, 222, 179, 0.3), transparent);
+  background-repeat: repeat;
+  background-size: 200px 100px;
+  animation: float 20s infinite linear;
+  pointer-events: none;
+  z-index: 2;
+}
+
+@keyframes float {
+  0% { transform: translateY(0px) rotate(0deg); }
+  100% { transform: translateY(-100px) rotate(360deg); }
 }
 
 @layer base {
@@ -77,9 +205,41 @@
   }
 
   body {
-    @apply font-sans antialiased bg-neutral-50 text-foreground;
+    @apply font-sans antialiased bg-background text-foreground;
     font-family: var(--app-font-family, 'Inter', system-ui, sans-serif);
     font-weight: var(--app-font-weight, 500);
+  }
+
+  /* Glassmorphism font optimization */
+  .glassmorphism body {
+    font-family: var(--app-font-family, 'Inter', system-ui, sans-serif);
+    font-weight: 500;
+    letter-spacing: 0.025em;
+    line-height: 1.6;
+  }
+
+  .glassmorphism h1,
+  .glassmorphism h2,
+  .glassmorphism h3,
+  .glassmorphism h4,
+  .glassmorphism h5,
+  .glassmorphism h6 {
+    font-weight: 600;
+    letter-spacing: -0.025em;
+    line-height: 1.3;
+  }
+
+  .glassmorphism p {
+    font-weight: 400;
+    letter-spacing: 0.01em;
+    line-height: 1.7;
+  }
+
+  .glassmorphism small,
+  .glassmorphism .text-sm {
+    font-weight: 400;
+    letter-spacing: 0.05em;
+    line-height: 1.5;
   }
 }
 
@@ -89,11 +249,11 @@
   }
   
   .sidebar-nav-item.active {
-    @apply bg-primary text-white;
+    @apply bg-primary text-primary-foreground;
   }
   
   .sidebar-nav-item:not(.active) {
-    @apply text-neutral-600 hover:bg-secondary hover:text-neutral-800;
+    @apply text-muted-foreground hover:bg-secondary hover:text-foreground;
   }
 
   .card-hover {
@@ -101,11 +261,11 @@
   }
   
   .unit-card {
-    @apply bg-white rounded-xl p-6 shadow-sm border border-neutral-200 card-hover cursor-pointer;
+    @apply bg-card rounded-xl p-6 shadow-sm border border-border card-hover cursor-pointer;
   }
 
   .progress-bar {
-    @apply w-full bg-neutral-200 rounded-full h-2;
+    @apply w-full bg-muted rounded-full h-2;
   }
 
   .progress-fill {
@@ -113,11 +273,11 @@
   }
 
   .floating-action {
-    @apply fixed bottom-6 right-6 w-14 h-14 bg-primary hover:bg-primary text-white rounded-full shadow-lg hover:shadow-xl transition-all duration-200 flex items-center justify-center;
+    @apply fixed bottom-6 right-6 w-14 h-14 bg-primary hover:bg-primary text-primary-foreground rounded-full shadow-lg hover:shadow-xl transition-all duration-200 flex items-center justify-center;
   }
 
   .quick-action-card {
-    @apply bg-white rounded-xl p-6 shadow-sm border border-neutral-200 hover:shadow-md transition-all duration-200 text-left cursor-pointer;
+    @apply bg-card rounded-xl p-6 shadow-sm border border-border hover:shadow-md transition-all duration-200 text-left cursor-pointer;
   }
 
   .modal-overlay {
@@ -125,7 +285,7 @@
   }
 
   .modal-content {
-    @apply bg-white rounded-xl p-8 max-w-md w-full mx-4 shadow-2xl;
+    @apply bg-card rounded-xl p-8 max-w-md w-full mx-4 shadow-2xl border border-border;
   }
 }
 
@@ -145,6 +305,1255 @@
 
 ::-webkit-scrollbar-thumb:hover {
   background: var(--muted-foreground);
+}
+
+/* Dark theme scrollbar */
+.dark ::-webkit-scrollbar-track {
+  background: var(--muted);
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: var(--border);
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: var(--accent);
+}
+
+/* Dark theme specific enhancements */
+.dark .sidebar-nav-item:not(.active) {
+  @apply text-muted-foreground hover:bg-secondary hover:text-foreground;
+}
+
+.dark .sidebar-nav-item.active {
+  @apply bg-primary text-primary-foreground;
+}
+
+/* Dark theme shadows */
+.dark .card-hover {
+  @apply hover:shadow-lg hover:shadow-black/20;
+}
+
+.dark .floating-action {
+  @apply shadow-xl shadow-black/30;
+}
+
+.dark .modal-content {
+  @apply shadow-2xl shadow-black/50;
+}
+
+/* Dark theme focus states */
+.dark .focus-ring {
+  @apply focus:ring-accent;
+}
+
+/* Dark theme selection */
+.dark ::selection {
+  background-color: var(--accent);
+  color: var(--accent-foreground);
+}
+
+/* Dark theme links */
+.dark a {
+  color: var(--accent);
+}
+
+.dark a:hover {
+  color: var(--accent);
+  opacity: 0.8;
+}
+
+/* Dark theme text improvements */
+.dark .text-gray-600 {
+  color: var(--muted-foreground) !important;
+}
+
+.dark .text-gray-500 {
+  color: var(--muted-foreground) !important;
+}
+
+.dark .text-gray-400 {
+  color: var(--muted-foreground) !important;
+}
+
+.dark .text-gray-300 {
+  color: var(--foreground) !important;
+}
+
+.dark .text-gray-200 {
+  color: var(--foreground) !important;
+}
+
+.dark .text-gray-100 {
+  color: var(--foreground) !important;
+}
+
+/* Dark theme input improvements */
+.dark input::placeholder {
+  color: var(--muted-foreground);
+}
+
+.dark textarea::placeholder {
+  color: var(--muted-foreground);
+}
+
+/* Dark theme button improvements */
+.dark button:disabled {
+  color: var(--muted-foreground);
+  opacity: 0.6;
+}
+
+/* Dark theme card improvements */
+.dark .bg-white {
+  background-color: var(--card) !important;
+}
+
+.dark .text-black {
+  color: var(--foreground) !important;
+}
+
+.dark .text-white {
+  color: var(--foreground) !important;
+}
+
+/* Dark theme component overrides */
+.dark .bg-white {
+  background-color: var(--card) !important;
+}
+
+.dark .bg-yellow-50 {
+  background-color: var(--muted) !important;
+}
+
+.dark .border-yellow-300 {
+  border-color: var(--border) !important;
+}
+
+.dark .border-yellow-200 {
+  border-color: var(--border) !important;
+}
+
+.dark .bg-yellow-100 {
+  background-color: var(--secondary) !important;
+}
+
+.dark .text-yellow-800 {
+  color: var(--foreground) !important;
+}
+
+.dark .text-gray-900 {
+  color: var(--foreground) !important;
+}
+
+.dark .text-gray-600 {
+  color: var(--muted-foreground) !important;
+}
+
+.dark .text-gray-500 {
+  color: var(--muted-foreground) !important;
+}
+
+.dark .border-gray-200 {
+  border-color: var(--border) !important;
+}
+
+.dark .border-stone-200 {
+  border-color: var(--border) !important;
+}
+
+.dark .text-blue-600 {
+  color: var(--accent) !important;
+}
+
+.dark .hover\:text-blue-600:hover {
+  color: var(--accent) !important;
+}
+
+/* Dark theme prose styling */
+.dark .prose {
+  color: var(--foreground);
+}
+
+.dark .prose h1,
+.dark .prose h2,
+.dark .prose h3,
+.dark .prose h4,
+.dark .prose h5,
+.dark .prose h6 {
+  color: var(--foreground);
+}
+
+.dark .prose p {
+  color: var(--foreground);
+}
+
+.dark .prose strong {
+  color: var(--foreground);
+}
+
+.dark .prose a {
+  color: var(--accent);
+}
+
+/* Glassmorphism Theme Specific Styling */
+.glassmorphism {
+  min-height: 100vh;
+}
+
+.glassmorphism body {
+  background: transparent;
+  backdrop-filter: blur(0px);
+}
+
+/* Glassmorphism component styling - Advanced glass effect with blending */
+.glassmorphism .sidebar-nav-item {
+  backdrop-filter: blur(20px) saturate(180%);
+  background: 
+    linear-gradient(135deg, rgba(252, 248, 240, 0.25) 0%, rgba(245, 222, 179, 0.15) 100%),
+    radial-gradient(circle at top left, rgba(252, 248, 240, 0.3) 0%, transparent 70%);
+  border: 1px solid rgba(252, 248, 240, 0.4);
+  box-shadow: 
+    0 8px 32px rgba(0, 0, 0, 0.15),
+    inset 0 1px 0 rgba(252, 248, 240, 0.6),
+    0 0 0 1px rgba(245, 222, 179, 0.2);
+  color: rgba(40, 30, 20, 1) !important;
+  position: relative;
+  overflow: hidden;
+}
+
+.glassmorphism .sidebar-nav-item::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(252, 248, 240, 0.4), transparent);
+  transition: left 0.5s;
+}
+
+.glassmorphism .sidebar-nav-item:hover::before {
+  left: 100%;
+}
+
+.glassmorphism .sidebar-nav-item.active {
+  backdrop-filter: blur(25px) saturate(200%);
+  background: 
+    linear-gradient(135deg, rgba(139, 69, 19, 0.7) 0%, rgba(160, 82, 45, 0.5) 100%),
+    radial-gradient(circle at top left, rgba(139, 69, 19, 0.8) 0%, transparent 70%);
+  border: 1px solid rgba(139, 69, 19, 0.7);
+  box-shadow: 
+    0 12px 40px rgba(139, 69, 19, 0.4),
+    inset 0 1px 0 rgba(252, 248, 240, 0.3),
+    0 0 20px rgba(139, 69, 19, 0.3);
+  color: rgba(252, 248, 240, 1) !important;
+}
+
+.glassmorphism .sidebar-nav-item:not(.active):hover {
+  backdrop-filter: blur(25px) saturate(180%);
+  background: 
+    linear-gradient(135deg, rgba(252, 248, 240, 0.4) 0%, rgba(245, 222, 179, 0.25) 100%),
+    radial-gradient(circle at top left, rgba(252, 248, 240, 0.5) 0%, transparent 70%);
+  border: 1px solid rgba(252, 248, 240, 0.6);
+  box-shadow: 
+    0 12px 40px rgba(0, 0, 0, 0.2),
+    inset 0 1px 0 rgba(252, 248, 240, 0.8),
+    0 0 0 1px rgba(245, 222, 179, 0.3);
+  color: rgba(40, 30, 20, 1) !important;
+  transform: translateY(-1px);
+}
+
+.glassmorphism .card {
+  backdrop-filter: blur(25px) saturate(150%);
+  background: 
+    linear-gradient(135deg, rgba(252, 248, 240, 0.35) 0%, rgba(245, 222, 179, 0.2) 50%, rgba(248, 240, 232, 0.25) 100%),
+    radial-gradient(circle at top right, rgba(252, 248, 240, 0.4) 0%, transparent 60%);
+  border: 1px solid rgba(252, 248, 240, 0.5);
+  box-shadow: 
+    0 12px 40px rgba(0, 0, 0, 0.15),
+    inset 0 1px 0 rgba(252, 248, 240, 0.7),
+    0 0 0 1px rgba(245, 222, 179, 0.1);
+  position: relative;
+  overflow: hidden;
+}
+
+.glassmorphism .card::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: 
+    radial-gradient(circle, rgba(252, 248, 240, 0.1) 0%, transparent 70%);
+  animation: cardGlow 8s ease-in-out infinite;
+  pointer-events: none;
+}
+
+@keyframes cardGlow {
+  0%, 100% { transform: scale(1) rotate(0deg); opacity: 0.5; }
+  50% { transform: scale(1.1) rotate(180deg); opacity: 0.8; }
+}
+
+.glassmorphism .quick-action-card {
+  backdrop-filter: blur(25px);
+  background: rgba(252, 248, 240, 0.3);
+  border: 1px solid rgba(252, 248, 240, 0.5);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.2);
+  color: rgba(40, 30, 20, 1) !important;
+}
+
+.glassmorphism .quick-action-card:hover {
+  backdrop-filter: blur(30px);
+  background: rgba(252, 248, 240, 0.4);
+  border: 1px solid rgba(252, 248, 240, 0.6);
+  box-shadow: 0 16px 50px rgba(0, 0, 0, 0.25);
+  color: rgba(40, 30, 20, 1) !important;
+}
+
+.glassmorphism .modal-content {
+  backdrop-filter: blur(30px);
+  background: rgba(252, 248, 240, 0.35);
+  border: 1px solid rgba(252, 248, 240, 0.5);
+  box-shadow: 0 25px 80px rgba(0, 0, 0, 0.3);
+}
+
+.glassmorphism .floating-action {
+  backdrop-filter: blur(25px);
+  background: rgba(139, 69, 19, 0.9);
+  border: 1px solid rgba(252, 248, 240, 0.4);
+  box-shadow: 0 12px 40px rgba(139, 69, 19, 0.4);
+  color: rgba(252, 248, 240, 1) !important;
+}
+
+.glassmorphism .floating-action:hover {
+  backdrop-filter: blur(30px);
+  background: rgba(139, 69, 19, 1);
+  box-shadow: 0 16px 50px rgba(139, 69, 19, 0.5);
+  color: rgba(252, 248, 240, 1) !important;
+}
+
+/* Glassmorphism form elements */
+.glassmorphism input,
+.glassmorphism textarea,
+.glassmorphism select {
+  backdrop-filter: blur(10px);
+  background: rgba(252, 248, 240, 0.1);
+  border: 1px solid rgba(252, 248, 240, 0.2);
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.glassmorphism input:focus,
+.glassmorphism textarea:focus,
+.glassmorphism select:focus {
+  background: rgba(252, 248, 240, 0.15);
+  border: 1px solid rgba(160, 82, 45, 0.5);
+  box-shadow: 0 0 0 2px rgba(160, 82, 45, 0.3);
+}
+
+/* Glassmorphism buttons */
+.glassmorphism button:not(.sidebar-nav-item):not(.floating-action) {
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(252, 248, 240, 0.2);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+}
+
+.glassmorphism button:not(.sidebar-nav-item):not(.floating-action):hover {
+  backdrop-filter: blur(12px);
+  background: rgba(252, 248, 240, 0.2);
+  border: 1px solid rgba(252, 248, 240, 0.3);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+}
+
+/* Glassmorphism popover/dropdown - Enhanced */
+.glassmorphism [data-radix-popper-content-wrapper],
+.glassmorphism .select-content,
+.glassmorphism .popover-content,
+.glassmorphism [role="menu"],
+.glassmorphism [role="listbox"] {
+  backdrop-filter: blur(30px) !important;
+  background: rgba(252, 248, 240, 0.35) !important;
+  border: 1px solid rgba(252, 248, 240, 0.5) !important;
+  box-shadow: 0 25px 80px rgba(0, 0, 0, 0.3);
+  color: rgba(40, 30, 20, 1) !important;
+}
+
+/* Glassmorphism toast - Grey for maximum visibility */
+.glassmorphism .toast,
+.glassmorphism [data-sonner-toast],
+.glassmorphism [data-sonner-toaster] {
+  backdrop-filter: blur(5px) !important;
+  background: rgba(75, 85, 99, 1) !important;
+  border: 2px solid rgba(107, 114, 128, 1) !important;
+  box-shadow: 
+    0 8px 32px rgba(0, 0, 0, 0.8),
+    0 4px 16px rgba(0, 0, 0, 0.6) !important;
+  color: rgba(255, 255, 255, 1) !important;
+  font-weight: 700 !important;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3) !important;
+  opacity: 1 !important;
+}
+
+/* Glassmorphism toast content - White text on grey */
+.glassmorphism .toast div,
+.glassmorphism .toast span,
+.glassmorphism .toast p,
+.glassmorphism [data-sonner-toast] div,
+.glassmorphism [data-sonner-toast] span,
+.glassmorphism [data-sonner-toast] p,
+.glassmorphism [data-sonner-toast] h1,
+.glassmorphism [data-sonner-toast] h2,
+.glassmorphism [data-sonner-toast] h3,
+.glassmorphism [data-sonner-toast] h4,
+.glassmorphism [data-sonner-toast] h5,
+.glassmorphism [data-sonner-toast] h6 {
+  color: rgba(255, 255, 255, 1) !important;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3) !important;
+  font-weight: 700 !important;
+  opacity: 1 !important;
+  background: transparent !important;
+}
+
+/* Glassmorphism toast buttons - Dark on grey */
+.glassmorphism .toast button,
+.glassmorphism [data-sonner-toast] button {
+  backdrop-filter: blur(2px) !important;
+  background: rgba(31, 41, 55, 1) !important;
+  border: 1px solid rgba(55, 65, 81, 1) !important;
+  color: rgba(255, 255, 255, 1) !important;
+  text-shadow: none !important;
+  font-weight: 600 !important;
+  opacity: 1 !important;
+}
+
+.glassmorphism .toast button:hover,
+.glassmorphism [data-sonner-toast] button:hover {
+  background: rgba(55, 65, 81, 1) !important;
+  transform: translateY(-1px) !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4) !important;
+}
+
+/* Glassmorphism toast icons */
+.glassmorphism .toast svg,
+.glassmorphism [data-sonner-toast] svg {
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3)) !important;
+}
+
+/* Glassmorphism toast close button */
+.glassmorphism .toast [data-close-button],
+.glassmorphism [data-sonner-toast] [data-close-button] {
+  backdrop-filter: blur(15px) !important;
+  background: rgba(139, 0, 0, 0.8) !important;
+  border: 1px solid rgba(139, 0, 0, 0.9) !important;
+  color: rgba(252, 248, 240, 1) !important;
+  border-radius: 50% !important;
+}
+
+.glassmorphism .toast [data-close-button]:hover,
+.glassmorphism [data-sonner-toast] [data-close-button]:hover {
+  background: rgba(139, 0, 0, 1) !important;
+  transform: scale(1.1) !important;
+}
+
+/* Glassmorphism toast container - Ensure visibility */
+.glassmorphism [data-sonner-toaster] {
+  backdrop-filter: blur(15px) !important;
+  background: rgba(252, 248, 240, 0.05) !important;
+}
+
+/* Glassmorphism toast specific overrides for sonner - All grey in glassmorphism */
+.glassmorphism [data-sonner-toast][data-type="success"] {
+  background: rgba(75, 85, 99, 1) !important;
+  border: 2px solid rgba(107, 114, 128, 1) !important;
+  color: rgba(255, 255, 255, 1) !important;
+  opacity: 1 !important;
+  backdrop-filter: blur(2px) !important;
+}
+
+.glassmorphism [data-sonner-toast][data-type="error"] {
+  background: rgba(75, 85, 99, 1) !important;
+  border: 2px solid rgba(107, 114, 128, 1) !important;
+  color: rgba(255, 255, 255, 1) !important;
+  opacity: 1 !important;
+  backdrop-filter: blur(2px) !important;
+}
+
+.glassmorphism [data-sonner-toast][data-type="warning"] {
+  background: rgba(75, 85, 99, 1) !important;
+  border: 2px solid rgba(107, 114, 128, 1) !important;
+  color: rgba(255, 255, 255, 1) !important;
+  opacity: 1 !important;
+  backdrop-filter: blur(2px) !important;
+}
+
+.glassmorphism [data-sonner-toast][data-type="info"] {
+  background: rgba(75, 85, 99, 1) !important;
+  border: 2px solid rgba(107, 114, 128, 1) !important;
+  color: rgba(255, 255, 255, 1) !important;
+  opacity: 1 !important;
+  backdrop-filter: blur(2px) !important;
+}
+
+/* Glassmorphism toast default styling - Grey */
+.glassmorphism [data-sonner-toast]:not([data-type]) {
+  background: rgba(75, 85, 99, 1) !important;
+  border: 2px solid rgba(107, 114, 128, 1) !important;
+  color: rgba(255, 255, 255, 1) !important;
+  opacity: 1 !important;
+  backdrop-filter: blur(2px) !important;
+}
+
+/* Glassmorphism dialog - Enhanced */
+.glassmorphism .dialog-content,
+.glassmorphism [role="dialog"],
+.glassmorphism .modal-content {
+  backdrop-filter: blur(30px) !important;
+  background: rgba(252, 248, 240, 0.35) !important;
+  border: 1px solid rgba(252, 248, 240, 0.5) !important;
+  box-shadow: 0 25px 80px rgba(0, 0, 0, 0.3);
+  color: rgba(40, 30, 20, 1) !important;
+}
+
+/* Glassmorphism progress bars - Full glass */
+.glassmorphism .progress-bar {
+  backdrop-filter: blur(25px);
+  background: rgba(252, 248, 240, 0.3);
+  border: 1px solid rgba(252, 248, 240, 0.5);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+}
+
+.glassmorphism .progress-fill {
+  backdrop-filter: blur(20px);
+  background: linear-gradient(90deg, 
+    rgba(139, 69, 19, 0.9) 0%, 
+    rgba(160, 82, 45, 0.9) 100%);
+  border: 1px solid rgba(252, 248, 240, 0.3);
+  box-shadow: 0 4px 16px rgba(139, 69, 19, 0.4);
+}
+
+/* Glassmorphism document viewer - Full glass */
+.glassmorphism .document-content {
+  backdrop-filter: blur(25px);
+  background: rgba(252, 248, 240, 0.3);
+  border: 1px solid rgba(252, 248, 240, 0.5);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.2);
+  color: rgba(40, 30, 20, 1) !important;
+}
+
+/* Glassmorphism DOCX viewer - Full glass */
+.glassmorphism .bg-white,
+.glassmorphism .shadow-2xl,
+.glassmorphism .prose {
+  backdrop-filter: blur(25px) !important;
+  background: rgba(255, 255, 255, 0.3) !important;
+  border: 1px solid rgba(255, 255, 255, 0.5) !important;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.2) !important;
+  color: rgba(30, 20, 10, 1) !important;
+}
+
+/* DOCX content styling */
+.glassmorphism .prose h1,
+.glassmorphism .prose h2,
+.glassmorphism .prose h3,
+.glassmorphism .prose h4,
+.glassmorphism .prose h5,
+.glassmorphism .prose h6,
+.glassmorphism .prose p,
+.glassmorphism .prose strong,
+.glassmorphism .prose b,
+.glassmorphism .prose li,
+.glassmorphism .prose td,
+.glassmorphism .prose th {
+  color: rgba(30, 20, 10, 1) !important;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+/* Glassmorphism assignment cards - Full glass */
+.glassmorphism .bg-white.border,
+.glassmorphism .border-gray-200,
+.glassmorphism .border-stone-200 {
+  backdrop-filter: blur(25px) !important;
+  background: rgba(255, 255, 255, 0.3) !important;
+  border: 1px solid rgba(255, 255, 255, 0.5) !important;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.2);
+  color: rgba(30, 20, 10, 1) !important;
+}
+
+/* Glassmorphism editing mode - Full glass */
+.glassmorphism .bg-yellow-50,
+.glassmorphism .bg-yellow-100 {
+  backdrop-filter: blur(20px) !important;
+  background: rgba(255, 248, 240, 0.4) !important;
+  border: 1px solid rgba(255, 255, 255, 0.5) !important;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+  color: rgba(30, 20, 10, 1) !important;
+}
+
+/* Glassmorphism form elements - Enhanced */
+.glassmorphism input,
+.glassmorphism textarea,
+.glassmorphism select {
+  backdrop-filter: blur(20px) !important;
+  background: rgba(255, 255, 255, 0.3) !important;
+  border: 1px solid rgba(255, 255, 255, 0.5) !important;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1), 0 4px 16px rgba(0, 0, 0, 0.1);
+  color: rgba(30, 20, 10, 1) !important;
+}
+
+.glassmorphism input:focus,
+.glassmorphism textarea:focus,
+.glassmorphism select:focus {
+  backdrop-filter: blur(25px) !important;
+  background: rgba(255, 255, 255, 0.4) !important;
+  border: 1px solid rgba(160, 82, 45, 0.7) !important;
+  box-shadow: 0 0 0 2px rgba(160, 82, 45, 0.4), 0 6px 20px rgba(0, 0, 0, 0.15);
+  color: rgba(30, 20, 10, 1) !important;
+}
+
+/* Glassmorphism buttons - Enhanced */
+.glassmorphism button:not(.sidebar-nav-item):not(.floating-action) {
+  backdrop-filter: blur(20px) !important;
+  background: rgba(255, 255, 255, 0.3) !important;
+  border: 1px solid rgba(255, 255, 255, 0.5) !important;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+  color: rgba(30, 20, 10, 1) !important;
+}
+
+.glassmorphism button:not(.sidebar-nav-item):not(.floating-action):hover {
+  backdrop-filter: blur(25px) !important;
+  background: rgba(255, 255, 255, 0.4) !important;
+  border: 1px solid rgba(255, 255, 255, 0.6) !important;
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
+  color: rgba(30, 20, 10, 1) !important;
+}
+
+/* Glassmorphism scrollbar */
+.glassmorphism ::-webkit-scrollbar {
+  width: 8px;
+}
+
+.glassmorphism ::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+}
+
+.glassmorphism ::-webkit-scrollbar-thumb {
+  background: rgba(139, 69, 19, 0.6);
+  border-radius: 4px;
+}
+
+.glassmorphism ::-webkit-scrollbar-thumb:hover {
+  background: rgba(139, 69, 19, 0.8);
+}
+
+/* Glassmorphism selection */
+.glassmorphism ::selection {
+  background: rgba(139, 69, 19, 0.3);
+  color: rgba(45, 35, 25, 0.95);
+}
+
+/* Glassmorphism links */
+.glassmorphism a {
+  color: rgba(139, 69, 19, 0.9);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.glassmorphism a:hover {
+  color: rgba(139, 69, 19, 1);
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+/* Glassmorphism headings */
+.glassmorphism h1,
+.glassmorphism h2,
+.glassmorphism h3,
+.glassmorphism h4,
+.glassmorphism h5,
+.glassmorphism h6 {
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Glassmorphism text - High contrast */
+.glassmorphism p,
+.glassmorphism span,
+.glassmorphism div,
+.glassmorphism label,
+.glassmorphism .text-sm,
+.glassmorphism .text-xs,
+.glassmorphism .text-muted-foreground {
+  color: rgba(40, 30, 20, 1) !important;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+/* Dashboard title and headers */
+.glassmorphism h1,
+.glassmorphism h2,
+.glassmorphism h3,
+.glassmorphism h4,
+.glassmorphism h5,
+.glassmorphism h6,
+.glassmorphism .text-2xl,
+.glassmorphism .text-xl,
+.glassmorphism .text-lg,
+.glassmorphism .text-base,
+.glassmorphism .text-3xl,
+.glassmorphism .text-4xl,
+.glassmorphism .text-5xl,
+.glassmorphism .text-6xl {
+  color: rgba(40, 30, 20, 1) !important;
+  text-shadow: 0 3px 6px rgba(0, 0, 0, 0.3);
+  font-weight: 600;
+}
+
+/* Specific dashboard elements */
+.glassmorphism .dashboard-title,
+.glassmorphism .page-title,
+.glassmorphism .section-title,
+.glassmorphism .card-title {
+  color: rgba(40, 30, 20, 1) !important;
+  text-shadow: 0 3px 6px rgba(0, 0, 0, 0.3);
+}
+
+/* All text elements with maximum visibility */
+.glassmorphism * {
+  color: rgba(40, 30, 20, 1) !important;
+}
+
+/* Override white text */
+.glassmorphism .text-white,
+.glassmorphism .text-white-foreground {
+  color: rgba(252, 248, 240, 1) !important;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+}
+
+/* Override muted text */
+.glassmorphism .text-muted-foreground {
+  color: rgba(60, 50, 40, 0.95) !important;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+/* Glassmorphism table */
+.glassmorphism table {
+  backdrop-filter: blur(10px);
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.glassmorphism th,
+.glassmorphism td {
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+/* Glassmorphism code blocks */
+.glassmorphism code,
+.glassmorphism pre {
+  backdrop-filter: blur(10px);
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+/* Glassmorphism blockquote */
+.glassmorphism blockquote {
+  backdrop-filter: blur(10px);
+  background: rgba(255, 255, 255, 0.1);
+  border-left: 4px solid rgba(139, 69, 19, 0.6);
+}
+
+/* Glassmorphism sidebar */
+.glassmorphism .sidebar {
+  backdrop-filter: blur(15px);
+  background: rgba(255, 255, 255, 0.1);
+  border-right: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 4px 0 20px rgba(0, 0, 0, 0.1);
+}
+
+/* Glassmorphism main content area */
+.glassmorphism .main-content {
+  backdrop-filter: blur(5px);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+/* Glassmorphism navigation tabs - Enhanced */
+.glassmorphism .bg-gray-100 {
+  backdrop-filter: blur(20px) !important;
+  background: rgba(255, 255, 255, 0.3) !important;
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+}
+
+.glassmorphism .bg-white.shadow-sm {
+  backdrop-filter: blur(20px) !important;
+  background: rgba(255, 255, 255, 0.35) !important;
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+  color: rgba(30, 20, 10, 1) !important;
+}
+
+/* Glassmorphism sidebar - Enhanced */
+.glassmorphism .sidebar {
+  backdrop-filter: blur(25px) !important;
+  background: rgba(255, 255, 255, 0.25) !important;
+  border-right: 1px solid rgba(255, 255, 255, 0.4) !important;
+  box-shadow: 8px 0 32px rgba(0, 0, 0, 0.2);
+}
+
+/* Glassmorphism main content area - Enhanced */
+.glassmorphism .main-content {
+  backdrop-filter: blur(15px) saturate(110%) !important;
+  background: 
+    linear-gradient(135deg, rgba(252, 248, 240, 0.08) 0%, rgba(245, 222, 179, 0.05) 100%),
+    radial-gradient(circle at 50% 0%, rgba(252, 248, 240, 0.1) 0%, transparent 50%) !important;
+  position: relative;
+  overflow: hidden;
+}
+
+.glassmorphism .main-content::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: 
+    radial-gradient(circle at 20% 20%, rgba(245, 222, 179, 0.03) 0%, transparent 50%),
+    radial-gradient(circle at 80% 80%, rgba(252, 248, 240, 0.04) 0%, transparent 50%);
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* Glassmorphism table - Enhanced */
+.glassmorphism table {
+  backdrop-filter: blur(20px) !important;
+  background: rgba(255, 255, 255, 0.3) !important;
+  border: 1px solid rgba(255, 255, 255, 0.5) !important;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+}
+
+.glassmorphism th,
+.glassmorphism td {
+  backdrop-filter: blur(15px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.4) !important;
+  background: rgba(255, 255, 255, 0.1) !important;
+  color: rgba(30, 20, 10, 1) !important;
+}
+
+/* Glassmorphism code blocks - Enhanced */
+.glassmorphism code,
+.glassmorphism pre {
+  backdrop-filter: blur(20px) !important;
+  background: rgba(255, 255, 255, 0.3) !important;
+  border: 1px solid rgba(255, 255, 255, 0.5) !important;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+  color: rgba(30, 20, 10, 1) !important;
+}
+
+/* Glassmorphism blockquote - Enhanced */
+.glassmorphism blockquote {
+  backdrop-filter: blur(20px) !important;
+  background: rgba(255, 255, 255, 0.3) !important;
+  border-left: 4px solid rgba(139, 69, 19, 0.8) !important;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+  color: rgba(30, 20, 10, 1) !important;
+}
+
+/* Glassmorphism unit cards - Enhanced */
+.glassmorphism .unit-card {
+  backdrop-filter: blur(25px) !important;
+  background: rgba(255, 255, 255, 0.3) !important;
+  border: 1px solid rgba(255, 255, 255, 0.5) !important;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.2);
+  color: rgba(30, 20, 10, 1) !important;
+}
+
+/* Glassmorphism status badges - Enhanced */
+.glassmorphism .inline-flex {
+  backdrop-filter: blur(15px) !important;
+  background: rgba(255, 255, 255, 0.3) !important;
+  border: 1px solid rgba(255, 255, 255, 0.4) !important;
+  color: rgba(30, 20, 10, 1) !important;
+}
+
+/* Glassmorphism icons - Enhanced visibility */
+.glassmorphism svg,
+.glassmorphism .icon {
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+}
+
+/* Glassmorphism links - Enhanced */
+.glassmorphism a {
+  color: rgba(139, 69, 19, 0.9) !important;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  font-weight: 500;
+}
+
+.glassmorphism a:hover {
+  color: rgba(139, 69, 19, 1) !important;
+  text-shadow: 0 3px 6px rgba(0, 0, 0, 0.3);
+}
+
+/* Glassmorphism selection - Enhanced */
+.glassmorphism ::selection {
+  background: rgba(139, 69, 19, 0.4) !important;
+  color: rgba(255, 255, 255, 1) !important;
+}
+
+/* Glassmorphism Progress Page Specific Styling */
+.glassmorphism .min-h-screen.bg-gray-50 {
+  background: transparent !important;
+}
+
+.glassmorphism .bg-gray-50 {
+  background: rgba(255, 255, 255, 0.1) !important;
+}
+
+.glassmorphism .bg-blue-50 {
+  backdrop-filter: blur(20px) !important;
+  background: rgba(139, 69, 19, 0.2) !important;
+  border: 1px solid rgba(139, 69, 19, 0.3);
+  box-shadow: 0 8px 32px rgba(139, 69, 19, 0.1);
+}
+
+.glassmorphism .bg-blue-200 {
+  backdrop-filter: blur(15px) !important;
+  background: rgba(139, 69, 19, 0.3) !important;
+  border: 1px solid rgba(139, 69, 19, 0.4);
+}
+
+.glassmorphism .bg-gray-200 {
+  backdrop-filter: blur(15px) !important;
+  background: rgba(255, 255, 255, 0.3) !important;
+  border: 1px solid rgba(255, 255, 255, 0.4);
+}
+
+.glassmorphism .bg-gray-100 {
+  backdrop-filter: blur(15px) !important;
+  background: rgba(255, 255, 255, 0.2) !important;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.glassmorphism .bg-emerald-100 {
+  backdrop-filter: blur(15px) !important;
+  background: rgba(16, 185, 129, 0.2) !important;
+  border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.glassmorphism .bg-emerald-200 {
+  backdrop-filter: blur(15px) !important;
+  background: rgba(16, 185, 129, 0.3) !important;
+  border: 1px solid rgba(16, 185, 129, 0.4);
+}
+
+.glassmorphism .bg-emerald-300 {
+  backdrop-filter: blur(15px) !important;
+  background: rgba(16, 185, 129, 0.4) !important;
+  border: 1px solid rgba(16, 185, 129, 0.5);
+}
+
+.glassmorphism .bg-emerald-400 {
+  backdrop-filter: blur(15px) !important;
+  background: rgba(16, 185, 129, 0.5) !important;
+  border: 1px solid rgba(16, 185, 129, 0.6);
+}
+
+.glassmorphism .bg-emerald-500 {
+  backdrop-filter: blur(15px) !important;
+  background: rgba(16, 185, 129, 0.6) !important;
+  border: 1px solid rgba(16, 185, 129, 0.7);
+}
+
+/* Progress page unit charts */
+.glassmorphism .rounded-lg.border.border-gray-100 {
+  backdrop-filter: blur(25px) !important;
+  background: rgba(255, 255, 255, 0.3) !important;
+  border: 1px solid rgba(255, 255, 255, 0.5) !important;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.2);
+  color: rgba(30, 20, 10, 1) !important;
+}
+
+/* Progress page charts and tooltips */
+.glassmorphism .bg-white.p-2.border.border-gray-300.rounded {
+  backdrop-filter: blur(20px) !important;
+  background: rgba(255, 255, 255, 0.35) !important;
+  border: 1px solid rgba(255, 255, 255, 0.5) !important;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+  color: rgba(30, 20, 10, 1) !important;
+}
+
+/* Progress page badges */
+.glassmorphism .text-xs.bg-green-100.text-green-700 {
+  backdrop-filter: blur(15px) !important;
+  background: rgba(16, 185, 129, 0.2) !important;
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  color: rgba(30, 20, 10, 1) !important;
+}
+
+/* Progress page loading spinner */
+.glassmorphism .animate-spin.rounded-full.border-b-2.border-blue-600 {
+  border-color: rgba(139, 69, 19, 0.8) !important;
+}
+
+/* Progress page chart colors */
+.glassmorphism .text-blue-500,
+.glassmorphism .text-green-500,
+.glassmorphism .text-purple-500,
+.glassmorphism .text-orange-500,
+.glassmorphism .text-red-500,
+.glassmorphism .text-emerald-500 {
+  color: rgba(139, 69, 19, 0.9) !important;
+}
+
+/* Progress page grid lines */
+.glassmorphism .stroke-gray-100 {
+  stroke: rgba(255, 255, 255, 0.3) !important;
+}
+
+.glassmorphism .stroke-blue-500 {
+  stroke: rgba(139, 69, 19, 0.8) !important;
+}
+
+.glassmorphism .stroke-green-500 {
+  stroke: rgba(16, 185, 129, 0.8) !important;
+}
+
+.glassmorphism .stroke-orange-500 {
+  stroke: rgba(245, 158, 11, 0.8) !important;
+}
+
+/* Progress page chart fills */
+.glassmorphism .fill-blue-500 {
+  fill: rgba(139, 69, 19, 0.8) !important;
+}
+
+.glassmorphism .fill-green-500 {
+  fill: rgba(16, 185, 129, 0.8) !important;
+}
+
+.glassmorphism .fill-purple-500 {
+  fill: rgba(139, 69, 19, 0.8) !important;
+}
+
+.glassmorphism .fill-orange-500 {
+  fill: rgba(245, 158, 11, 0.8) !important;
+}
+
+/* Progress page background dots */
+.glassmorphism .bg-green-500 {
+  background: rgba(16, 185, 129, 0.8) !important;
+}
+
+.glassmorphism .bg-blue-500 {
+  background: rgba(139, 69, 19, 0.8) !important;
+}
+
+/* Glassmorphism Top Bar Motivational Quotes - Creative Blending */
+.glassmorphism .bg-gradient-to-br.from-teal-50.to-blue-50 {
+  backdrop-filter: blur(30px) saturate(120%) !important;
+  background: 
+    linear-gradient(135deg, rgba(252, 248, 240, 0.15) 0%, rgba(245, 222, 179, 0.1) 50%, rgba(248, 240, 232, 0.12) 100%) !important;
+  border-bottom: 1px solid rgba(252, 248, 240, 0.4) !important;
+  box-shadow: 
+    0 4px 20px rgba(0, 0, 0, 0.08),
+    inset 0 1px 0 rgba(252, 248, 240, 0.5) !important;
+  position: relative;
+  overflow: hidden;
+}
+
+.glassmorphism .bg-gradient-to-br.from-teal-50.to-blue-50::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(252, 248, 240, 0.2), transparent);
+  animation: shimmer 6s infinite;
+}
+
+@keyframes shimmer {
+  0% { left: -100%; }
+  100% { left: 100%; }
+}
+
+.glassmorphism .bg-gradient-to-br.from-teal-50.to-blue-50 blockquote {
+  color: rgba(40, 30, 20, 1) !important;
+  text-shadow: 0 3px 6px rgba(0, 0, 0, 0.2);
+  backdrop-filter: blur(15px) saturate(150%);
+  background: 
+    linear-gradient(135deg, rgba(252, 248, 240, 0.2) 0%, rgba(245, 222, 179, 0.15) 100%),
+    radial-gradient(circle at center, rgba(252, 248, 240, 0.3) 0%, transparent 70%);
+  border-radius: 12px;
+  padding: 16px 20px;
+  border: 1px solid rgba(252, 248, 240, 0.4);
+  box-shadow: 
+    0 8px 25px rgba(0, 0, 0, 0.1),
+    inset 0 1px 0 rgba(252, 248, 240, 0.6);
+  position: relative;
+  overflow: hidden;
+}
+
+.glassmorphism .bg-gradient-to-br.from-teal-50.to-blue-50 blockquote::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, rgba(245, 222, 179, 0.8), transparent);
+  animation: quoteGlow 4s ease-in-out infinite;
+}
+
+@keyframes quoteGlow {
+  0%, 100% { opacity: 0.3; }
+  50% { opacity: 0.8; }
+}
+
+.glassmorphism .bg-gradient-to-br.from-teal-50.to-blue-50 p {
+  color: rgba(60, 50, 40, 0.95) !important;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  backdrop-filter: blur(12px) saturate(140%);
+  background: 
+    linear-gradient(135deg, rgba(252, 248, 240, 0.15) 0%, rgba(245, 222, 179, 0.1) 100%);
+  border-radius: 8px;
+  padding: 10px 14px;
+  border: 1px solid rgba(252, 248, 240, 0.3);
+  box-shadow: 
+    0 4px 15px rgba(0, 0, 0, 0.08),
+    inset 0 1px 0 rgba(252, 248, 240, 0.5);
+}
+
+/* Glassmorphism header styling */
+.glassmorphism header {
+  backdrop-filter: blur(20px);
+  background: rgba(252, 248, 240, 0.1);
+  border-radius: 12px;
+  border: 1px solid rgba(252, 248, 240, 0.2);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+}
+
+/* Glassmorphism page padding - Reduce thick padding for better background blend */
+.glassmorphism .p-6 {
+  padding: 1rem !important; /* Reduce from 1.5rem to 1rem */
+}
+
+.glassmorphism .p-8 {
+  padding: 1.25rem !important; /* Reduce from 2rem to 1.25rem */
+}
+
+.glassmorphism .px-6 {
+  padding-left: 1rem !important;
+  padding-right: 1rem !important;
+}
+
+.glassmorphism .py-6 {
+  padding-top: 1rem !important;
+  padding-bottom: 1rem !important;
+}
+
+.glassmorphism .px-8 {
+  padding-left: 1.25rem !important;
+  padding-right: 1.25rem !important;
+}
+
+.glassmorphism .py-8 {
+  padding-top: 1.25rem !important;
+  padding-bottom: 1.25rem !important;
+}
+
+/* Glassmorphism main content area - Minimal padding for seamless blend */
+.glassmorphism .main-content {
+  backdrop-filter: blur(10px) !important;
+  background: rgba(252, 248, 240, 0.05) !important;
+  padding: 0.75rem !important; /* Minimal padding for glassmorphism */
+}
+
+/* Glassmorphism page containers - Reduce margins for better blend */
+.glassmorphism .max-w-7xl,
+.glassmorphism .max-w-6xl,
+.glassmorphism .max-w-4xl,
+.glassmorphism .max-w-3xl {
+  margin-left: auto !important;
+  margin-right: auto !important;
+  padding-left: 0.75rem !important;
+  padding-right: 0.75rem !important;
+}
+
+/* Glassmorphism app layout - Seamless background blend */
+.glassmorphism .flex {
+  background: transparent !important;
+}
+
+.glassmorphism .flex-1 {
+  background: transparent !important;
+  padding: 0.5rem !important; /* Minimal padding for seamless blend */
+}
+
+/* Glassmorphism body and root - Ensure full background coverage */
+.glassmorphism,
+.glassmorphism body,
+.glassmorphism #root {
+  margin: 0 !important;
+  padding: 0 !important;
+  background-attachment: fixed !important;
+  background-size: cover !important;
+  background-position: center !important;
+  background-repeat: no-repeat !important;
+}
+
+/* Glassmorphism creative hover effects */
+.glassmorphism .card:hover {
+  transform: translateY(-2px) scale(1.01);
+  box-shadow: 
+    0 20px 60px rgba(0, 0, 0, 0.2),
+    inset 0 1px 0 rgba(252, 248, 240, 0.8),
+    0 0 0 1px rgba(245, 222, 179, 0.2);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.glassmorphism .quick-action-card:hover {
+  transform: translateY(-3px) scale(1.02);
+  box-shadow: 
+    0 25px 70px rgba(0, 0, 0, 0.25),
+    inset 0 1px 0 rgba(252, 248, 240, 0.9),
+    0 0 0 1px rgba(245, 222, 179, 0.3);
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Glassmorphism interactive elements with creative effects */
+.glassmorphism button:not(.sidebar-nav-item):not(.floating-action):hover {
+  transform: translateY(-1px);
+  box-shadow: 
+    0 8px 25px rgba(0, 0, 0, 0.2),
+    inset 0 1px 0 rgba(252, 248, 240, 0.6);
+  transition: all 0.2s ease;
+}
+
+.glassmorphism input:focus,
+.glassmorphism textarea:focus,
+.glassmorphism select:focus {
+  transform: scale(1.02);
+  box-shadow: 
+    0 0 0 3px rgba(160, 82, 45, 0.3),
+    0 8px 25px rgba(0, 0, 0, 0.15),
+    inset 0 1px 0 rgba(252, 248, 240, 0.8);
+  transition: all 0.3s ease;
+}
+
+/* Glassmorphism specific spacing adjustments */
+.glassmorphism .mb-8 {
+  margin-bottom: 1.5rem !important; /* Reduce from 2rem */
+}
+
+.glassmorphism .mb-6 {
+  margin-bottom: 1rem !important; /* Reduce from 1.5rem */
+}
+
+.glassmorphism .space-y-6 > * + * {
+  margin-top: 1rem !important; /* Reduce from 1.5rem */
+}
+
+.glassmorphism .space-y-8 > * + * {
+  margin-top: 1.25rem !important; /* Reduce from 2rem */
 }
 
 /* Font smoothing */
@@ -221,6 +1630,15 @@
   color: #9ca3af;
 }
 
+/* Dark theme notebook textarea */
+.dark .notebook-textarea.text-transparent {
+  caret-color: var(--foreground) !important;
+}
+
+.dark .notebook-textarea.text-transparent::placeholder {
+  color: var(--muted-foreground);
+}
+
 .notebook-textarea.text-transparent::selection {
   background-color: rgba(59, 130, 246, 0.3);
 }
@@ -250,12 +1668,31 @@
   color: #374151;
 }
 
+/* Dark theme note content */
+.dark .note-content .header {
+  color: var(--accent);
+}
+
+.dark .note-content .subheader {
+  color: var(--accent);
+  opacity: 0.8;
+}
+
+.dark .note-content .bullet {
+  color: var(--foreground);
+}
+
 /* Document Content Styling */
 .document-content {
   font-family: var(--app-font-family, 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif);
   font-weight: var(--app-font-weight, 500);
   line-height: 1.7;
-  color: #374151;
+  color: var(--foreground);
+}
+
+/* Dark theme document content */
+.dark .document-content {
+  color: var(--foreground);
 }
 
 .document-content h1,
@@ -267,7 +1704,7 @@
   font-weight: 600;
   margin-top: 1.5em;
   margin-bottom: 0.5em;
-  color: #1f2937;
+  color: var(--foreground);
 }
 
 .document-content h1 { font-size: 1.875rem; }
@@ -293,7 +1730,7 @@
 .document-content strong,
 .document-content b {
   font-weight: 600;
-  color: #1f2937;
+  color: var(--foreground);
 }
 
 .document-content em,
@@ -309,38 +1746,41 @@
 
 .document-content table th,
 .document-content table td {
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--border);
   padding: 0.75em;
   text-align: left;
 }
 
 .document-content table th {
-  background-color: #f9fafb;
+  background-color: var(--muted);
   font-weight: 600;
 }
 
 .document-content blockquote {
-  border-left: 4px solid #3b82f6;
+  border-left: 4px solid var(--accent);
   padding-left: 1em;
   margin: 1.5em 0;
   font-style: italic;
-  color: #6b7280;
+  color: var(--muted-foreground);
+  background-color: var(--muted);
 }
 
 .document-content code {
-  background-color: #f3f4f6;
+  background-color: var(--muted);
   padding: 0.125em 0.25em;
   border-radius: 0.25em;
   font-family: 'Monaco', 'Courier New', monospace;
   font-size: 0.875em;
+  color: var(--foreground);
 }
 
 .document-content pre {
-  background-color: #f3f4f6;
+  background-color: var(--muted);
   padding: 1em;
   border-radius: 0.5em;
   overflow-x: auto;
   margin: 1.5em 0;
+  border: 1px solid var(--border);
 }
 
 /* Document Page Styling */
